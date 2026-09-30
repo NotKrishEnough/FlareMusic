@@ -159,13 +159,11 @@ class MainActivity : ComponentActivity() {
     Column(Modifier.fillMaxSize().padding(22.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) { Image(painterResource(R.drawable.ic_flare_logo), contentDescription = "FlareMusic logo", modifier = Modifier.size(38.dp)); Spacer(Modifier.width(9.dp)); Text("FlareMusic", color = Color.White, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp, fontSize = 22.sp) }
         Spacer(Modifier.height(24.dp))
-        Text("Sound,
-without limits.", fontSize = 38.sp, lineHeight = 43.sp, fontWeight = FontWeight.Bold)
+        Text("Sound,\nwithout limits.", fontSize = 38.sp, lineHeight = 43.sp, fontWeight = FontWeight.Bold)
         Text("Your music, your way.", color = Color.LightGray, modifier = Modifier.padding(top = 10.dp))
         Spacer(Modifier.height(28.dp))
         Box(Modifier.fillMaxWidth().height(185.dp).clip(RoundedCornerShape(30.dp)).background(Brush.linearGradient(listOf(Color(0xFF59468D), Color(0xFF24665F)))).clickable { openLibrary() }, contentAlignment = Alignment.BottomStart) {
-            Column(Modifier.padding(22.dp)) { Text("YOUR SOUNDTRACK", color = Mint, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp); Text("All your music.
-One place.", fontSize = 26.sp, fontWeight = FontWeight.Bold) }
+            Column(Modifier.padding(22.dp)) { Text("YOUR SOUNDTRACK", color = Mint, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp); Text("All your music.\nOne place.", fontSize = 26.sp, fontWeight = FontWeight.Bold) }
             Icon(Icons.Rounded.GraphicEq, null, Modifier.align(Alignment.TopEnd).padding(24.dp).size(64.dp), tint = Color.White.copy(alpha = .8f))
         }
         Spacer(Modifier.height(24.dp))
