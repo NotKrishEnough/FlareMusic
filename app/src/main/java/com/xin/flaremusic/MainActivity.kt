@@ -214,7 +214,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable private fun HomeScreen(count: Int, loading: Boolean, error: String, openLibrary: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(22.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) { Image(painterResource(R.drawable.ic_flare_logo), contentDescription = "XinPlayer logo", modifier = Modifier.size(38.dp)); Spacer(Modifier.width(9.dp)); Text("XinPlayer", color = Color.White, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp, fontSize = 22.sp) }
+        Row(verticalAlignment = Alignment.CenterVertically) { Image(painterResource(R.drawable.ic_flare_logo), contentDescription = "FlareMusic logo", modifier = Modifier.size(38.dp)); Spacer(Modifier.width(9.dp)); Text("FlareMusic", color = Color.White, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp, fontSize = 22.sp) }
         Spacer(Modifier.height(24.dp))
         Text("Sound,\nwithout limits.", fontSize = 38.sp, lineHeight = 43.sp, fontWeight = FontWeight.Bold)
         Text("Your music, your way.", color = Color.LightGray, modifier = Modifier.padding(top = 10.dp))
