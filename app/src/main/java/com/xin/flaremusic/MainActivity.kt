@@ -89,7 +89,13 @@ class MainActivity : ComponentActivity() {
     var loading by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
     var error by remember { mutableStateOf("") }
+    var onlineResults by remember { mutableStateOf(emptyList<OnlineTrack>()) }
+    var searching by remember { mutableStateOf(false) }
+    var position by remember { mutableLongStateOf(0L) }
+    var totalDuration by remember { mutableLongStateOf(0L) }
+    val innerTube = remember { InnerTubeClient() }
     val scope = rememberCoroutineScope()
+    LaunchedEffect(player) { while (true) { position = player.currentPosition.coerceAtLeast(0L); totalDuration = player.duration.takeIf { it > 0 } ?: 0L; delay(500) } }
     LaunchedEffect(Unit) {
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) { playing = isPlaying }
@@ -104,6 +110,23 @@ class MainActivity : ComponentActivity() {
         player.prepare()
         player.play()
     }
+    fun playOnline(track: OnlineTrack) {
+        scope.launch {
+            error = ""
+            try {
+                val url = innerTube.resolveProgressiveUrl(track.videoId)
+                if (url == null) { error = "This stream is not directly available. Try another result."; return@launch }
+                play(Track(-track.videoId.hashCode().toLong().let { kotlin.math.abs(it) }, track.title, track.author, "YouTube", Uri.parse(url), 0L))
+            } catch (e: Exception) { error = e.message ?: "Could not load stream" }
+        }
+    }
+    fun searchOnline(term: String) {
+        scope.launch {
+            searching = true; error = ""
+            try { onlineResults = innerTube.search(term) } catch (e: Exception) { error = e.message ?: "Online search failed" }
+            searching = false
+        }
+    }
     Scaffold(containerColor = Ink, bottomBar = {
         Column {
             if (current != null) Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).clip(RoundedCornerShape(20.dp)).background(Panel).clickable { if (playing) player.pause() else player.play() }.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -111,7 +134,9 @@ class MainActivity : ComponentActivity() {
                 Column(Modifier.weight(1f).padding(start = 12.dp)) { Text(current!!.title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis); Text(current!!.artist, color = Color.LightGray, fontSize = 12.sp, maxLines = 1) }
                 IconButton(onClick = { if (playing) player.pause() else player.play() }) { Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = Violet) }
                 IconButton(onClick = { player.seekToNextMediaItem() }) { Icon(Icons.Rounded.SkipNext, null, tint = Violet) }
+                if (totalDuration > 0) { Spacer(Modifier.width(6.dp)); Text(formatTime(position), color = Color.LightGray, fontSize = 10.sp) }
             }
+            if (current != null && totalDuration > 0) Slider(value = (position.toFloat() / totalDuration.toFloat()).coerceIn(0f, 1f), onValueChange = { player.seekTo((it * totalDuration).toLong()) }, modifier = Modifier.fillMaxWidth().height(18.dp).padding(horizontal = 12.dp), colors = SliderDefaults.colors(thumbColor = Violet, activeTrackColor = Violet, inactiveTrackColor = Panel))
             NavigationBar(containerColor = Ink) {
                 listOf("Home", "Search", "Library").forEach { item -> NavigationBarItem(selected = tab == item, onClick = { tab = item }, icon = { Icon(when(item) { "Home" -> Icons.Rounded.Home; "Search" -> Icons.Rounded.Search; else -> Icons.Rounded.LibraryMusic }, null) }, label = { Text(item) }) }
             }
@@ -120,7 +145,7 @@ class MainActivity : ComponentActivity() {
         AnimatedContent(tab, modifier = Modifier.padding(padding), label = "page") { page ->
             when(page) {
                 "Home" -> HomeScreen(tracks.size, loading, error) { tab = "Library" }
-                "Search" -> SearchScreen(query, { query = it }, tracks.filter { it.title.contains(query, true) || it.artist.contains(query, true) }, ::play)
+                "Search" -> SearchScreen(query, { query = it }, tracks.filter { it.title.contains(query, true) || it.artist.contains(query, true) }, ::play, onlineResults, searching, ::searchOnline, ::playOnline, error)
                 else -> LibraryScreen(tracks, loading, ::play, { tab = "Search" }, { tracks = emptyList(); loading = true })
             }
         }
@@ -147,13 +172,20 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable private fun SearchScreen(query: String, onQuery: (String) -> Unit, results: List<Track>, play: (Track) -> Unit) {
+@Composable private fun SearchScreen(query: String, onQuery: (String) -> Unit, results: List<Track>, play: (Track) -> Unit, online: List<OnlineTrack>, searching: Boolean, searchOnline: (String) -> Unit, playOnline: (OnlineTrack) -> Unit, error: String) {
     Column(Modifier.fillMaxSize().padding(20.dp)) {
         Text("Discover", fontSize = 32.sp, fontWeight = FontWeight.Bold)
-        Text("Search songs on this device.", color = Color.LightGray, modifier = Modifier.padding(top = 5.dp, bottom = 20.dp))
+        Text("Search your library or discover online music.", color = Color.LightGray, modifier = Modifier.padding(top = 5.dp, bottom = 20.dp))
         OutlinedTextField(value = query, onValueChange = onQuery, modifier = Modifier.fillMaxWidth(), placeholder = { Text("Songs, artists, albums") }, leadingIcon = { Icon(Icons.Rounded.Search, null) }, shape = RoundedCornerShape(20.dp), singleLine = true)
-        Spacer(Modifier.height(12.dp))
-        LazyColumn { items(results, key = { it.id }) { TrackRow(it, onClick = { play(it) }) } }
+        Spacer(Modifier.height(8.dp))
+        Button(onClick = { searchOnline(query) }, enabled = query.isNotBlank() && !searching, modifier = Modifier.fillMaxWidth()) { if (searching) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp) else Icon(Icons.Rounded.Public, null); Spacer(Modifier.width(8.dp)); Text("Search online") }
+        if (error.isNotBlank()) Text(error, color = Color(0xFFFF9B9B), modifier = Modifier.padding(vertical = 8.dp))
+        Text("ON THIS DEVICE", color = Mint, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp))
+        LazyColumn(Modifier.weight(1f)) {
+            items(results, key = { it.id }) { TrackRow(it, onClick = { play(it) }) }
+            item { Text("ONLINE RESULTS", color = Mint, fontSize = 11.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 12.dp, bottom = 4.dp)) }
+            items(online, key = { it.videoId }) { item -> Row(Modifier.fillMaxWidth().clickable { playOnline(item) }.padding(vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) { Icon(Icons.Rounded.PlayCircle, null, tint = Violet, modifier = Modifier.size(42.dp)); Column(Modifier.weight(1f).padding(start = 10.dp)) { Text(item.title, maxLines = 2, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold); Text("${item.author} • ${item.duration}", color = Color.LightGray, fontSize = 12.sp, maxLines = 1) } } }
+        }
     }
 }
 
@@ -180,3 +212,4 @@ class MainActivity : ComponentActivity() {
         Icon(Icons.Rounded.PlayCircle, null, tint = Violet)
     }
 }
+\nprivate fun formatTime(ms: Long): String { val seconds = (ms / 1000).coerceAtLeast(0); return "%d:%02d".format(seconds / 60, seconds % 60) }\n
