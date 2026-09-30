@@ -160,16 +160,19 @@ class MainActivity : ComponentActivity() {
     private suspend fun loadTracks(): List<Track> = withContext(Dispatchers.IO) {
         val list = mutableListOf<Track>()
         val collection = MediaStore.Audio.Media.EXTERNAL_CONTENT_URI
-        val projection = arrayOf(MediaStore.Audio.Media._ID, MediaStore.Audio.Media.TITLE, MediaStore.Audio.Media.ARTIST, MediaStore.Audio.Media.ALBUM, MediaStore.Audio.Media.DURATION)
+        val projection = arrayOf(MediaStore.Audio.Media._ID, MediaStore.Audio.Media.TITLE, MediaStore.Audio.Media.ARTIST, MediaStore.Audio.Media.ALBUM, MediaStore.Audio.Media.DURATION, MediaStore.Audio.Media.ALBUM_ID)
         contentResolver.query(collection, projection, null, null, MediaStore.Audio.Media.TITLE + " COLLATE NOCASE ASC")?.use { cursor ->
             val id = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
             val title = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
             val artist = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
             val album = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
             val duration = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.DURATION)
+            val albumId = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM_ID)
             while (cursor.moveToNext()) {
                 val mediaId = cursor.getLong(id)
-                list += Track(mediaId, cursor.getString(title) ?: "Unknown", cursor.getString(artist) ?: "Unknown artist", cursor.getString(album) ?: "", ContentUris.withAppendedId(collection, mediaId), cursor.getLong(duration))
+                val artId = cursor.getLong(albumId)
+                val artwork = if (artId > 0L) "content://media/external/audio/albumart/$artId" else null
+                list += Track(mediaId, cursor.getString(title) ?: "Unknown", cursor.getString(artist) ?: "Unknown artist", cursor.getString(album) ?: "", ContentUris.withAppendedId(collection, mediaId), cursor.getLong(duration), artwork)
             }
         }
         list
@@ -238,7 +241,9 @@ class MainActivity : ComponentActivity() {
         current = track
         player.stop()
         player.clearMediaItems()
-        val metadata = MediaMetadata.Builder().setTitle(track.title).setArtist(track.artist).setAlbumTitle(track.album).build()
+        val metadataBuilder = MediaMetadata.Builder().setTitle(track.title).setArtist(track.artist).setAlbumTitle(track.album)
+        track.artwork?.let { artwork -> metadataBuilder.setArtworkUri(Uri.parse(artwork)) }
+        val metadata = metadataBuilder.build()
         player.setMediaItem(MediaItem.Builder().setUri(track.uri).setMediaMetadata(metadata).build())
         player.prepare()
         player.play()
