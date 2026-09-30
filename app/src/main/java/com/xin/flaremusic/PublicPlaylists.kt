@@ -21,6 +21,8 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import org.json.JSONArray
@@ -110,12 +112,36 @@ private object PublicPlaylistImporter {
         val uri = Uri.parse(input.trim())
         val id = uri.getQueryParameter("list") ?: uri.lastPathSegment?.takeIf { uri.host?.contains("youtu.be") == true }
         require(!id.isNullOrBlank() && id.matches(Regex("[A-Za-z0-9_-]{10,}"))) { "Paste a valid YouTube playlist link" }
+        // Use YouTube's playlist browse endpoint first. Current playlist pages may
+        // render rows as lockupViewModel instead of playlistVideoRenderer.
+        val browseBody = JSONObject()
+            .put("browseId", "VL$id")
+            .put("context", JSONObject().put("client", JSONObject()
+                .put("clientName", "WEB").put("clientVersion", "2.20260929.01.00")
+                .put("hl", "en").put("gl", "US")))
+        val browseRequest = Request.Builder()
+            .url("https://www.youtube.com/youtubei/v1/browse?prettyPrint=false")
+            .post(browseBody.toString().toRequestBody("application/json; charset=utf-8".toMediaType()))
+            .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/130.0.0.0 Safari/537.36")
+            .header("Origin", "https://www.youtube.com")
+            .build()
+        val browseRoot = runCatching {
+            http.newCall(browseRequest).execute().use { response ->
+                if (!response.isSuccessful) null else JSONObject(response.body?.string().orEmpty())
+            }
+        }.getOrNull()
+        val browseIds = mutableListOf<String>()
+        browseRoot?.let { collectPlaylistItems(it, browseIds, false) }
+        if (browseIds.isNotEmpty()) {
+            val title = browseRoot?.let { findText(it, "title") } ?: "YouTube playlist"
+            return@withContext SavedPublicPlaylist(id, title, "https://www.youtube.com/playlist?list=$id", browseIds.distinct())
+        }
+
         val page = http.newCall(Request.Builder().url("https://www.youtube.com/playlist?list=$id").header("User-Agent", "Mozilla/5.0").build()).execute().use {
             if (!it.isSuccessful) error("YouTube returned HTTP ${it.code}")
             it.body?.string().orEmpty()
         }
-        // YouTube changes its HTML bootstrap format. Try common initial-data
-        // assignments, then inspect only playlistVideoRenderer objects.
+        // Legacy HTML fallback for older page layouts.
         val markers = listOf("var ytInitialData = ", "ytInitialData = ", "window[\"ytInitialData\"] = ")
         var root: JSONObject? = null
         for (marker in markers) {
@@ -135,6 +161,41 @@ private object PublicPlaylistImporter {
         val title = root?.let { findText(it, "title") } ?: "YouTube playlist"
         require(ids.isNotEmpty()) { "YouTube returned the playlist page, but its video list could not be parsed. Try a public playlist URL with videos." }
         SavedPublicPlaylist(id, title, "https://www.youtube.com/playlist?list=$id", ids.distinct())
+    }
+
+    private fun collectPlaylistItems(value: Any?, out: MutableList<String>, insidePlaylist: Boolean) {
+        when (value) {
+            is JSONObject -> {
+                val isList = value.has("playlistVideoListRenderer")
+                val inList = insidePlaylist || isList
+                if (inList) {
+                    value.optJSONObject("playlistVideoRenderer")?.optString("videoId")
+                        ?.takeIf { it.matches(Regex("[A-Za-z0-9_-]{11}")) }?.let { out += it }
+                    val lockup = value.optJSONObject("lockupViewModel")
+                    if (lockup != null) {
+                        val id = lockup.optString("contentId").takeIf { it.matches(Regex("[A-Za-z0-9_-]{11}")) }
+                            ?: findVideoId(lockup)
+                        if (id != null) out += id
+                    }
+                }
+                val keys = value.keys()
+                while (keys.hasNext()) collectPlaylistItems(value.opt(keys.next()), out, inList)
+            }
+            is JSONArray -> for (i in 0 until value.length()) collectPlaylistItems(value.opt(i), out, insidePlaylist)
+        }
+    }
+
+    private fun findVideoId(value: Any?): String? {
+        when (value) {
+            is JSONObject -> {
+                value.optJSONObject("watchEndpoint")?.optString("videoId")
+                    ?.takeIf { it.matches(Regex("[A-Za-z0-9_-]{11}")) }?.let { return it }
+                val keys = value.keys()
+                while (keys.hasNext()) findVideoId(value.opt(keys.next()))?.let { return it }
+            }
+            is JSONArray -> for (i in 0 until value.length()) findVideoId(value.opt(i))?.let { return it }
+        }
+        return null
     }
 
     private fun extractJson(s: String, start: Int): String {
