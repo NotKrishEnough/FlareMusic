@@ -2,6 +2,7 @@ package com.xin.flaremusic
 
 import android.Manifest
 import android.content.ContentUris
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.os.Build
@@ -28,6 +29,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -97,6 +99,7 @@ class MainActivity : ComponentActivity() {
     var position by remember { mutableLongStateOf(0L) }
     var totalDuration by remember { mutableLongStateOf(0L) }
     val innerTube = remember { InnerTubeClient() }
+    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     LaunchedEffect(player) { while (true) { position = player.currentPosition.coerceAtLeast(0L); totalDuration = player.duration.takeIf { it > 0 } ?: 0L; delay(500) } }
     LaunchedEffect(Unit) {
@@ -118,7 +121,7 @@ class MainActivity : ComponentActivity() {
             error = ""
             try {
                 val url = innerTube.resolveProgressiveUrl(track.videoId)
-                if (url == null) { error = "This stream is not directly available. Try another result."; return@launch }
+                if (url == null) { context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(track.watchUrl))); return@launch }
                 play(Track(-track.videoId.hashCode().toLong().let { kotlin.math.abs(it) }, track.title, track.author, "YouTube", Uri.parse(url), 0L))
             } catch (e: Exception) { error = e.message ?: "Could not load stream" }
         }
