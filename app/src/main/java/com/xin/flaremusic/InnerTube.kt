@@ -63,60 +63,70 @@ class InnerTubeClient {
         return buildString { for (i in 0 until runs.length()) append(runs.optJSONObject(i)?.optString("text") ?: "") }.takeIf { it.isNotBlank() }
     }
 
-    /** Returns a direct progressive stream URL when the API provides one; many results use ciphered URLs. */
+    /** Resolves an audio URL, using public Piped backends when YouTube only returns ciphered formats. */
     suspend fun resolveProgressiveUrl(videoId: String): String? = withContext(Dispatchers.IO) {
         val body = JSONObject().put("context", JSONObject().put("client", client)).put("videoId", videoId).toString()
-        val request = Request.Builder().url("$endpoint/player?prettyPrint=false").post(body.toRequestBody(jsonType)).header("User-Agent", "com.google.android.youtube/19.09.37 (Linux; U; Android 14)").build()
-        http.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IllegalStateException("Stream lookup failed: HTTP ${response.code} - ${response.body?.string()?.take(300)}")
-            val root = JSONObject(response.body?.string() ?: "{}")
-            val status = root.optJSONObject("playabilityStatus")?.optString("status")
-            if (status != "OK") return@withContext null
-            val streaming = root.optJSONObject("streamingData") ?: return@withContext null
-            // Audio-only tracks are commonly listed under adaptiveFormats, not formats.
-            val arrays = listOfNotNull(streaming.optJSONArray("adaptiveFormats"), streaming.optJSONArray("formats"))
-            for (formats in arrays) {
-                for (i in 0 until formats.length()) {
-                    val item = formats.optJSONObject(i) ?: continue
-                    if (!item.optString("mimeType").startsWith("audio/")) continue
-                    val url = item.optString("url")
-                    if (url.startsWith("https://")) return@withContext url
-                }
-            }
-            null
-        }.let { directUrl ->
-            if (directUrl != null) return@withContext directUrl
+        val request = Request.Builder()
+            .url("$endpoint/player?prettyPrint=false")
+            .post(body.toRequestBody(jsonType))
+            .header("User-Agent", "com.google.android.youtube/19.09.37 (Linux; U; Android 14)")
+            .build()
 
-            // YouTube frequently returns ciphered formats without a directly usable URL.
-            // Try public Piped backends as a fallback; these return resolved audio URLs.
-            val instances = listOf(
-                "https://pipedapi.ducks.party",
-                "https://api.piped.private.coffee",
-                "https://pipedapi.projectsegfau.lt",
-                "https://pipedapi.in.projectsegfau.lt"
-            )
-            for (instance in instances) {
-                try {
-                    val fallbackRequest = Request.Builder()
-                        .url("$instance/streams/$videoId")
-                        .get()
-                        .header("User-Agent", "FlareMusic/1.0")
-                        .build()
-                    http.newCall(fallbackRequest).execute().use { fallbackResponse ->
-                        if (!fallbackResponse.isSuccessful) return@use
-                        val fallback = JSONObject(fallbackResponse.body?.string() ?: "{}")
-                        val audio = fallback.optJSONArray("audioStreams") ?: return@use
-                        for (i in 0 until audio.length()) {
-                            val stream = audio.optJSONObject(i) ?: continue
-                            val url = stream.optString("url")
-                            if (url.startsWith("https://")) return@withContext url
+        val directUrl = try {
+            http.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) null else {
+                    val root = JSONObject(response.body?.string() ?: "{}")
+                    val status = root.optJSONObject("playabilityStatus")?.optString("status")
+                    val streaming = root.optJSONObject("streamingData")
+                    if (status != "OK" || streaming == null) null else {
+                        val arrays = listOfNotNull(streaming.optJSONArray("adaptiveFormats"), streaming.optJSONArray("formats"))
+                        var found: String? = null
+                        for (formats in arrays) {
+                            for (i in 0 until formats.length()) {
+                                val item = formats.optJSONObject(i) ?: continue
+                                if (!item.optString("mimeType").startsWith("audio/")) continue
+                                val url = item.optString("url")
+                                if (url.startsWith("https://")) { found = url; break }
+                            }
+                            if (found != null) break
                         }
+                        found
                     }
-                } catch (_: Exception) {
-                    // Continue to the next public backend.
                 }
             }
+        } catch (_: Exception) {
             null
         }
+        if (directUrl != null) return@withContext directUrl
+
+        // Public backends are fallbacks, not guaranteed services; try several because instances go offline.
+        val instances = listOf(
+            "https://pipedapi.ducks.party",
+            "https://api.piped.private.coffee",
+            "https://pipedapi.projectsegfau.lt",
+            "https://pipedapi.in.projectsegfau.lt"
+        )
+        for (instance in instances) {
+            try {
+                val fallbackRequest = Request.Builder()
+                    .url("$instance/streams/$videoId")
+                    .get()
+                    .header("User-Agent", "FlareMusic/1.0")
+                    .build()
+                http.newCall(fallbackRequest).execute().use { response ->
+                    if (!response.isSuccessful) return@use
+                    val fallback = JSONObject(response.body?.string() ?: "{}")
+                    val audio = fallback.optJSONArray("audioStreams") ?: return@use
+                    for (i in 0 until audio.length()) {
+                        val stream = audio.optJSONObject(i) ?: continue
+                        val url = stream.optString("url")
+                        if (url.startsWith("https://")) return@withContext url
+                    }
+                }
+            } catch (_: Exception) {
+                // Continue to the next public backend.
+            }
+        }
+        null
     }
 }
