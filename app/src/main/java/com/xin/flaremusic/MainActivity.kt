@@ -65,6 +65,13 @@ private val Panel = Color(0xFF171B24)
 private val Violet = Color(0xFFFF694F)
 private val Mint = Color(0xFFFF806B)
 
+private object FlarePreferences {
+    val accentIndex = mutableIntStateOf(0)
+    val animations = mutableStateOf(true)
+    val compact = mutableStateOf(false)
+    val accents = listOf(Color(0xFFFF694F), Color(0xFF9B8CFF), Color(0xFF35C9A5), Color(0xFFFFB84D))
+}
+
 data class Track(val id: Long, val title: String, val artist: String, val album: String, val uri: Uri, val duration: Long, val artwork: String? = null)
 
 class MainActivity : ComponentActivity() {
@@ -92,6 +99,9 @@ class MainActivity : ComponentActivity() {
         }
         player = ExoPlayer.Builder(this).build()
         amoledMode = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("amoled", false)
+        FlarePreferences.accentIndex.intValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getInt("accent_index", 0).coerceIn(0, FlarePreferences.accents.lastIndex)
+        FlarePreferences.animations.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("animations", true)
+        FlarePreferences.compact.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("compact", false)
         setContent { FlareTheme(amoledMode) { FlareApp(player, ::loadTracks, amoledMode, googleStatus, youtubePlaylists, playlistLoading, playlistError, ::connectGoogle, ::syncYouTubePlaylists) { enabled -> amoledMode = enabled; getSharedPreferences("flare_settings", MODE_PRIVATE).edit().putBoolean("amoled", enabled).apply() } } }
         if (ContextCompat.checkSelfPermission(this, audioPermission()) != PackageManager.PERMISSION_GRANTED) permission.launch(audioPermission())
     }
@@ -152,8 +162,8 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable private fun FlareTheme(amoled: Boolean, content: @Composable () -> Unit) {
-    val context = LocalContext.current
-    val scheme = darkColorScheme(primary = Violet, secondary = Mint, background = Color(0xFF0B0D12), surface = Color(0xFF151922), surfaceVariant = Color(0xFF202532), onPrimary = Color(0xFF171014), onBackground = Color.White, onSurface = Color.White)
+    val accent = FlarePreferences.accents[FlarePreferences.accentIndex.intValue.coerceIn(0, FlarePreferences.accents.lastIndex)]
+    val scheme = darkColorScheme(primary = accent, secondary = accent.copy(alpha = .85f), tertiary = Mint, background = Color(0xFF0B0D12), surface = Color(0xFF151922), surfaceVariant = Color(0xFF202532), onPrimary = Color.White, onSecondary = Color(0xFF101116), onTertiary = Color(0xFF101116), onBackground = Color.White, onSurface = Color.White, onSurfaceVariant = Color(0xFFE1E3EA), inverseSurface = Color(0xFFE1E3EA), inverseOnSurface = Color(0xFF17191F))
     MaterialTheme(colorScheme = if (amoled) scheme.copy(background = Color.Black, surface = Color.Black, surfaceContainer = Color(0xFF080808)) else scheme, content = content)
 }
 
@@ -230,7 +240,17 @@ class MainActivity : ComponentActivity() {
             }
         }
     }) { padding ->
-        AnimatedContent(tab, modifier = Modifier.padding(padding), label = "page") { page ->
+        AnimatedContent(
+            targetState = tab,
+            modifier = Modifier.padding(padding),
+            label = "page",
+            transitionSpec = {
+                if (FlarePreferences.animations.value) {
+                    (fadeIn(animationSpec = androidx.compose.animation.core.tween(260)) + slideInVertically(animationSpec = androidx.compose.animation.core.spring(dampingRatio = .86f, stiffness = 420f)) { it / 14 }) togetherWith
+                        (fadeOut(animationSpec = androidx.compose.animation.core.tween(150)) + slideOutVertically(animationSpec = androidx.compose.animation.core.tween(180)) { -it / 20 })
+                } else androidx.compose.animation.EnterTransition.None togetherWith androidx.compose.animation.ExitTransition.None
+            }
+        ) { page ->
             when(page) {
                 "Home" -> HomeScreen(tracks.size, loading, error) { tab = "Library" }
                 "Search" -> SearchScreen(query, { query = it }, tracks.filter { it.title.contains(query, true) || it.artist.contains(query, true) }, ::play, onlineResults, searching, ::searchOnline, ::playOnline, error)
@@ -246,6 +266,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable private fun SettingsScreen(amoled: Boolean, onAmoledChange: (Boolean) -> Unit, googleStatus: String, playlists: List<YouTubePlaylist>, loading: Boolean, error: String, onConnect: () -> Unit, onSync: () -> Unit) {
+    val settingsContext = LocalContext.current
     Column(Modifier.fillMaxSize().background(Color(0xFF0B0D12)).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 20.dp)) {
         Text("Settings", fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp, color = Color.White)
         Text("Make FlareMusic yours.", color = Color(0xFFA6ADBC), fontSize = 14.sp, modifier = Modifier.padding(top = 5.dp, bottom = 24.dp))
@@ -255,7 +276,38 @@ class MainActivity : ComponentActivity() {
             Column(Modifier.weight(1f).padding(start = 13.dp)) { Text("AMOLED mode", color = Color.White, fontWeight = FontWeight.SemiBold); Text("Pure black backgrounds", color = Color(0xFF9298A8), fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp)) }
             Switch(checked = amoled, onCheckedChange = onAmoledChange)
         }
-        Text("FlareMusic uses your system palette where supported.", color = Color(0xFF9298A8), fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp, bottom = 25.dp))
+        Text("FlareMusic uses a dark-first palette.", color = Color(0xFF9298A8), fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp, bottom = 20.dp))
+        Text("PERSONALIZATION", color = Color(0xFFFF806B), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(bottom = 9.dp))
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color(0xFF171B24)).padding(17.dp)) {
+            Text("Accent colour", color = Color.White, fontWeight = FontWeight.SemiBold)
+            Text("Choose the colour used for highlights and controls.", color = Color(0xFFA6ADBC), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp, bottom = 13.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(13.dp)) {
+                FlarePreferences.accents.forEachIndexed { index, color ->
+                    Box(Modifier.size(42.dp).clip(RoundedCornerShape(15.dp)).background(color).clickable {
+                        FlarePreferences.accentIndex.intValue = index
+                        settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putInt("accent_index", index).apply()
+                    }, contentAlignment = Alignment.Center) {
+                        if (FlarePreferences.accentIndex.intValue == index) Icon(Icons.Rounded.Check, null, tint = Color.White)
+                    }
+                }
+            }
+            HorizontalDivider(Modifier.padding(vertical = 14.dp), color = Color(0xFF303542))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) { Text("Smooth animations", color = Color.White, fontWeight = FontWeight.SemiBold); Text("Spring transitions between screens", color = Color(0xFFA6ADBC), fontSize = 12.sp) }
+                Switch(checked = FlarePreferences.animations.value, onCheckedChange = {
+                    FlarePreferences.animations.value = it
+                    settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("animations", it).apply()
+                })
+            }
+            HorizontalDivider(Modifier.padding(vertical = 14.dp), color = Color(0xFF303542))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) { Text("Compact layout", color = Color.White, fontWeight = FontWeight.SemiBold); Text("Reduce spacing in lists", color = Color(0xFFA6ADBC), fontSize = 12.sp) }
+                Switch(checked = FlarePreferences.compact.value, onCheckedChange = {
+                    FlarePreferences.compact.value = it
+                    settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("compact", it).apply()
+                })
+            }
+        }
         PublicPlaylistsSection()
         Spacer(Modifier.height(20.dp))
         Text("FLAREMUSIC  •  MADE FOR YOUR MUSIC", color = Color(0xFF626A79), fontSize = 9.sp, letterSpacing = 1.2.sp, modifier = Modifier.align(Alignment.CenterHorizontally).padding(vertical = 14.dp))
@@ -296,7 +348,7 @@ class MainActivity : ComponentActivity() {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onPrevious, modifier = Modifier.size(56.dp)) { Icon(Icons.Rounded.SkipPrevious, "Previous", tint = Color.White, modifier = Modifier.size(34.dp)) }
                 Spacer(Modifier.width(24.dp))
-                FilledIconButton(onClick = onPlayPause, modifier = Modifier.size(72.dp), colors = IconButtonDefaults.filledIconButtonColors(containerColor = Violet, contentColor = Ink)) { Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (playing) "Pause" else "Play", modifier = Modifier.size(38.dp)) }
+                FilledIconButton(onClick = onPlayPause, modifier = Modifier.size(72.dp), colors = IconButtonDefaults.filledIconButtonColors(containerColor = Violet, contentColor = Color.White)) { Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (playing) "Pause" else "Play", modifier = Modifier.size(38.dp)) }
                 Spacer(Modifier.width(24.dp))
                 IconButton(onClick = onNext, modifier = Modifier.size(56.dp)) { Icon(Icons.Rounded.SkipNext, "Next", tint = Color.White, modifier = Modifier.size(34.dp)) }
             }
@@ -327,7 +379,7 @@ class MainActivity : ComponentActivity() {
         }
         if (error.isNotBlank()) Text(error, color = Color(0xFFFF9B9B), fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp))
         Spacer(Modifier.height(16.dp))
-        Button(onClick = openLibrary, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF694F), contentColor = Color(0xFF171014))) { Icon(Icons.Rounded.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Explore my music", fontWeight = FontWeight.Bold) }
+        Button(onClick = openLibrary, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF694F), contentColor = Color.White)) { Icon(Icons.Rounded.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Explore my music", fontWeight = FontWeight.Bold) }
     }
 }
 
@@ -371,7 +423,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable private fun TrackRow(track: Track, onClick: () -> Unit) {
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(15.dp)).clickable(onClick = onClick).padding(horizontal = 7.dp, vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(15.dp)).clickable(onClick = onClick).padding(horizontal = 7.dp, vertical = if (FlarePreferences.compact.value) 4.dp else 9.dp), verticalAlignment = Alignment.CenterVertically) {
         Artwork(track.artwork, Modifier.size(50.dp).clip(RoundedCornerShape(13.dp)))
         Column(Modifier.weight(1f).padding(start = 12.dp)) {
             Text(track.title, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
