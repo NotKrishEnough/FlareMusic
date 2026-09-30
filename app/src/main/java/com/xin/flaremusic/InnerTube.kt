@@ -84,6 +84,39 @@ class InnerTubeClient {
                 }
             }
             null
+        }.let { directUrl ->
+            if (directUrl != null) return@withContext directUrl
+
+            // YouTube frequently returns ciphered formats without a directly usable URL.
+            // Try public Piped backends as a fallback; these return resolved audio URLs.
+            val instances = listOf(
+                "https://pipedapi.ducks.party",
+                "https://api.piped.private.coffee",
+                "https://pipedapi.projectsegfau.lt",
+                "https://pipedapi.in.projectsegfau.lt"
+            )
+            for (instance in instances) {
+                try {
+                    val fallbackRequest = Request.Builder()
+                        .url("$instance/streams/$videoId")
+                        .get()
+                        .header("User-Agent", "FlareMusic/1.0")
+                        .build()
+                    http.newCall(fallbackRequest).execute().use { fallbackResponse ->
+                        if (!fallbackResponse.isSuccessful) return@use
+                        val fallback = JSONObject(fallbackResponse.body?.string() ?: "{}")
+                        val audio = fallback.optJSONArray("audioStreams") ?: return@use
+                        for (i in 0 until audio.length()) {
+                            val stream = audio.optJSONObject(i) ?: continue
+                            val url = stream.optString("url")
+                            if (url.startsWith("https://")) return@withContext url
+                        }
+                    }
+                } catch (_: Exception) {
+                    // Continue to the next public backend.
+                }
+            }
+            null
         }
     }
 }
