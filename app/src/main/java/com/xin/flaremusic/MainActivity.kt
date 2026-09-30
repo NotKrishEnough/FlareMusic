@@ -11,6 +11,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -39,8 +40,8 @@ import kotlinx.coroutines.withContext
 
 private val Ink = Color(0xFF101014)
 private val Panel = Color(0xFF1C1B22)
-private val Violet = Color(0xFFB9A2FF)
-private val Mint = Color(0xFF9DE5D0)
+private val Violet = Color(0xFFFF5A35)
+private val Mint = Color(0xFFFF3D83)
 
 data class Track(val id: Long, val title: String, val artist: String, val album: String, val uri: Uri, val duration: Long)
 
@@ -128,7 +129,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable private fun HomeScreen(count: Int, loading: Boolean, error: String, openLibrary: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(22.dp)) {
-        Text("FLARE", color = Violet, fontWeight = FontWeight.Black, letterSpacing = 5.sp, fontSize = 13.sp)
+        Row(verticalAlignment = Alignment.CenterVertically) { Image(painterResource(R.drawable.ic_flare_logo), contentDescription = "FlareMusic logo", modifier = Modifier.size(38.dp)); Spacer(Modifier.width(9.dp)); Text("FlareMusic", color = Color.White, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp, fontSize = 22.sp) }
         Spacer(Modifier.height(24.dp))
         Text("Sound,\nwithout limits.", fontSize = 38.sp, lineHeight = 43.sp, fontWeight = FontWeight.Bold)
         Text("Your music, your way.", color = Color.LightGray, modifier = Modifier.padding(top = 10.dp))
