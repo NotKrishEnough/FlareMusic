@@ -22,14 +22,14 @@ class InnerTubeClient {
     private val http = OkHttpClient.Builder().callTimeout(20, TimeUnit.SECONDS).build()
     private val jsonType = "application/json; charset=utf-8".toMediaType()
     private val endpoint = "https://www.youtube.com/youtubei/v1"
-    private val client = JSONObject().put("clientName", "ANDROID").put("clientVersion", "19.09.37").put("androidSdkVersion", 35).put("hl", "en").put("gl", "US")
+    private val client = JSONObject().put("clientName", "WEB").put("clientVersion", "2.20250626.01.00").put("hl", "en").put("gl", "US")
 
     suspend fun search(query: String): List<OnlineTrack> = withContext(Dispatchers.IO) {
         require(query.isNotBlank()) { "Enter a search term" }
         val body = JSONObject().put("context", JSONObject().put("client", client)).put("query", query).toString()
         val request = Request.Builder().url("$endpoint/search?prettyPrint=false").post(body.toRequestBody(jsonType)).header("User-Agent", "com.google.android.youtube/19.09.37 (Linux; U; Android 14)").build()
         http.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IllegalStateException("InnerTube search failed: HTTP ${response.code}")
+            if (!response.isSuccessful) throw IllegalStateException("InnerTube search failed: HTTP ${response.code} - ${response.body?.string()?.take(300)}")
             val root = JSONObject(response.body?.string() ?: "{}")
             val found = mutableListOf<OnlineTrack>()
             collectVideos(root, found)
@@ -68,7 +68,7 @@ class InnerTubeClient {
         val body = JSONObject().put("context", JSONObject().put("client", client)).put("videoId", videoId).toString()
         val request = Request.Builder().url("$endpoint/player?prettyPrint=false").post(body.toRequestBody(jsonType)).header("User-Agent", "com.google.android.youtube/19.09.37 (Linux; U; Android 14)").build()
         http.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IllegalStateException("Stream lookup failed: HTTP ${response.code}")
+            if (!response.isSuccessful) throw IllegalStateException("Stream lookup failed: HTTP ${response.code} - ${response.body?.string()?.take(300)}")
             val root = JSONObject(response.body?.string() ?: "{}")
             val status = root.optJSONObject("playabilityStatus")?.optString("status")
             if (status != "OK") return@withContext null
