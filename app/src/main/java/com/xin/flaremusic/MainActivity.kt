@@ -256,30 +256,7 @@ class MainActivity : ComponentActivity() {
             Switch(checked = amoled, onCheckedChange = onAmoledChange)
         }
         Text("FlareMusic uses your system palette where supported.", color = Color(0xFF9298A8), fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp, bottom = 25.dp))
-        Text("ACCOUNTS & SYNC", color = Color(0xFFFF806B), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(bottom = 9.dp))
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color(0xFF171B24)).padding(17.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFF292E39)), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.MusicNote, null, tint = Color(0xFFFF694F)) }
-                Column(Modifier.weight(1f).padding(start = 13.dp)) { Text("YouTube Music", color = Color.White, fontWeight = FontWeight.SemiBold); Text("Your playlists", color = Color(0xFF9298A8), fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp)) }
-                Box(Modifier.clip(RoundedCornerShape(20.dp)).background(if (googleStatus.startsWith("Connected")) Color(0xFF183B32) else Color(0xFF292E39)).padding(horizontal = 10.dp, vertical = 6.dp)) { Text(if (googleStatus.startsWith("Connected")) "CONNECTED" else "OFFLINE", color = if (googleStatus.startsWith("Connected")) Color(0xFF83D7B4) else Color(0xFFADB4C2), fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = .7.sp) }
-            }
-            Text("Connect Google to view playlists from your account.", color = Color(0xFFA6ADBC), fontSize = 12.sp, modifier = Modifier.padding(top = 15.dp))
-            Row(Modifier.fillMaxWidth().padding(top = 14.dp), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-                Button(onClick = onConnect, modifier = Modifier.weight(1f).height(48.dp), shape = RoundedCornerShape(15.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF694F), contentColor = Color(0xFF171014))) { Text(if (googleStatus.startsWith("Connected")) "Reconnect" else "Connect Google", fontWeight = FontWeight.Bold) }
-                OutlinedButton(onClick = onSync, enabled = googleStatus.startsWith("Connected") && !loading, modifier = Modifier.height(48.dp), shape = RoundedCornerShape(15.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = Color.White)) { if (loading) CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp) else Icon(Icons.Rounded.Sync, null); Spacer(Modifier.width(5.dp)); Text("Sync") }
-            }
-            if (error.isNotBlank()) Text(error, color = Color(0xFFFFA0A0), fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp))
-        }
-        if (playlists.isNotEmpty()) {
-            Row(Modifier.fillMaxWidth().padding(top = 22.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) { Text("YOUR PLAYLISTS", color = Color(0xFFFF806B), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp); Spacer(Modifier.weight(1f)); Text(playlists.size.toString(), color = Color(0xFF9298A8), fontSize = 12.sp) }
-            playlists.forEach { playlist ->
-                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(15.dp)).clickable { }.padding(vertical = 8.dp, horizontal = 4.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Artwork(playlist.thumbnail, Modifier.size(52.dp).clip(RoundedCornerShape(13.dp)))
-                    Column(Modifier.weight(1f).padding(start = 12.dp)) { Text(playlist.title, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold, fontSize = 13.sp); Text(playlist.itemCount.toString() + " videos", color = Color(0xFF9298A8), fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp)) }
-                    Icon(Icons.Rounded.ChevronRight, null, tint = Color(0xFF737B8B))
-                }
-            }
-        }
+        PublicPlaylistsSection()
         Spacer(Modifier.height(20.dp))
         Text("FLAREMUSIC  •  MADE FOR YOUR MUSIC", color = Color(0xFF626A79), fontSize = 9.sp, letterSpacing = 1.2.sp, modifier = Modifier.align(Alignment.CenterHorizontally).padding(vertical = 14.dp))
     }
