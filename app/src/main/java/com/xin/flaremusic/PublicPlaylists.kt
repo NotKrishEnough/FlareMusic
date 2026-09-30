@@ -114,15 +114,26 @@ private object PublicPlaylistImporter {
             if (!it.isSuccessful) error("YouTube returned HTTP ${it.code}")
             it.body?.string().orEmpty()
         }
-        val marker = "var ytInitialData = "
-        val start = page.indexOf(marker).takeIf { it >= 0 }?.plus(marker.length) ?: error("Could not read this playlist. It may be private or unavailable.")
-        val jsonStart = page.indexOf('{', start)
-        val json = extractJson(page, jsonStart)
-        val root = JSONObject(json)
-        val title = findText(root, "title") ?: "YouTube playlist"
+        // YouTube changes its HTML bootstrap format. Try common initial-data
+        // assignments, then inspect only playlistVideoRenderer objects.
+        val markers = listOf("var ytInitialData = ", "ytInitialData = ", "window[\"ytInitialData\"] = ")
+        var root: JSONObject? = null
+        for (marker in markers) {
+            val at = page.indexOf(marker)
+            if (at < 0) continue
+            val jsonStart = page.indexOf('{', at + marker.length)
+            if (jsonStart < 0) continue
+            val parsed = runCatching { JSONObject(extractJson(page, jsonStart)) }.getOrNull()
+            if (parsed != null) { root = parsed; break }
+        }
         val ids = mutableListOf<String>()
-        collectVideoIds(root, ids)
-        require(ids.isNotEmpty()) { "No public videos found in this playlist" }
+        root?.let { collectVideoIds(it, ids) }
+        if (ids.isEmpty()) {
+            val renderer = Regex("\"playlistVideoRenderer\"\\s*:\\s*\\{[\\s\\S]{0,12000}?\"videoId\"\\s*:\\s*\"([A-Za-z0-9_-]{11})\"")
+            renderer.findAll(page).forEach { ids += it.groupValues[1] }
+        }
+        val title = root?.let { findText(it, "title") } ?: "YouTube playlist"
+        require(ids.isNotEmpty()) { "YouTube returned the playlist page, but its video list could not be parsed. Try a public playlist URL with videos." }
         SavedPublicPlaylist(id, title, "https://www.youtube.com/playlist?list=$id", ids.distinct())
     }
 
