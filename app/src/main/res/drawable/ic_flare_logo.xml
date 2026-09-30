@@ -1,5 +1,16 @@
-<vector xmlns:android="http://schemas.android.com/apk/res/android" android:width="108dp" android:height="108dp" android:viewportWidth="108" android:viewportHeight="108">
-    <path android:fillColor="#FF6A00" android:pathData="M55,8 C58,23 51,32 39,42 C26,53 21,64 25,77 C29,91 41,99 54,100 C43,91 42,80 49,70 C53,64 61,59 62,49 C74,61 84,71 81,84 C79,94 70,101 59,103 C76,104 91,92 93,76 C96,57 81,43 72,32 C70,47 64,52 60,55 C65,39 62,23 55,8 Z"/>
-    <path android:fillColor="#FF2D78" android:pathData="M54,100 C45,93 45,84 51,76 C55,70 61,67 63,59 C74,69 77,77 73,86 C70,94 63,99 54,100 Z"/>
-    <path android:fillColor="#170D20" android:pathData="M58,91 C55,86 57,81 62,77 C64,83 65,87 62,91 C61,93 59,93 58,91 Z"/>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- A compact flame shaped like an F, with a pulse cut through its center. -->
+    <path
+        android:fillColor="#FF7043"
+        android:pathData="M55,10 C59,23 54,31 45,39 C34,49 25,58 25,71 C25,87 38,99 54,99 C71,99 84,86 84,70 C84,58 77,49 68,39 C68,50 63,55 57,60 C60,48 59,30 55,10 Z"/>
+    <path
+        android:fillColor="#FF3D8D"
+        android:pathData="M57,45 C57,55 52,60 44,66 C39,70 37,75 39,81 C41,88 47,92 54,92 C62,92 68,86 68,78 C68,72 64,68 60,64 C59,70 56,73 52,75 C55,67 57,57 57,45 Z"/>
+    <path
+        android:fillColor="#170D20"
+        android:pathData="M43,48 L69,48 L69,55 L50,55 L50,61 L64,61 L64,68 L50,68 L50,83 L42,83 Z"/>
 </vector>
