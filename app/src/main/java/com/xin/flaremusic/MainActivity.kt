@@ -62,13 +62,15 @@ data class Track(val id: Long, val title: String, val artist: String, val album:
 
 class MainActivity : ComponentActivity() {
     private lateinit var player: ExoPlayer
+    private var amoledMode by mutableStateOf(false)
     private val permission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) setContent { FlareTheme { FlareApp(player, ::loadTracks) } }
+        if (granted) setContent { FlareTheme(amoledMode) { FlareApp(player, ::loadTracks, amoledMode) { enabled -> amoledMode = enabled; getSharedPreferences("flare_settings", MODE_PRIVATE).edit().putBoolean("amoled", enabled).apply() } } }
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         player = ExoPlayer.Builder(this).build()
-        setContent { FlareTheme { FlareApp(player, ::loadTracks) } }
+        amoledMode = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("amoled", false)
+        setContent { FlareTheme(amoledMode) { FlareApp(player, ::loadTracks, amoledMode) { enabled -> amoledMode = enabled; getSharedPreferences("flare_settings", MODE_PRIVATE).edit().putBoolean("amoled", enabled).apply() } } }
         if (ContextCompat.checkSelfPermission(this, audioPermission()) != PackageManager.PERMISSION_GRANTED) permission.launch(audioPermission())
     }
     private fun audioPermission() = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE
@@ -92,11 +94,13 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() { player.release(); super.onDestroy() }
 }
 
-@Composable private fun FlareTheme(content: @Composable () -> Unit) {
-    MaterialTheme(colorScheme = darkColorScheme(background = Ink, surface = Panel, primary = Violet, secondary = Mint), content = content)
+@Composable private fun FlareTheme(amoled: Boolean, content: @Composable () -> Unit) {
+    val context = LocalContext.current
+    val scheme = if (Build.VERSION.SDK_INT >= 31) dynamicDarkColorScheme(context) else darkColorScheme(primary = Violet, secondary = Mint)
+    MaterialTheme(colorScheme = if (amoled) scheme.copy(background = Color.Black, surface = Color.Black, surfaceContainer = Color(0xFF080808)) else scheme, content = content)
 }
 
-@Composable private fun FlareApp(player: ExoPlayer, scan: suspend () -> List<Track>) {
+@Composable private fun FlareApp(player: ExoPlayer, scan: suspend () -> List<Track>, amoled: Boolean, onAmoledChange: (Boolean) -> Unit) {
     var tab by remember { mutableStateOf("Home") }
     var tracks by remember { mutableStateOf(emptyList<Track>()) }
     var current by remember { mutableStateOf<Track?>(null) }
@@ -147,8 +151,8 @@ class MainActivity : ComponentActivity() {
     }
     BackHandler(enabled = playerExpanded || embeddedTrack != null) { if (embeddedTrack != null) embeddedTrack = null else playerExpanded = false }
     Box(Modifier.fillMaxSize()) {
-    Scaffold(containerColor = Ink, bottomBar = {
-        Column {
+    Scaffold(containerColor = if (amoled) Color.Black else Ink, bottomBar = {
+        Column(Modifier.padding(bottom = 12.dp)) {
             if (current != null) Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).clip(RoundedCornerShape(20.dp)).background(Panel).clickable { playerExpanded = true }.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Brush.linearGradient(listOf(Violet, Mint))), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.MusicNote, null, tint = Ink) }
                 Column(Modifier.weight(1f).padding(start = 12.dp)) { Text(current!!.title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis); Text(current!!.artist, color = Color.LightGray, fontSize = 12.sp, maxLines = 1) }
@@ -159,10 +163,10 @@ class MainActivity : ComponentActivity() {
             if (current != null && totalDuration > 0) Slider(value = (position.toFloat() / totalDuration.toFloat()).coerceIn(0f, 1f), onValueChange = { player.seekTo((it * totalDuration).toLong()) }, modifier = Modifier.fillMaxWidth().height(18.dp).padding(horizontal = 12.dp), colors = SliderDefaults.colors(thumbColor = Violet, activeTrackColor = Violet, inactiveTrackColor = Panel))
             Box(Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
                 Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(Panel.copy(alpha = 0.98f)).padding(horizontal = 10.dp, vertical = 7.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                    listOf("Home", "Search", "Library").forEach { item ->
+                    listOf("Home", "Search", "Library", "Settings").forEach { item ->
                         val selected = tab == item
                         Row(Modifier.clip(RoundedCornerShape(22.dp)).background(if (selected) Violet.copy(alpha = 0.18f) else Color.Transparent).clickable { tab = item }.padding(horizontal = 15.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(when(item) { "Home" -> Icons.Rounded.Home; "Search" -> Icons.Rounded.Search; else -> Icons.Rounded.LibraryMusic }, null, tint = if (selected) Violet else Color.LightGray)
+                            Icon(when(item) { "Home" -> Icons.Rounded.Home; "Search" -> Icons.Rounded.Search; "Library" -> Icons.Rounded.LibraryMusic; else -> Icons.Rounded.Settings }, null, tint = if (selected) Violet else Color.LightGray)
                             if (selected) { Spacer(Modifier.width(7.dp)); Text(item, color = Violet, fontWeight = FontWeight.SemiBold, fontSize = 12.sp) }
                         }
                     }
@@ -174,7 +178,8 @@ class MainActivity : ComponentActivity() {
             when(page) {
                 "Home" -> HomeScreen(tracks.size, loading, error) { tab = "Library" }
                 "Search" -> SearchScreen(query, { query = it }, tracks.filter { it.title.contains(query, true) || it.artist.contains(query, true) }, ::play, onlineResults, searching, ::searchOnline, ::playOnline, error)
-                else -> LibraryScreen(tracks, loading, ::play, { tab = "Search" }, { tracks = emptyList(); loading = true })
+                "Library" -> LibraryScreen(tracks, loading, ::play, { tab = "Search" }, { tracks = emptyList(); loading = true })
+                else -> SettingsScreen(amoled, onAmoledChange)
             }
         }
     }
@@ -187,8 +192,24 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@Composable private fun SettingsScreen(amoled: Boolean, onAmoledChange: (Boolean) -> Unit) {
+    Column(Modifier.fillMaxSize().padding(22.dp)) {
+        Text("Settings", fontSize = 32.sp, fontWeight = FontWeight.Bold)
+        Text("Personalize FlareMusic", color = Color.LightGray, modifier = Modifier.padding(top = 6.dp, bottom = 24.dp))
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.surface).clickable { onAmoledChange(!amoled) }.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("AMOLED mode", fontWeight = FontWeight.SemiBold)
+                Text("Use true black backgrounds across the app", color = Color.LightGray, fontSize = 12.sp)
+            }
+            Switch(checked = amoled, onCheckedChange = onAmoledChange)
+        }
+        Text("Dynamic colors", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 22.dp))
+        Text("FlareMusic follows your system color palette on Android 12 and later.", color = Color.LightGray, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+    }
+}
+
 @Composable private fun EmbeddedOnlinePlayer(track: OnlineTrack, onClose: () -> Unit) {
-    Column(Modifier.fillMaxSize().background(Ink).statusBarsPadding().navigationBarsPadding()) {
+    Column(Modifier.fillMaxSize().background(if (amoled) Color.Black else Ink).statusBarsPadding().navigationBarsPadding()) {
         Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onClose) { Icon(Icons.Rounded.KeyboardArrowDown, "Close player", tint = Color.White) }
             Column(Modifier.weight(1f)) {
