@@ -63,70 +63,106 @@ class InnerTubeClient {
         return buildString { for (i in 0 until runs.length()) append(runs.optJSONObject(i)?.optString("text") ?: "") }.takeIf { it.isNotBlank() }
     }
 
-    /** Resolves an audio URL, using public Piped backends when YouTube only returns ciphered formats. */
+    /** Resolves a playable audio URL; public extractors are best-effort and may be unavailable. */
     suspend fun resolveProgressiveUrl(videoId: String): String? = withContext(Dispatchers.IO) {
-        val body = JSONObject().put("context", JSONObject().put("client", client)).put("videoId", videoId).toString()
-        val request = Request.Builder()
-            .url("$endpoint/player?prettyPrint=false")
-            .post(body.toRequestBody(jsonType))
-            .header("User-Agent", "com.google.android.youtube/19.09.37 (Linux; U; Android 14)")
-            .build()
+        val failures = mutableListOf<String>()
 
-        val directUrl = try {
-            http.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) null else {
-                    val root = JSONObject(response.body?.string() ?: "{}")
-                    val status = root.optJSONObject("playabilityStatus")?.optString("status")
-                    val streaming = root.optJSONObject("streamingData")
-                    if (status != "OK" || streaming == null) null else {
-                        val arrays = listOfNotNull(streaming.optJSONArray("adaptiveFormats"), streaming.optJSONArray("formats"))
-                        var found: String? = null
+        // Try multiple YouTube clients. The Android client sometimes returns a usable
+        // audio URL even when the WEB client only returns a ciphered signature.
+        val clients = listOf(
+            client,
+            JSONObject()
+                .put("clientName", "ANDROID")
+                .put("clientVersion", "19.09.37")
+                .put("androidSdkVersion", 34)
+                .put("hl", "en")
+                .put("gl", "US")
+                .put("deviceMake", "Google")
+                .put("deviceModel", "Pixel 7")
+        )
+        for (clientInfo in clients) {
+            try {
+                val body = JSONObject()
+                    .put("context", JSONObject().put("client", clientInfo))
+                    .put("videoId", videoId)
+                    .toString()
+                val request = Request.Builder()
+                    .url("$endpoint/player?prettyPrint=false")
+                    .post(body.toRequestBody(jsonType))
+                    .header("User-Agent", "com.google.android.youtube/19.09.37 (Linux; U; Android 14)")
+                    .build()
+                http.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        failures += "YouTube ${clientInfo.optString("clientName")}: HTTP ${response.code}"
+                    } else {
+                        val root = JSONObject(response.body?.string() ?: "{}")
+                        val status = root.optJSONObject("playabilityStatus")?.optString("status")
+                        val streaming = root.optJSONObject("streamingData")
+                        val arrays = listOfNotNull(
+                            streaming?.optJSONArray("adaptiveFormats"),
+                            streaming?.optJSONArray("formats")
+                        )
                         for (formats in arrays) {
                             for (i in 0 until formats.length()) {
                                 val item = formats.optJSONObject(i) ?: continue
                                 if (!item.optString("mimeType").startsWith("audio/")) continue
                                 val url = item.optString("url")
-                                if (url.startsWith("https://")) { found = url; break }
+                                if (url.startsWith("http")) return@withContext url
                             }
-                            if (found != null) break
                         }
-                        found
+                        failures += "YouTube ${clientInfo.optString("clientName")}: status=${status ?: "unknown"}, no direct audio URL"
                     }
                 }
+            } catch (e: Exception) {
+                failures += "YouTube ${clientInfo.optString("clientName")}: ${e.message ?: "request failed"}"
             }
-        } catch (_: Exception) {
-            null
         }
-        if (directUrl != null) return@withContext directUrl
 
-        // Public backends are fallbacks, not guaranteed services; try several because instances go offline.
+        // Keep several currently listed community instances because their availability changes.
         val instances = listOf(
             "https://pipedapi.ducks.party",
             "https://api.piped.private.coffee",
-            "https://pipedapi.projectsegfau.lt",
-            "https://pipedapi.in.projectsegfau.lt"
+            "https://api.piped.projectsegfau.lt",
+            "https://pipedapi.in.projectsegfau.lt",
+            "https://pipedapi.eu.projectsegfau.lt"
         )
         for (instance in instances) {
             try {
-                val fallbackRequest = Request.Builder()
+                val request = Request.Builder()
                     .url("$instance/streams/$videoId")
                     .get()
-                    .header("User-Agent", "FlareMusic/1.0")
+                    .header("User-Agent", "FlareMusic/1.0 (Android)")
+                    .header("Accept", "application/json")
                     .build()
-                http.newCall(fallbackRequest).execute().use { response ->
-                    if (!response.isSuccessful) return@use
-                    val fallback = JSONObject(response.body?.string() ?: "{}")
-                    val audio = fallback.optJSONArray("audioStreams") ?: return@use
-                    for (i in 0 until audio.length()) {
-                        val stream = audio.optJSONObject(i) ?: continue
-                        val url = stream.optString("url")
-                        if (url.startsWith("https://")) return@withContext url
+                http.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) {
+                        failures += "${instance.removePrefix("https://")}: HTTP ${response.code}"
+                    } else {
+                        val raw = response.body?.string().orEmpty()
+                        val data = JSONObject(raw)
+                        val audio = data.optJSONArray("audioStreams")
+                        var bestUrl: String? = null
+                        var bestBitrate = -1
+                        if (audio != null) {
+                            for (i in 0 until audio.length()) {
+                                val stream = audio.optJSONObject(i) ?: continue
+                                val url = stream.optString("url")
+                                if (!url.startsWith("http")) continue
+                                val bitrate = stream.optInt("bitrate", 0)
+                                if (bitrate > bestBitrate) {
+                                    bestBitrate = bitrate
+                                    bestUrl = url
+                                }
+                            }
+                        }
+                        if (bestUrl != null) return@withContext bestUrl
+                        failures += "${instance.removePrefix("https://")}: no usable audioStreams URL"
                     }
                 }
-            } catch (_: Exception) {
-                // Continue to the next public backend.
+            } catch (e: Exception) {
+                failures += "${instance.removePrefix("https://")}: ${e.message ?: "request failed"}"
             }
         }
-        null
+        throw IllegalStateException("Could not resolve audio for this video. " + failures.takeLast(5).joinToString(" | "))
     }
 }
