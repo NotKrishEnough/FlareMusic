@@ -166,7 +166,7 @@ private object PublicPlaylistImporter {
     private fun collectPlaylistItems(value: Any?, out: MutableList<String>, insidePlaylist: Boolean) {
         when (value) {
             is JSONObject -> {
-                val isList = value.has("playlistVideoListRenderer")
+                val isList = value.has("playlistVideoListRenderer") || value.has("itemSectionRenderer")
                 val inList = insidePlaylist || isList
                 if (inList) {
                     value.optJSONObject("playlistVideoRenderer")?.optString("videoId")
