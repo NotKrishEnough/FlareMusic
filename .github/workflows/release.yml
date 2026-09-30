@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing tag to release (for example v1.0.0)"
+        description: "Release tag to create (for example v1.0.0)"
         required: true
         type: string
 
@@ -21,7 +21,8 @@ jobs:
       - name: Check out source
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref }}
+          # Manual runs build the current default branch; tag-push runs build that tag.
+          ref: ${{ github.event_name == 'workflow_dispatch' && github.event.repository.default_branch || github.ref }}
 
       - name: Set up JDK
         uses: actions/setup-java@v4
@@ -41,17 +42,20 @@ jobs:
           ./gradlew assembleDebug
 
       - name: Prepare release APK
+        env:
+          TAG_NAME: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
         run: |
           APK="$(find app/build/outputs/apk -type f -name '*.apk' | head -n 1)"
           test -n "$APK"
           mkdir -p release
-          cp "$APK" "release/FlareMusic-${GITHUB_REF_NAME}.apk"
+          cp "$APK" "release/FlareMusic-$TAG_NAME.apk"
 
       - name: Publish GitHub release with generated changelog
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
         run: |
           gh release create "$TAG_NAME" release/*.apk \
+            --target main \
             --title "FlareMusic $TAG_NAME" \
             --generate-notes
