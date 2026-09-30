@@ -40,6 +40,7 @@ fun PublicPlaylistsSection() {
     var busy by remember { mutableStateOf(false) }
     var message by remember { mutableStateOf("") }
     var playlists by remember { mutableStateOf(loadSavedPlaylists(prefs)) }
+    var pendingPlaylist by remember { mutableStateOf<SavedPublicPlaylist?>(null) }
     val scope = rememberCoroutineScope()
     val export = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
         if (uri != null) runCatching {
@@ -61,6 +62,26 @@ fun PublicPlaylistsSection() {
         }.onFailure { message = it.message ?: "Could not read backup" }
     }
 
+    pendingPlaylist?.let { pending ->
+        AlertDialog(
+            onDismissRequest = { pendingPlaylist = null },
+            title = { Text("Save playlist?") },
+            text = { Text("Add \"${pending.title}\" with ${pending.videos.size} videos to your FlareMusic library?") },
+            confirmButton = {
+                TextButton(onClick = {
+                    playlists = (playlists.filterNot { it.id == pending.id } + pending)
+                    savePlaylists(prefs, playlists)
+                    pendingPlaylist = null
+                    link = ""
+                    message = "Saved ${pending.title} (${pending.videos.size} videos)"
+                }) { Text("Save playlist") }
+            },
+            dismissButton = {
+                TextButton(onClick = { pendingPlaylist = null; message = "Playlist not saved" }) { Text("Cancel") }
+            }
+        )
+    }
+
     Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color(0xFF171B24)).padding(16.dp)) {
         Text("PUBLIC PLAYLISTS", color = Color(0xFFFF806B), style = MaterialTheme.typography.labelMedium)
         Text("Import a public YouTube playlist by link. No Google sign-in required.", color = Color(0xFFA6ADBC), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 6.dp, bottom = 12.dp))
@@ -70,10 +91,7 @@ fun PublicPlaylistsSection() {
                 busy = true; message = ""
                 try {
                     val p = PublicPlaylistImporter.fetch(link)
-                    playlists = (playlists.filterNot { it.id == p.id } + p)
-                    savePlaylists(prefs, playlists)
-                    link = ""
-                    message = "Imported ${p.title} (${p.videos.size} videos)"
+                    pendingPlaylist = p
                 } catch (e: Exception) { message = e.message ?: "Import failed" }
                 busy = false
             }
