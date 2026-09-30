@@ -153,7 +153,7 @@ class MainActivity : ComponentActivity() {
     Box(Modifier.fillMaxSize()) {
     Scaffold(containerColor = if (amoled) Color.Black else Ink, bottomBar = {
         Column(Modifier.padding(bottom = 12.dp)) {
-            if (current != null) Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).clip(RoundedCornerShape(20.dp)).background(Panel).clickable { playerExpanded = true }.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (current != null) Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).clip(RoundedCornerShape(20.dp)).background(if (amoled) Color.Black else Panel).clickable { playerExpanded = true }.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Brush.linearGradient(listOf(Violet, Mint))), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.MusicNote, null, tint = Ink) }
                 Column(Modifier.weight(1f).padding(start = 12.dp)) { Text(current!!.title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis); Text(current!!.artist, color = Color.LightGray, fontSize = 12.sp, maxLines = 1) }
                 IconButton(onClick = { if (playing) player.pause() else player.play() }) { Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = Violet) }
@@ -162,7 +162,7 @@ class MainActivity : ComponentActivity() {
             }
             if (current != null && totalDuration > 0) Slider(value = (position.toFloat() / totalDuration.toFloat()).coerceIn(0f, 1f), onValueChange = { player.seekTo((it * totalDuration).toLong()) }, modifier = Modifier.fillMaxWidth().height(18.dp).padding(horizontal = 12.dp), colors = SliderDefaults.colors(thumbColor = Violet, activeTrackColor = Violet, inactiveTrackColor = Panel))
             Box(Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
-                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(Panel.copy(alpha = 0.98f)).padding(horizontal = 10.dp, vertical = 7.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background((if (amoled) Color.Black else Panel).copy(alpha = 0.98f)).padding(horizontal = 10.dp, vertical = 7.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                     listOf("Home", "Search", "Library", "Settings").forEach { item ->
                         val selected = tab == item
                         Row(Modifier.clip(RoundedCornerShape(22.dp)).background(if (selected) Violet.copy(alpha = 0.18f) else Color.Transparent).clickable { tab = item }.padding(horizontal = 15.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -236,7 +236,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable private fun FullPlayer(track: Track, playing: Boolean, position: Long, duration: Long, onClose: () -> Unit, onPlayPause: () -> Unit, onSeek: (Long) -> Unit, onPrevious: () -> Unit, onNext: () -> Unit) {
-    Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF282035), Ink))).statusBarsPadding().navigationBarsPadding().padding(horizontal = 26.dp, vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.background))).statusBarsPadding().navigationBarsPadding().padding(horizontal = 26.dp, vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             IconButton(onClick = onClose) { Icon(Icons.Rounded.KeyboardArrowDown, "Collapse player", tint = Color.White, modifier = Modifier.size(32.dp)) }
             Spacer(Modifier.weight(1f))
