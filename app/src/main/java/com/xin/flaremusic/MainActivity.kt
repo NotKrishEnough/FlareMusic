@@ -12,6 +12,8 @@ import android.provider.MediaStore
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
@@ -42,6 +44,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.lifecycle.lifecycleScope
+import com.google.android.gms.auth.api.identity.AuthorizationRequest
+import com.google.android.gms.auth.api.identity.Identity
+import com.google.android.gms.common.api.Scope
 import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -62,16 +68,66 @@ data class Track(val id: Long, val title: String, val artist: String, val album:
 class MainActivity : ComponentActivity() {
     private lateinit var player: ExoPlayer
     private var amoledMode by mutableStateOf(false)
+    private lateinit var googleAuthLauncher: ActivityResultLauncher<IntentSenderRequest>
+    private var googleStatus by mutableStateOf("Not connected")
+    private var youtubePlaylists by mutableStateOf(emptyList<YouTubePlaylist>())
+    private var playlistLoading by mutableStateOf(false)
+    private var playlistError by mutableStateOf("")
+    private var youtubeAccessToken: String? = null
     private val permission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) setContent { FlareTheme(amoledMode) { FlareApp(player, ::loadTracks, amoledMode) { enabled -> amoledMode = enabled; getSharedPreferences("flare_settings", MODE_PRIVATE).edit().putBoolean("amoled", enabled).apply() } } }
+        if (granted) setContent { FlareTheme(amoledMode) { FlareApp(player, ::loadTracks, amoledMode, googleStatus, youtubePlaylists, playlistLoading, playlistError, ::connectGoogle, ::syncYouTubePlaylists) { enabled -> amoledMode = enabled; getSharedPreferences("flare_settings", MODE_PRIVATE).edit().putBoolean("amoled", enabled).apply() } } }
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        googleAuthLauncher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
+            try {
+                val auth = Identity.getAuthorizationClient(this).getAuthorizationResultFromIntent(result.data)
+                acceptYouTubeAuthorization(auth.accessToken)
+            } catch (e: Exception) {
+                googleStatus = "Not connected"
+                playlistError = e.message ?: "Google authorization cancelled"
+            }
+        }
         player = ExoPlayer.Builder(this).build()
         amoledMode = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("amoled", false)
         setContent { FlareTheme(amoledMode) { FlareApp(player, ::loadTracks, amoledMode) { enabled -> amoledMode = enabled; getSharedPreferences("flare_settings", MODE_PRIVATE).edit().putBoolean("amoled", enabled).apply() } } }
         if (ContextCompat.checkSelfPermission(this, audioPermission()) != PackageManager.PERMISSION_GRANTED) permission.launch(audioPermission())
     }
+
+    private fun connectGoogle() {
+        playlistError = ""
+        val request = AuthorizationRequest.builder()
+            .setRequestedScopes(listOf(Scope("https://www.googleapis.com/auth/youtube.readonly")))
+            .build()
+        Identity.getAuthorizationClient(this).authorize(request)
+            .addOnSuccessListener { auth ->
+                if (auth.hasResolution()) {
+                    val pending = auth.pendingIntent
+                    if (pending != null) googleAuthLauncher.launch(IntentSenderRequest.Builder(pending.intentSender).build())
+                    else playlistError = "Google authorization needs to be retried"
+                } else acceptYouTubeAuthorization(auth.accessToken)
+            }
+            .addOnFailureListener { e -> playlistError = e.message ?: "Google authorization failed" }
+    }
+
+    private fun acceptYouTubeAuthorization(token: String?) {
+        if (token.isNullOrBlank()) { playlistError = "Google did not return an access token"; return }
+        youtubeAccessToken = token
+        googleStatus = "Connected to YouTube"
+        syncYouTubePlaylists()
+    }
+
+    private fun syncYouTubePlaylists() {
+        val token = youtubeAccessToken ?: run { connectGoogle(); return }
+        lifecycleScope.launch {
+            playlistLoading = true
+            playlistError = ""
+            try { youtubePlaylists = YouTubePlaylists.fetch(token) }
+            catch (e: Exception) { playlistError = e.message ?: "Could not sync playlists" }
+            playlistLoading = false
+        }
+    }
+
     private fun audioPermission() = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE
     private suspend fun loadTracks(): List<Track> = withContext(Dispatchers.IO) {
         val list = mutableListOf<Track>()
@@ -99,7 +155,7 @@ class MainActivity : ComponentActivity() {
     MaterialTheme(colorScheme = if (amoled) scheme.copy(background = Color.Black, surface = Color.Black, surfaceContainer = Color(0xFF080808)) else scheme, content = content)
 }
 
-@Composable private fun FlareApp(player: ExoPlayer, scan: suspend () -> List<Track>, amoled: Boolean, onAmoledChange: (Boolean) -> Unit) {
+@Composable private fun FlareApp(player: ExoPlayer, scan: suspend () -> List<Track>, amoled: Boolean, googleStatus: String, youtubePlaylists: List<YouTubePlaylist>, playlistLoading: Boolean, playlistError: String, onConnectGoogle: () -> Unit, onSyncPlaylists: () -> Unit, onAmoledChange: (Boolean) -> Unit) {
     var tab by remember { mutableStateOf("Home") }
     var tracks by remember { mutableStateOf(emptyList<Track>()) }
     var current by remember { mutableStateOf<Track?>(null) }
@@ -177,7 +233,7 @@ class MainActivity : ComponentActivity() {
                 "Home" -> HomeScreen(tracks.size, loading, error) { tab = "Library" }
                 "Search" -> SearchScreen(query, { query = it }, tracks.filter { it.title.contains(query, true) || it.artist.contains(query, true) }, ::play, onlineResults, searching, ::searchOnline, ::playOnline, error)
                 "Library" -> LibraryScreen(tracks, loading, ::play, { tab = "Search" }, { tracks = emptyList(); loading = true })
-                else -> SettingsScreen(amoled, onAmoledChange)
+                else -> SettingsScreen(amoled, onAmoledChange, googleStatus, youtubePlaylists, playlistLoading, playlistError, onConnectGoogle, onSyncPlaylists)
             }
         }
     }
@@ -187,8 +243,8 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable private fun SettingsScreen(amoled: Boolean, onAmoledChange: (Boolean) -> Unit) {
-    Column(Modifier.fillMaxSize().padding(22.dp)) {
+@Composable private fun SettingsScreen(amoled: Boolean, onAmoledChange: (Boolean) -> Unit, googleStatus: String, playlists: List<YouTubePlaylist>, loading: Boolean, error: String, onConnect: () -> Unit, onSync: () -> Unit) {
+    Column(Modifier.fillMaxSize().padding(22.dp).verticalScroll(rememberScrollState())) {
         Text("Settings", fontSize = 32.sp, fontWeight = FontWeight.Bold)
         Text("Personalize FlareMusic", color = Color.LightGray, modifier = Modifier.padding(top = 6.dp, bottom = 24.dp))
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.surface).clickable { onAmoledChange(!amoled) }.padding(18.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -200,6 +256,27 @@ class MainActivity : ComponentActivity() {
         }
         Text("Dynamic colors", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 22.dp))
         Text("FlareMusic follows your system color palette on Android 12 and later.", color = Color.LightGray, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+        Spacer(Modifier.height(28.dp))
+        Text("YouTube Music", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.Bold)
+        Text("Connect Google to view playlists from your YouTube account.", color = Color.LightGray, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
+        Text(googleStatus, color = if (googleStatus.startsWith("Connected")) MaterialTheme.colorScheme.primary else Color.LightGray, modifier = Modifier.padding(top = 12.dp))
+        Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Button(onClick = onConnect, modifier = Modifier.weight(1f)) { Text(if (googleStatus.startsWith("Connected")) "Reconnect Google" else "Connect Google") }
+            OutlinedButton(onClick = onSync, enabled = googleStatus.startsWith("Connected") && !loading) { Text(if (loading) "Syncing…" else "Sync") }
+        }
+        if (error.isNotBlank()) Text(error, color = Color(0xFFFF9B9B), fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+        if (playlists.isNotEmpty()) {
+            Text("Your playlists", fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 18.dp, bottom = 6.dp))
+            playlists.forEach { playlist ->
+                Row(Modifier.fillMaxWidth().padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Artwork(playlist.thumbnail, Modifier.size(48.dp).clip(RoundedCornerShape(10.dp)))
+                    Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                        Text(playlist.title, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
+                        Text("${playlist.itemCount} videos", color = Color.LightGray, fontSize = 12.sp)
+                    }
+                }
+            }
+        }
     }
 }
 
