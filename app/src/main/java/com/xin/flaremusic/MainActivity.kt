@@ -55,6 +55,8 @@ import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.datasource.DefaultHttpDataSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -98,7 +100,12 @@ class MainActivity : ComponentActivity() {
                 playlistError = e.message ?: "Google authorization cancelled"
             }
         }
-        player = ExoPlayer.Builder(this).build()
+        val httpFactory = DefaultHttpDataSource.Factory()
+            .setUserAgent("Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/125.0.0.0 Mobile Safari/537.36")
+            .setAllowCrossProtocolRedirects(true)
+        player = ExoPlayer.Builder(this)
+            .setMediaSourceFactory(DefaultMediaSourceFactory(httpFactory))
+            .build()
         amoledMode = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("amoled", false)
         FlarePreferences.accentIndex.intValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getInt("accent_index", 0).coerceIn(0, FlarePreferences.accents.lastIndex)
         FlarePreferences.animations.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("animations", true)
@@ -188,24 +195,33 @@ class MainActivity : ComponentActivity() {
     LaunchedEffect(Unit) {
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) { playing = isPlaying }
+            override fun onPlayerError(playbackError: androidx.media3.common.PlaybackException) {
+                error = "Playback failed: ${playbackError.errorCodeName}. ${playbackError.message ?: "Stream rejected"}"
+                playing = false
+            }
         })
         loading = true
         try { tracks = scan() } catch (e: Exception) { error = e.message ?: "Unable to read music" }
         loading = false
     }
     fun play(track: Track) {
+        error = ""
         current = track
+        player.stop()
+        player.clearMediaItems()
         player.setMediaItem(MediaItem.fromUri(track.uri))
         player.prepare()
-        player.play()
+        player.playWhenReady = true
     }
     fun playOnline(track: OnlineTrack) {
         scope.launch {
             error = ""
             try {
+                loading = true
                 val url = innerTube.resolveProgressiveUrl(track.videoId)
-                if (url == null) { error = "No direct audio stream is available for this result. Try another track."; return@launch }
+                if (url == null) { error = "This video has no playable audio stream. Try another result."; loading = false; return@launch }
                 play(Track(-track.videoId.hashCode().toLong().let { kotlin.math.abs(it) }, track.title, track.author, "YouTube", Uri.parse(url), 0L, track.thumbnail))
+                loading = false
             } catch (e: Exception) { error = e.message ?: "Could not load stream" }
         }
     }
