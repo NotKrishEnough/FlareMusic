@@ -325,7 +325,6 @@ class MainActivity : ComponentActivity() {
                 })
             }
         }
-        PublicPlaylistsSection()
         Spacer(Modifier.height(20.dp))
         Text("FLAREMUSIC  •  MADE FOR YOUR MUSIC", color = Color(0xFF626A79), fontSize = 9.sp, letterSpacing = 1.2.sp, modifier = Modifier.align(Alignment.CenterHorizontally).padding(vertical = 14.dp))
     }
@@ -434,7 +433,6 @@ class MainActivity : ComponentActivity() {
             IconButton(onClick = search) { Icon(Icons.Rounded.Search, "Search", tint = Violet) }
         }
         if (loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Violet, trackColor = Color(0xFF292E39))
-        SavedPlaylistsLibrarySection()
         if (tracks.isEmpty() && !loading) Box(Modifier.fillMaxWidth().height(180.dp), contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Rounded.LibraryMusic, null, tint = Color(0xFF555D6D), modifier = Modifier.size(54.dp)); Text("No local songs yet", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(top = 12.dp)); Text("Add audio to your device, then refresh.", color = Color(0xFF9298A8), fontSize = 13.sp, modifier = Modifier.padding(top = 5.dp)) } }
         LazyColumn(contentPadding = PaddingValues(bottom = 18.dp)) { items(tracks, key = { it.id }) { TrackRow(it, onClick = { play(it) }) } }
     }
