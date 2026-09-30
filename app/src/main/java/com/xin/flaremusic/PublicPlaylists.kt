@@ -65,8 +65,8 @@ fun PublicPlaylistsSection() {
     pendingPlaylist?.let { pending ->
         AlertDialog(
             onDismissRequest = { pendingPlaylist = null },
-            title = { Text("Save playlist?") },
-            text = { Text("Add \"${pending.title}\" with ${pending.videos.size} videos to your FlareMusic library?") },
+            title = { Text("Want to save this playlist?") },
+            text = { Text("${pending.videos.size} videos will be added to your FlareMusic library.") },
             confirmButton = {
                 TextButton(onClick = {
                     playlists = (playlists.filterNot { it.id == pending.id } + pending)
