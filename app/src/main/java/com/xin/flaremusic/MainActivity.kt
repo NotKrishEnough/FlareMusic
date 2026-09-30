@@ -9,9 +9,15 @@ import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -91,6 +97,7 @@ class MainActivity : ComponentActivity() {
     var tracks by remember { mutableStateOf(emptyList<Track>()) }
     var current by remember { mutableStateOf<Track?>(null) }
     var playing by remember { mutableStateOf(false) }
+    var playerExpanded by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
     var error by remember { mutableStateOf("") }
@@ -133,9 +140,11 @@ class MainActivity : ComponentActivity() {
             searching = false
         }
     }
+    BackHandler(enabled = playerExpanded) { playerExpanded = false }
+    Box(Modifier.fillMaxSize()) {
     Scaffold(containerColor = Ink, bottomBar = {
         Column {
-            if (current != null) Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).clip(RoundedCornerShape(20.dp)).background(Panel).clickable { if (playing) player.pause() else player.play() }.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (current != null) Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).clip(RoundedCornerShape(20.dp)).background(Panel).clickable { playerExpanded = true }.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Brush.linearGradient(listOf(Violet, Mint))), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.MusicNote, null, tint = Ink) }
                 Column(Modifier.weight(1f).padding(start = 12.dp)) { Text(current!!.title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis); Text(current!!.artist, color = Color.LightGray, fontSize = 12.sp, maxLines = 1) }
                 IconButton(onClick = { if (playing) player.pause() else player.play() }) { Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = Violet) }
@@ -163,6 +172,43 @@ class MainActivity : ComponentActivity() {
                 else -> LibraryScreen(tracks, loading, ::play, { tab = "Search" }, { tracks = emptyList(); loading = true })
             }
         }
+    }
+    AnimatedVisibility(visible = playerExpanded && current != null, modifier = Modifier.fillMaxSize(), enter = fadeIn() + slideInVertically { it / 6 }, exit = fadeOut() + slideOutVertically { it / 6 }) {
+        current?.let { track -> FullPlayer(track, playing, position, totalDuration, onClose = { playerExpanded = false }, onPlayPause = { if (playing) player.pause() else player.play() }, onSeek = { player.seekTo(it) }, onPrevious = { player.seekToPreviousMediaItem() }, onNext = { player.seekToNextMediaItem() }) }
+    }
+    }
+}
+
+@Composable private fun FullPlayer(track: Track, playing: Boolean, position: Long, duration: Long, onClose: () -> Unit, onPlayPause: () -> Unit, onSeek: (Long) -> Unit, onPrevious: () -> Unit, onNext: () -> Unit) {
+    Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF282035), Ink))).statusBarsPadding().navigationBarsPadding().padding(horizontal = 26.dp, vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = onClose) { Icon(Icons.Rounded.KeyboardArrowDown, "Collapse player", tint = Color.White, modifier = Modifier.size(32.dp)) }
+            Spacer(Modifier.weight(1f))
+            Text("NOW PLAYING", color = Mint, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
+            Spacer(Modifier.weight(1f))
+            IconButton(onClick = onClose) { Icon(Icons.Rounded.MoreHoriz, "Close player", tint = Color.White) }
+        }
+        Spacer(Modifier.weight(1f))
+        Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(30.dp)).background(Brush.linearGradient(listOf(Violet, Mint))), contentAlignment = Alignment.Center) {
+            Icon(Icons.Rounded.MusicNote, null, tint = Color.White.copy(alpha = .9f), modifier = Modifier.size(120.dp))
+        }
+        Spacer(Modifier.weight(1f))
+        Column(Modifier.fillMaxWidth()) {
+            Text(track.title, fontSize = 24.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(track.artist, color = Color.LightGray, fontSize = 16.sp, modifier = Modifier.padding(top = 6.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Spacer(Modifier.height(24.dp))
+            Slider(value = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f, onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) }, colors = SliderDefaults.colors(thumbColor = Violet, activeTrackColor = Violet, inactiveTrackColor = Color.DarkGray))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(formatTime(position), color = Color.LightGray, fontSize = 12.sp); Text(formatTime(duration), color = Color.LightGray, fontSize = 12.sp) }
+            Spacer(Modifier.height(16.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onPrevious, modifier = Modifier.size(56.dp)) { Icon(Icons.Rounded.SkipPrevious, "Previous", tint = Color.White, modifier = Modifier.size(34.dp)) }
+                Spacer(Modifier.width(24.dp))
+                FilledIconButton(onClick = onPlayPause, modifier = Modifier.size(72.dp), colors = IconButtonDefaults.filledIconButtonColors(containerColor = Violet, contentColor = Ink)) { Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (playing) "Pause" else "Play", modifier = Modifier.size(38.dp)) }
+                Spacer(Modifier.width(24.dp))
+                IconButton(onClick = onNext, modifier = Modifier.size(56.dp)) { Icon(Icons.Rounded.SkipNext, "Next", tint = Color.White, modifier = Modifier.size(34.dp)) }
+            }
+        }
+        Spacer(Modifier.weight(1f))
     }
 }
 
