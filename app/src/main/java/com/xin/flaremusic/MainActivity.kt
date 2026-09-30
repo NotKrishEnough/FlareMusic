@@ -356,8 +356,8 @@ class MainActivity : ComponentActivity() {
         Artwork(track.artwork, Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(30.dp)))
         Spacer(Modifier.weight(1f))
         Column(Modifier.fillMaxWidth()) {
-            Text(track.title, fontSize = 24.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(track.artist, color = Color.LightGray, fontSize = 16.sp, modifier = Modifier.padding(top = 6.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(track.title, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Text(track.artist, color = Color(0xFFD0D3DC), fontSize = 16.sp, modifier = Modifier.padding(top = 6.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
             Spacer(Modifier.height(24.dp))
             Slider(value = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f, onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) }, colors = SliderDefaults.colors(thumbColor = Violet, activeTrackColor = Violet, inactiveTrackColor = Color.DarkGray))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(formatTime(position), color = Color.LightGray, fontSize = 12.sp); Text(formatTime(duration), color = Color.LightGray, fontSize = 12.sp) }
