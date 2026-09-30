@@ -6,9 +6,6 @@ import android.content.ContentUris
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.net.Uri
-import android.webkit.WebChromeClient
-import android.webkit.WebView
-import android.webkit.WebViewClient
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
@@ -34,7 +31,6 @@ import androidx.compose.material.icons.rounded.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
@@ -109,7 +105,6 @@ class MainActivity : ComponentActivity() {
     var current by remember { mutableStateOf<Track?>(null) }
     var playing by remember { mutableStateOf(false) }
     var playerExpanded by remember { mutableStateOf(false) }
-    var embeddedTrack by remember { mutableStateOf<OnlineTrack?>(null) }
     var loading by remember { mutableStateOf(false) }
     var query by remember { mutableStateOf("") }
     var error by remember { mutableStateOf("") }
@@ -140,7 +135,7 @@ class MainActivity : ComponentActivity() {
             error = ""
             try {
                 val url = innerTube.resolveProgressiveUrl(track.videoId)
-                if (url == null) { embeddedTrack = track; return@launch }
+                if (url == null) { error = "No direct audio stream is available for this result. Try another track."; return@launch }
                 play(Track(-track.videoId.hashCode().toLong().let { kotlin.math.abs(it) }, track.title, track.author, "YouTube", Uri.parse(url), 0L, track.thumbnail))
             } catch (e: Exception) { error = e.message ?: "Could not load stream" }
         }
@@ -152,7 +147,7 @@ class MainActivity : ComponentActivity() {
             searching = false
         }
     }
-    BackHandler(enabled = playerExpanded || embeddedTrack != null) { if (embeddedTrack != null) embeddedTrack = null else playerExpanded = false }
+    BackHandler(enabled = playerExpanded) { playerExpanded = false }
     Box(Modifier.fillMaxSize()) {
     Scaffold(containerColor = if (amoled) Color.Black else Ink, bottomBar = {
         Column(Modifier.padding(bottom = 12.dp)) {
@@ -189,9 +184,6 @@ class MainActivity : ComponentActivity() {
     AnimatedVisibility(visible = playerExpanded && current != null, modifier = Modifier.fillMaxSize(), enter = fadeIn() + slideInVertically { it / 6 }, exit = fadeOut() + slideOutVertically { it / 6 }) {
         current?.let { track -> FullPlayer(track, playing, position, totalDuration, onClose = { playerExpanded = false }, onPlayPause = { if (playing) player.pause() else player.play() }, onSeek = { player.seekTo(it) }, onPrevious = { player.seekToPreviousMediaItem() }, onNext = { player.seekToNextMediaItem() }) }
     }
-    AnimatedVisibility(visible = embeddedTrack != null, modifier = Modifier.fillMaxSize(), enter = fadeIn() + slideInVertically { it / 6 }, exit = fadeOut() + slideOutVertically { it / 6 }) {
-        embeddedTrack?.let { track -> EmbeddedOnlinePlayer(track, onClose = { embeddedTrack = null }) }
-    }
     }
 }
 
@@ -208,33 +200,6 @@ class MainActivity : ComponentActivity() {
         }
         Text("Dynamic colors", color = MaterialTheme.colorScheme.primary, fontWeight = FontWeight.SemiBold, modifier = Modifier.padding(top = 22.dp))
         Text("FlareMusic follows your system color palette on Android 12 and later.", color = Color.LightGray, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
-    }
-}
-
-@Composable private fun EmbeddedOnlinePlayer(track: OnlineTrack, onClose: () -> Unit) {
-    Column(Modifier.fillMaxSize().background(if (amoled) Color.Black else Ink).statusBarsPadding().navigationBarsPadding()) {
-        Row(Modifier.fillMaxWidth().padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onClose) { Icon(Icons.Rounded.KeyboardArrowDown, "Close player", tint = Color.White) }
-            Column(Modifier.weight(1f)) {
-                Text(track.title, color = Color.White, maxLines = 1, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold)
-                Text(track.author, color = Color.LightGray, fontSize = 12.sp, maxLines = 1)
-            }
-        }
-        AndroidView(
-            modifier = Modifier.fillMaxWidth().aspectRatio(16f / 9f),
-            factory = { context ->
-                WebView(context).apply {
-                    settings.javaScriptEnabled = true
-                    settings.domStorageEnabled = true
-                    settings.mediaPlaybackRequiresUserGesture = false
-                    webChromeClient = WebChromeClient()
-                    webViewClient = WebViewClient()
-                    loadUrl("https://www.youtube.com/embed/" + track.videoId + "?autoplay=1&playsinline=1")
-                }
-            },
-            update = { }
-        )
-        Text("Playback is embedded in FlareMusic. YouTube controls and availability apply.", color = Color.LightGray, fontSize = 12.sp, modifier = Modifier.padding(16.dp))
     }
 }
 
