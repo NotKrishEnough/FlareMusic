@@ -72,11 +72,16 @@ class InnerTubeClient {
             val root = JSONObject(response.body?.string() ?: "{}")
             val status = root.optJSONObject("playabilityStatus")?.optString("status")
             if (status != "OK") return@withContext null
-            val formats = root.optJSONObject("streamingData")?.optJSONArray("formats") ?: return@withContext null
-            for (i in 0 until formats.length()) {
-                val item = formats.optJSONObject(i) ?: continue
-                val url = item.optString("url")
-                if (url.startsWith("https://")) return@withContext url
+            val streaming = root.optJSONObject("streamingData") ?: return@withContext null
+            // Audio-only tracks are commonly listed under adaptiveFormats, not formats.
+            val arrays = listOfNotNull(streaming.optJSONArray("adaptiveFormats"), streaming.optJSONArray("formats"))
+            for (formats in arrays) {
+                for (i in 0 until formats.length()) {
+                    val item = formats.optJSONObject(i) ?: continue
+                    if (!item.optString("mimeType").startsWith("audio/")) continue
+                    val url = item.optString("url")
+                    if (url.startsWith("https://")) return@withContext url
+                }
             }
             null
         }
