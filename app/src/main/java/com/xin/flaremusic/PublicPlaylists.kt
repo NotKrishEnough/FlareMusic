@@ -131,7 +131,7 @@ private object PublicPlaylistImporter {
         var depth = 0; var quoted = false; var escaped = false
         for (i in start until s.length) {
             val c = s[i]
-            if (quoted) { if (escaped) escaped = false else if (c == '\\\\') escaped = true else if (c == '"') quoted = false }
+            if (quoted) { if (escaped) escaped = false else if (c == '\\') escaped = true else if (c == '"') quoted = false }
             else when (c) { '"' -> quoted = true; '{' -> depth++; '}' -> { depth--; if (depth == 0) return s.substring(start, i + 1) } }
         }
         error("Playlist data was incomplete")
