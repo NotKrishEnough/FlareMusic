@@ -1,6 +1,7 @@
 package com.xin.flaremusic
 
 import android.Manifest
+import android.graphics.BitmapFactory
 import android.content.ContentUris
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -38,6 +39,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -52,13 +54,14 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.net.URL
 
 private val Ink = Color(0xFF101014)
 private val Panel = Color(0xFF1C1B22)
 private val Violet = Color(0xFFFF5A35)
 private val Mint = Color(0xFFFF3D83)
 
-data class Track(val id: Long, val title: String, val artist: String, val album: String, val uri: Uri, val duration: Long)
+data class Track(val id: Long, val title: String, val artist: String, val album: String, val uri: Uri, val duration: Long, val artwork: String? = null)
 
 class MainActivity : ComponentActivity() {
     private lateinit var player: ExoPlayer
@@ -138,7 +141,7 @@ class MainActivity : ComponentActivity() {
             try {
                 val url = innerTube.resolveProgressiveUrl(track.videoId)
                 if (url == null) { embeddedTrack = track; return@launch }
-                play(Track(-track.videoId.hashCode().toLong().let { kotlin.math.abs(it) }, track.title, track.author, "YouTube", Uri.parse(url), 0L))
+                play(Track(-track.videoId.hashCode().toLong().let { kotlin.math.abs(it) }, track.title, track.author, "YouTube", Uri.parse(url), 0L, track.thumbnail))
             } catch (e: Exception) { error = e.message ?: "Could not load stream" }
         }
     }
@@ -154,7 +157,7 @@ class MainActivity : ComponentActivity() {
     Scaffold(containerColor = if (amoled) Color.Black else Ink, bottomBar = {
         Column(Modifier.padding(bottom = 12.dp)) {
             if (current != null) Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).clip(RoundedCornerShape(20.dp)).background(if (amoled) Color.Black else Panel).clickable { playerExpanded = true }.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Brush.linearGradient(listOf(Violet, Mint))), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.MusicNote, null, tint = Ink) }
+                Artwork(current!!.artwork, Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)))
                 Column(Modifier.weight(1f).padding(start = 12.dp)) { Text(current!!.title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis); Text(current!!.artist, color = Color.LightGray, fontSize = 12.sp, maxLines = 1) }
                 IconButton(onClick = { if (playing) player.pause() else player.play() }) { Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = Violet) }
                 IconButton(onClick = { player.seekToNextMediaItem() }) { Icon(Icons.Rounded.SkipNext, null, tint = Violet) }
@@ -235,6 +238,18 @@ class MainActivity : ComponentActivity() {
     }
 }
 
+@Composable private fun Artwork(source: String?, modifier: Modifier = Modifier) {
+    var bitmap by remember(source) { mutableStateOf<android.graphics.Bitmap?>(null) }
+    LaunchedEffect(source) {
+        bitmap = withContext(Dispatchers.IO) {
+            try { if (source.isNullOrBlank()) null else URL(source).openConnection().apply { connectTimeout = 8000; readTimeout = 8000 }.getInputStream().use { BitmapFactory.decodeStream(it) } }
+            catch (_: Exception) { null }
+        }
+    }
+    if (bitmap != null) Image(bitmap = bitmap!!.asImageBitmap(), contentDescription = "Album art", modifier = modifier, contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+    else Box(modifier.background(Brush.linearGradient(listOf(Violet, Mint))), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.MusicNote, null, tint = Color.White, modifier = Modifier.size(34.dp)) }
+}
+
 @Composable private fun FullPlayer(track: Track, playing: Boolean, position: Long, duration: Long, onClose: () -> Unit, onPlayPause: () -> Unit, onSeek: (Long) -> Unit, onPrevious: () -> Unit, onNext: () -> Unit) {
     Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.background))).statusBarsPadding().navigationBarsPadding().padding(horizontal = 26.dp, vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -245,9 +260,7 @@ class MainActivity : ComponentActivity() {
             IconButton(onClick = onClose) { Icon(Icons.Rounded.MoreHoriz, "Close player", tint = Color.White) }
         }
         Spacer(Modifier.weight(1f))
-        Box(Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(30.dp)).background(Brush.linearGradient(listOf(Violet, Mint))), contentAlignment = Alignment.Center) {
-            Icon(Icons.Rounded.MusicNote, null, tint = Color.White.copy(alpha = .9f), modifier = Modifier.size(120.dp))
-        }
+        Artwork(track.artwork, Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(30.dp)))
         Spacer(Modifier.weight(1f))
         Column(Modifier.fillMaxWidth()) {
             Text(track.title, fontSize = 24.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
