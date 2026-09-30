@@ -259,7 +259,7 @@ class MainActivity : ComponentActivity() {
         Text("ACCOUNTS & SYNC", color = Color(0xFFFF806B), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(bottom = 9.dp))
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color(0xFF171B24)).padding(17.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFF292E39)), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.YouTube, null, tint = Color(0xFFFF694F)) }
+                Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFF292E39)), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.MusicNote, null, tint = Color(0xFFFF694F)) }
                 Column(Modifier.weight(1f).padding(start = 13.dp)) { Text("YouTube Music", color = Color.White, fontWeight = FontWeight.SemiBold); Text("Your playlists", color = Color(0xFF9298A8), fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp)) }
                 Box(Modifier.clip(RoundedCornerShape(20.dp)).background(if (googleStatus.startsWith("Connected")) Color(0xFF183B32) else Color(0xFF292E39)).padding(horizontal = 10.dp, vertical = 6.dp)) { Text(if (googleStatus.startsWith("Connected")) "CONNECTED" else "OFFLINE", color = if (googleStatus.startsWith("Connected")) Color(0xFF83D7B4) else Color(0xFFADB4C2), fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = .7.sp) }
             }
