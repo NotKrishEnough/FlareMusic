@@ -54,7 +54,9 @@ import com.google.android.gms.common.api.Scope
 import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.session.MediaController
+import androidx.media3.session.SessionToken
+import androidx.media3.common.MediaMetadata
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
 import androidx.media3.datasource.DefaultHttpDataSource
 import kotlinx.coroutines.Dispatchers
@@ -78,7 +80,8 @@ private object FlarePreferences {
 data class Track(val id: Long, val title: String, val artist: String, val album: String, val uri: Uri, val duration: Long, val artwork: String? = null)
 
 class MainActivity : ComponentActivity() {
-    private lateinit var player: ExoPlayer
+    private var player: MediaController? = null
+    private var controllerFuture: com.google.common.util.concurrent.ListenableFuture<MediaController>? = null
     private var amoledMode by mutableStateOf(false)
     private lateinit var googleAuthLauncher: ActivityResultLauncher<IntentSenderRequest>
     private var googleStatus by mutableStateOf("Not connected")
@@ -87,7 +90,7 @@ class MainActivity : ComponentActivity() {
     private var playlistError by mutableStateOf("")
     private var youtubeAccessToken: String? = null
     private val permission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) setContent { FlareTheme(amoledMode) { FlareApp(player, ::loadTracks, amoledMode, googleStatus, youtubePlaylists, playlistLoading, playlistError, ::connectGoogle, ::syncYouTubePlaylists) { enabled -> amoledMode = enabled; getSharedPreferences("flare_settings", MODE_PRIVATE).edit().putBoolean("amoled", enabled).apply() } } }
+        if (granted) showApp()
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -100,18 +103,22 @@ class MainActivity : ComponentActivity() {
                 playlistError = e.message ?: "Google authorization cancelled"
             }
         }
-        val httpFactory = DefaultHttpDataSource.Factory()
-            .setUserAgent("Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/125.0.0.0 Mobile Safari/537.36")
-            .setAllowCrossProtocolRedirects(true)
-        player = ExoPlayer.Builder(this)
-            .setMediaSourceFactory(DefaultMediaSourceFactory(httpFactory))
-            .build()
         amoledMode = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("amoled", false)
         FlarePreferences.accentIndex.intValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getInt("accent_index", 0).coerceIn(0, FlarePreferences.accents.lastIndex)
         FlarePreferences.animations.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("animations", true)
         FlarePreferences.compact.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("compact", false)
-        setContent { FlareTheme(amoledMode) { FlareApp(player, ::loadTracks, amoledMode, googleStatus, youtubePlaylists, playlistLoading, playlistError, ::connectGoogle, ::syncYouTubePlaylists) { enabled -> amoledMode = enabled; getSharedPreferences("flare_settings", MODE_PRIVATE).edit().putBoolean("amoled", enabled).apply() } } }
+        val token = SessionToken(this, android.content.ComponentName(this, FlarePlaybackService::class.java))
+        controllerFuture = MediaController.Builder(this, token).buildAsync()
+        controllerFuture?.addListener({
+            try { player = controllerFuture?.get(); showApp() }
+            catch (e: Exception) { googleStatus = "Playback service unavailable" }
+        }, ContextCompat.getMainExecutor(this))
         if (ContextCompat.checkSelfPermission(this, audioPermission()) != PackageManager.PERMISSION_GRANTED) permission.launch(audioPermission())
+    }
+
+    private fun showApp() {
+        val activePlayer = player ?: return
+        setContent { FlareTheme(amoledMode) { FlareApp(activePlayer, ::loadTracks, amoledMode, googleStatus, youtubePlaylists, playlistLoading, playlistError, ::connectGoogle, ::syncYouTubePlaylists) { enabled -> amoledMode = enabled; getSharedPreferences("flare_settings", MODE_PRIVATE).edit().putBoolean("amoled", enabled).apply() } } }
     }
 
     private fun connectGoogle() {
@@ -166,7 +173,7 @@ class MainActivity : ComponentActivity() {
         }
         list
     }
-    override fun onDestroy() { player.release(); super.onDestroy() }
+    override fun onDestroy() { controllerFuture?.let { MediaController.releaseFuture(it) }; super.onDestroy() }
 }
 
 @Composable private fun FlareTheme(amoled: Boolean, content: @Composable () -> Unit) {
@@ -196,7 +203,7 @@ class MainActivity : ComponentActivity() {
     )
 }
 
-@Composable private fun FlareApp(player: ExoPlayer, scan: suspend () -> List<Track>, amoled: Boolean, googleStatus: String, youtubePlaylists: List<YouTubePlaylist>, playlistLoading: Boolean, playlistError: String, onConnectGoogle: () -> Unit, onSyncPlaylists: () -> Unit, onAmoledChange: (Boolean) -> Unit) {
+@Composable private fun FlareApp(player: Player, scan: suspend () -> List<Track>, amoled: Boolean, googleStatus: String, youtubePlaylists: List<YouTubePlaylist>, playlistLoading: Boolean, playlistError: String, onConnectGoogle: () -> Unit, onSyncPlaylists: () -> Unit, onAmoledChange: (Boolean) -> Unit) {
     var tab by remember { mutableStateOf("Home") }
     var tracks by remember { mutableStateOf(emptyList<Track>()) }
     var current by remember { mutableStateOf<Track?>(null) }
@@ -230,9 +237,10 @@ class MainActivity : ComponentActivity() {
         current = track
         player.stop()
         player.clearMediaItems()
-        player.setMediaItem(MediaItem.fromUri(track.uri))
+        val metadata = MediaMetadata.Builder().setTitle(track.title).setArtist(track.artist).setAlbumTitle(track.album).build()
+        player.setMediaItem(MediaItem.Builder().setUri(track.uri).setMediaMetadata(metadata).build())
         player.prepare()
-        player.playWhenReady = true
+        player.play()
     }
     fun playOnline(track: OnlineTrack) {
         scope.launch {
