@@ -340,7 +340,7 @@ class MainActivity : ComponentActivity() {
         }
     }
     if (bitmap != null) Image(bitmap = bitmap!!.asImageBitmap(), contentDescription = "Album art", modifier = modifier, contentScale = androidx.compose.ui.layout.ContentScale.Crop)
-    else Box(modifier.background(Brush.linearGradient(listOf(Violet, Mint))), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.MusicNote, null, tint = Color.White, modifier = Modifier.size(34.dp)) }
+    else Box(modifier.background(Color(0xFF100D18)), contentAlignment = Alignment.Center) { Image(painterResource(R.drawable.ic_flare_logo), contentDescription = "FlareMusic logo", modifier = Modifier.fillMaxSize().padding(5.dp), contentScale = androidx.compose.ui.layout.ContentScale.Fit) }
 }
 
 @Composable private fun FullPlayer(track: Track, playing: Boolean, position: Long, duration: Long, onClose: () -> Unit, onPlayPause: () -> Unit, onSeek: (Long) -> Unit, onPrevious: () -> Unit, onNext: () -> Unit) {
