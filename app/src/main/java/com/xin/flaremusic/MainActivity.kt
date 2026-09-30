@@ -63,8 +63,8 @@ import java.net.URL
 
 private val Ink = Color(0xFF0B0D12)
 private val Panel = Color(0xFF171B24)
-private val Violet = Color(0xFFFF694F)
-private val Mint = Color(0xFFFF806B)
+private val Violet: Color get() = FlarePreferences.accents[FlarePreferences.accentIndex.intValue.coerceIn(0, FlarePreferences.accents.lastIndex)]
+private val Mint: Color get() = Violet.copy(alpha = .82f)
 
 private object FlarePreferences {
     val accentIndex = mutableIntStateOf(0)
@@ -271,14 +271,14 @@ class MainActivity : ComponentActivity() {
     Column(Modifier.fillMaxSize().background(Color(0xFF0B0D12)).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 20.dp)) {
         Text("Settings", fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp, color = Color.White)
         Text("Make FlareMusic yours.", color = Color(0xFFA6ADBC), fontSize = 14.sp, modifier = Modifier.padding(top = 5.dp, bottom = 24.dp))
-        Text("APPEARANCE", color = Color(0xFFFF806B), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(bottom = 9.dp))
+        Text("APPEARANCE", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(bottom = 9.dp))
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color(0xFF171B24)).clickable { onAmoledChange(!amoled) }.padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFF292E39)), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.DarkMode, null, tint = Color(0xFFFF806B)) }
+            Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFF292E39)), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.DarkMode, null, tint = Mint) }
             Column(Modifier.weight(1f).padding(start = 13.dp)) { Text("AMOLED mode", color = Color.White, fontWeight = FontWeight.SemiBold); Text("Pure black backgrounds", color = Color(0xFF9298A8), fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp)) }
             Switch(checked = amoled, onCheckedChange = onAmoledChange)
         }
         Text("FlareMusic uses a dark-first palette.", color = Color(0xFF9298A8), fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp, bottom = 20.dp))
-        Text("PERSONALIZATION", color = Color(0xFFFF806B), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(bottom = 9.dp))
+        Text("PERSONALIZATION", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(bottom = 9.dp))
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color(0xFF171B24)).padding(17.dp)) {
             Text("Accent colour", color = Color.White, fontWeight = FontWeight.SemiBold)
             Text("Choose the colour used for highlights and controls.", color = Color(0xFFA6ADBC), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp, bottom = 13.dp))
@@ -370,17 +370,17 @@ class MainActivity : ComponentActivity() {
         Text("Your music, all in one place.", color = Color(0xFFA6ADBC), fontSize = 15.sp, modifier = Modifier.padding(top = 10.dp))
         Spacer(Modifier.height(26.dp))
         Box(Modifier.fillMaxWidth().height(210.dp).clip(RoundedCornerShape(28.dp)).background(Brush.linearGradient(listOf(Color(0xFF43233C), Color(0xFF222A49), Color(0xFF153C3B)))).clickable { openLibrary() }) {
-            Box(Modifier.align(Alignment.TopEnd).padding(20.dp).size(112.dp).clip(RoundedCornerShape(56.dp)).background(Color.White.copy(alpha = .07f)), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.GraphicEq, null, tint = Color(0xFFFF694F), modifier = Modifier.size(64.dp)) }
-            Column(Modifier.align(Alignment.BottomStart).padding(22.dp)) { Text("MADE FOR YOUR MOMENTS", color = Color(0xFFFF806B), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp); Text("Press play.\nDisappear.", color = Color.White, fontSize = 27.sp, lineHeight = 31.sp, fontWeight = FontWeight.Bold) }
+            Box(Modifier.align(Alignment.TopEnd).padding(20.dp).size(112.dp).clip(RoundedCornerShape(56.dp)).background(Color.White.copy(alpha = .07f)), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.GraphicEq, null, tint = Violet, modifier = Modifier.size(64.dp)) }
+            Column(Modifier.align(Alignment.BottomStart).padding(22.dp)) { Text("MADE FOR YOUR MOMENTS", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp); Text("Press play.\nDisappear.", color = Color.White, fontSize = 27.sp, lineHeight = 31.sp, fontWeight = FontWeight.Bold) }
         }
         Spacer(Modifier.height(26.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) { Text("Your library", fontSize = 23.sp, fontWeight = FontWeight.Bold, color = Color.White); Text(if (loading) "Looking for your tracks…" else "$count tracks ready to play", color = Color(0xFFA6ADBC), fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp)) }
-            Box(Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF20232D)), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.LibraryMusic, null, tint = Color(0xFFFF694F), modifier = Modifier.size(24.dp)) }
+            Box(Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF20232D)), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.LibraryMusic, null, tint = Violet, modifier = Modifier.size(24.dp)) }
         }
         if (error.isNotBlank()) Text(error, color = Color(0xFFFF9B9B), fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp))
         Spacer(Modifier.height(16.dp))
-        Button(onClick = openLibrary, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF694F), contentColor = Color.White)) { Icon(Icons.Rounded.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Explore my music", fontWeight = FontWeight.Bold) }
+        Button(onClick = openLibrary, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = Violet, contentColor = Color.White)) { Icon(Icons.Rounded.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Explore my music", fontWeight = FontWeight.Bold) }
     }
 }
 
@@ -388,23 +388,23 @@ class MainActivity : ComponentActivity() {
     Column(Modifier.fillMaxSize().background(Color(0xFF0B0D12)).padding(horizontal = 18.dp)) {
         Text("Discover", fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp, color = Color.White, modifier = Modifier.padding(top = 18.dp))
         Text("Find something for the moment.", color = Color(0xFFA6ADBC), fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp, bottom = 18.dp))
-        OutlinedTextField(value = query, onValueChange = onQuery, modifier = Modifier.fillMaxWidth(), placeholder = { Text("Track, artist or album") }, leadingIcon = { Icon(Icons.Rounded.Search, null) }, shape = RoundedCornerShape(18.dp), singleLine = true, colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Color(0xFFFF694F), unfocusedBorderColor = Color(0xFF303542), focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedLeadingIconColor = Color(0xFFFF694F)))
+        OutlinedTextField(value = query, onValueChange = onQuery, modifier = Modifier.fillMaxWidth(), placeholder = { Text("Track, artist or album") }, leadingIcon = { Icon(Icons.Rounded.Search, null) }, shape = RoundedCornerShape(18.dp), singleLine = true, colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Violet, unfocusedBorderColor = Color(0xFF303542), focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedLeadingIconColor = Violet))
         Spacer(Modifier.height(10.dp))
-        Button(onClick = { searchOnline(query) }, enabled = query.isNotBlank() && !searching, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(17.dp), colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFFF694F), contentColor = Color(0xFF171014))) {
+        Button(onClick = { searchOnline(query) }, enabled = query.isNotBlank() && !searching, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(17.dp), colors = ButtonDefaults.buttonColors(containerColor = Violet, contentColor = Color(0xFF171014))) {
             if (searching) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = Color(0xFF171014)) else Icon(Icons.Rounded.Public, null)
             Spacer(Modifier.width(9.dp)); Text(if (searching) "Searching…" else "Search online", fontWeight = FontWeight.Bold)
         }
         if (error.isNotBlank()) Text(error, color = Color(0xFFFFA0A0), fontSize = 12.sp, modifier = Modifier.fillMaxWidth().padding(top = 10.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF301D24)).padding(12.dp))
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(top = 18.dp, bottom = 16.dp)) {
-            item { Text("ON THIS DEVICE", color = Color(0xFFFF806B), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(bottom = 8.dp)) }
+            item { Text("ON THIS DEVICE", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(bottom = 8.dp)) }
             if (results.isEmpty()) item { Text(if (query.isBlank()) "Search your downloaded music" else "No matching tracks in your library", color = Color(0xFF8E95A5), fontSize = 13.sp, modifier = Modifier.padding(vertical = 10.dp)) }
             items(results, key = { it.id }) { TrackRow(it, onClick = { play(it) }) }
-            item { Row(Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) { Text("ONLINE", color = Color(0xFFFF806B), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp); Spacer(Modifier.width(8.dp)); Box(Modifier.weight(1f).height(1.dp).background(Color(0xFF292E39))) } }
+            item { Row(Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) { Text("ONLINE", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp); Spacer(Modifier.width(8.dp)); Box(Modifier.weight(1f).height(1.dp).background(Color(0xFF292E39))) } }
             if (online.isEmpty() && !searching) item { Text("Search online to discover more music", color = Color(0xFF8E95A5), fontSize = 13.sp, modifier = Modifier.padding(vertical = 10.dp)) }
             items(online, key = { it.videoId }) { result -> Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable { playOnline(result) }.padding(vertical = 9.dp, horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Artwork(result.thumbnail, Modifier.size(54.dp).clip(RoundedCornerShape(13.dp)))
                 Column(Modifier.weight(1f).padding(horizontal = 12.dp)) { Text(result.title, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold, fontSize = 14.sp); Text(result.author + " • " + result.duration, color = Color(0xFF9298A8), fontSize = 11.sp, maxLines = 1) }
-                Icon(Icons.Rounded.PlayCircleFilled, null, tint = Color(0xFFFF694F), modifier = Modifier.size(30.dp))
+                Icon(Icons.Rounded.PlayCircleFilled, null, tint = Violet, modifier = Modifier.size(30.dp))
             } }
         }
     }
@@ -414,10 +414,10 @@ class MainActivity : ComponentActivity() {
     Column(Modifier.fillMaxSize().background(Color(0xFF0B0D12)).padding(horizontal = 18.dp)) {
         Row(Modifier.fillMaxWidth().padding(top = 22.dp, bottom = 18.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) { Text("Your library", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp, color = Color.White); Text(tracks.size.toString() + " songs on this device", color = Color(0xFFA6ADBC), fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp)) }
-            IconButton(onClick = refresh) { Icon(Icons.Rounded.Refresh, "Refresh", tint = Color(0xFFFF694F)) }
-            IconButton(onClick = search) { Icon(Icons.Rounded.Search, "Search", tint = Color(0xFFFF694F)) }
+            IconButton(onClick = refresh) { Icon(Icons.Rounded.Refresh, "Refresh", tint = Violet) }
+            IconButton(onClick = search) { Icon(Icons.Rounded.Search, "Search", tint = Violet) }
         }
-        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Color(0xFFFF694F), trackColor = Color(0xFF292E39))
+        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Violet, trackColor = Color(0xFF292E39))
         if (tracks.isEmpty() && !loading) Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Rounded.LibraryMusic, null, tint = Color(0xFF555D6D), modifier = Modifier.size(54.dp)); Text("Your library is quiet", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(top = 12.dp)); Text("Add audio to your device, then refresh.", color = Color(0xFF9298A8), fontSize = 13.sp, modifier = Modifier.padding(top = 5.dp)) } }
         LazyColumn(contentPadding = PaddingValues(bottom = 18.dp)) { items(tracks, key = { it.id }) { TrackRow(it, onClick = { play(it) }) } }
     }
@@ -430,7 +430,7 @@ class MainActivity : ComponentActivity() {
             Text(track.title, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
             Text(track.artist, color = Color(0xFF9298A8), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp))
         }
-        Icon(Icons.Rounded.PlayCircleFilled, null, tint = Color(0xFFFF694F), modifier = Modifier.size(27.dp))
+        Icon(Icons.Rounded.PlayCircleFilled, null, tint = Violet, modifier = Modifier.size(27.dp))
     }
 }
 
