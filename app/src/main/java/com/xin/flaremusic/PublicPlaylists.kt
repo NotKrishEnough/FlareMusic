@@ -114,6 +114,32 @@ fun PublicPlaylistsSection() {
     }
 }
 
+
+@Composable
+fun SavedPlaylistsLibrarySection() {
+    val context = LocalContext.current
+    var playlists by remember { mutableStateOf(loadSavedPlaylists(context.getSharedPreferences("public_playlists", Context.MODE_PRIVATE))) }
+    Column(Modifier.fillMaxWidth().padding(top = 18.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+            Text("PLAYLISTS", color = Color(0xFFFF806B), style = MaterialTheme.typography.labelMedium)
+            Text("${playlists.size} saved", color = Color(0xFF9298A8), style = MaterialTheme.typography.labelSmall)
+        }
+        if (playlists.isEmpty()) {
+            Text("Your saved YouTube playlists will appear here.", color = Color(0xFF9298A8), style = MaterialTheme.typography.bodySmall, modifier = Modifier.padding(top = 10.dp, bottom = 8.dp))
+        } else {
+            playlists.forEach { playlist ->
+                Row(Modifier.fillMaxWidth().padding(top = 9.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF171B24)).padding(14.dp), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                    androidx.compose.material3.Icon(Icons.Rounded.QueueMusic, null, tint = Color(0xFFFF806B), modifier = Modifier.size(30.dp))
+                    Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                        Text(playlist.title, color = Color.White, style = MaterialTheme.typography.titleSmall, maxLines = 1)
+                        Text("${playlist.videos.size} videos • YouTube playlist", color = Color(0xFF9298A8), style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+            }
+        }
+    }
+}
+
 private fun loadSavedPlaylists(prefs: android.content.SharedPreferences): List<SavedPublicPlaylist> = runCatching {
     val a = JSONArray(prefs.getString("items", "[]"))
     (0 until a.length()).mapNotNull { i -> a.optJSONObject(i)?.let { p -> SavedPublicPlaylist(p.optString("id"), p.optString("title"), p.optString("url"), p.optJSONArray("videos")?.let { v -> (0 until v.length()).map { v.optString(it) } } ?: emptyList()) } }
