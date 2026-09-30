@@ -170,9 +170,30 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable private fun FlareTheme(amoled: Boolean, content: @Composable () -> Unit) {
+    val context = LocalContext.current
     val accent = FlarePreferences.accents[FlarePreferences.accentIndex.intValue.coerceIn(0, FlarePreferences.accents.lastIndex)]
-    val scheme = darkColorScheme(primary = accent, secondary = accent.copy(alpha = .85f), tertiary = Mint, background = Color(0xFF0B0D12), surface = Color(0xFF151922), surfaceVariant = Color(0xFF202532), onPrimary = Color.White, onSecondary = Color(0xFF101116), onTertiary = Color(0xFF101116), onBackground = Color.White, onSurface = Color.White, onSurfaceVariant = Color(0xFFE1E3EA), inverseSurface = Color(0xFFE1E3EA), inverseOnSurface = Color(0xFF17191F))
-    MaterialTheme(colorScheme = if (amoled) scheme.copy(background = Color.Black, surface = Color.Black, surfaceContainer = Color(0xFF080808)) else scheme, content = content)
+    val fallback = darkColorScheme(
+        primary = accent, secondary = accent.copy(alpha = .85f), tertiary = Mint,
+        background = Color(0xFF101116), surface = Color(0xFF171922),
+        surfaceVariant = Color(0xFF292D39), onPrimary = Color.White,
+        onSecondary = Color(0xFF101116), onTertiary = Color(0xFF101116),
+        onBackground = Color.White, onSurface = Color.White,
+        onSurfaceVariant = Color(0xFFE1E3EA), inverseSurface = Color(0xFFE1E3EA),
+        inverseOnSurface = Color(0xFF17191F)
+    )
+    val wallpaperScheme = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) dynamicDarkColorScheme(context) else fallback
+    val expressiveScheme = wallpaperScheme.copy(
+        primary = accent,
+        secondary = accent.copy(alpha = .88f),
+        tertiary = Mint,
+        onPrimary = Color.White,
+        background = Color(0xFF101116),
+        onBackground = Color.White
+    )
+    MaterialTheme(
+        colorScheme = if (amoled) expressiveScheme.copy(background = Color.Black, surface = Color.Black, surfaceContainer = Color(0xFF080808)) else expressiveScheme,
+        content = content
+    )
 }
 
 @Composable private fun FlareApp(player: ExoPlayer, scan: suspend () -> List<Track>, amoled: Boolean, googleStatus: String, youtubePlaylists: List<YouTubePlaylist>, playlistLoading: Boolean, playlistError: String, onConnectGoogle: () -> Unit, onSyncPlaylists: () -> Unit, onAmoledChange: (Boolean) -> Unit) {
