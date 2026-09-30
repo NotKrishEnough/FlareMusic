@@ -140,8 +140,16 @@ class MainActivity : ComponentActivity() {
                 if (totalDuration > 0) { Spacer(Modifier.width(6.dp)); Text(formatTime(position), color = Color.LightGray, fontSize = 10.sp) }
             }
             if (current != null && totalDuration > 0) Slider(value = (position.toFloat() / totalDuration.toFloat()).coerceIn(0f, 1f), onValueChange = { player.seekTo((it * totalDuration).toLong()) }, modifier = Modifier.fillMaxWidth().height(18.dp).padding(horizontal = 12.dp), colors = SliderDefaults.colors(thumbColor = Violet, activeTrackColor = Violet, inactiveTrackColor = Panel))
-            NavigationBar(containerColor = Ink) {
-                listOf("Home", "Search", "Library").forEach { item -> NavigationBarItem(selected = tab == item, onClick = { tab = item }, icon = { Icon(when(item) { "Home" -> Icons.Rounded.Home; "Search" -> Icons.Rounded.Search; else -> Icons.Rounded.LibraryMusic }, null) }, label = { Text(item) }) }
+            Box(Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background(Panel.copy(alpha = 0.98f)).padding(horizontal = 10.dp, vertical = 7.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                    listOf("Home", "Search", "Library").forEach { item ->
+                        val selected = tab == item
+                        Row(Modifier.clip(RoundedCornerShape(22.dp)).background(if (selected) Violet.copy(alpha = 0.18f) else Color.Transparent).clickable { tab = item }.padding(horizontal = 15.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                            Icon(when(item) { "Home" -> Icons.Rounded.Home; "Search" -> Icons.Rounded.Search; else -> Icons.Rounded.LibraryMusic }, null, tint = if (selected) Violet else Color.LightGray)
+                            if (selected) { Spacer(Modifier.width(7.dp)); Text(item, color = Violet, fontWeight = FontWeight.SemiBold, fontSize = 12.sp) }
+                        }
+                    }
+                }
             }
         }
     }) { padding ->
@@ -157,7 +165,7 @@ class MainActivity : ComponentActivity() {
 
 @Composable private fun HomeScreen(count: Int, loading: Boolean, error: String, openLibrary: () -> Unit) {
     Column(Modifier.fillMaxSize().padding(22.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) { Image(painterResource(R.drawable.ic_flare_logo), contentDescription = "FlareMusic logo", modifier = Modifier.size(38.dp)); Spacer(Modifier.width(9.dp)); Text("FlareMusic", color = Color.White, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp, fontSize = 22.sp) }
+        Row(verticalAlignment = Alignment.CenterVertically) { Image(painterResource(R.drawable.ic_flare_logo), contentDescription = "XinPlayer logo", modifier = Modifier.size(38.dp)); Spacer(Modifier.width(9.dp)); Text("XinPlayer", color = Color.White, fontWeight = FontWeight.ExtraBold, letterSpacing = (-0.5).sp, fontSize = 22.sp) }
         Spacer(Modifier.height(24.dp))
         Text("Sound,\nwithout limits.", fontSize = 38.sp, lineHeight = 43.sp, fontWeight = FontWeight.Bold)
         Text("Your music, your way.", color = Color.LightGray, modifier = Modifier.padding(top = 10.dp))
