@@ -65,8 +65,8 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.net.URL
 
-private val Ink = Color(0xFF0B0D12)
-private val Panel = Color(0xFF171B24)
+private val Ink = Color(0xFF0B0A10)
+private val Panel = Color(0xFF19151E)
 private val Violet: Color get() = FlarePreferences.accents[FlarePreferences.accentIndex.intValue.coerceIn(0, FlarePreferences.accents.lastIndex)]
 private val Mint: Color get() = Violet.copy(alpha = .82f)
 
@@ -378,59 +378,102 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable private fun FullPlayer(track: Track, playing: Boolean, position: Long, duration: Long, onClose: () -> Unit, onPlayPause: () -> Unit, onSeek: (Long) -> Unit, onPrevious: () -> Unit, onNext: () -> Unit) {
-    Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.background))).statusBarsPadding().navigationBarsPadding().padding(horizontal = 26.dp, vertical = 12.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = onClose) { Icon(Icons.Rounded.KeyboardArrowDown, "Collapse player", tint = Color.White, modifier = Modifier.size(32.dp)) }
-            Spacer(Modifier.weight(1f))
-            Text("NOW PLAYING", color = Mint, fontSize = 11.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp)
-            Spacer(Modifier.weight(1f))
-            IconButton(onClick = onClose) { Icon(Icons.Rounded.MoreHoriz, "Close player", tint = Color.White) }
-        }
-        Spacer(Modifier.weight(1f))
-        Artwork(track.artwork, Modifier.fillMaxWidth().aspectRatio(1f).clip(RoundedCornerShape(30.dp)))
-        Spacer(Modifier.weight(1f))
-        Column(Modifier.fillMaxWidth()) {
-            Text(track.title, color = Color.White, fontSize = 24.sp, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(track.artist, color = Color(0xFFD0D3DC), fontSize = 16.sp, modifier = Modifier.padding(top = 6.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Spacer(Modifier.height(24.dp))
-            Slider(value = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f, onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) }, colors = SliderDefaults.colors(thumbColor = Violet, activeTrackColor = Violet, inactiveTrackColor = Color.DarkGray))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) { Text(formatTime(position), color = Color.LightGray, fontSize = 12.sp); Text(formatTime(duration), color = Color.LightGray, fontSize = 12.sp) }
-            Spacer(Modifier.height(16.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onPrevious, modifier = Modifier.size(56.dp)) { Icon(Icons.Rounded.SkipPrevious, "Previous", tint = Color.White, modifier = Modifier.size(34.dp)) }
-                Spacer(Modifier.width(24.dp))
-                FilledIconButton(onClick = onPlayPause, modifier = Modifier.size(72.dp), colors = IconButtonDefaults.filledIconButtonColors(containerColor = Violet, contentColor = Color.White)) { Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (playing) "Pause" else "Play", modifier = Modifier.size(38.dp)) }
-                Spacer(Modifier.width(24.dp))
-                IconButton(onClick = onNext, modifier = Modifier.size(56.dp)) { Icon(Icons.Rounded.SkipNext, "Next", tint = Color.White, modifier = Modifier.size(34.dp)) }
+    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF25151F), Color(0xFF100D14), Color(0xFF09070F))))) {
+        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 24.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onClose) { Icon(Icons.Rounded.KeyboardArrowDown, "Collapse player", tint = Color.White, modifier = Modifier.size(30.dp)) }
+                Spacer(Modifier.weight(1f))
+                Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                    Text("NOW PLAYING", color = Color(0xFFFF9A79), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.2.sp)
+                    Text("FlareMusic", color = Color(0xFFB8AEB7), fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
+                }
+                Spacer(Modifier.weight(1f))
+                IconButton(onClick = onClose) { Icon(Icons.Rounded.MoreHoriz, "More options", tint = Color.White) }
             }
+            Spacer(Modifier.weight(.65f))
+            Box(Modifier.fillMaxWidth().aspectRatio(1f).padding(horizontal = 8.dp).clip(RoundedCornerShape(30.dp)).background(Brush.linearGradient(listOf(Color(0xFF3A202F), Color(0xFF1A1726)))).padding(10.dp)) {
+                Artwork(track.artwork, Modifier.fillMaxSize().clip(RoundedCornerShape(23.dp)))
+            }
+            Spacer(Modifier.weight(.65f))
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text(track.title, color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(track.artist, color = Color(0xFFBDB5C0), fontSize = 15.sp, modifier = Modifier.padding(top = 5.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                }
+                Icon(Icons.Rounded.FavoriteBorder, "Favorite", tint = Color(0xFFFF8B78), modifier = Modifier.size(25.dp))
+            }
+            Spacer(Modifier.height(22.dp))
+            Slider(value = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f, onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) }, colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = Color(0xFFFF755B), inactiveTrackColor = Color(0xFF51434E)))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                Text(formatTime(position), color = Color(0xFFBDB5C0), fontSize = 11.sp)
+                Text(formatTime(duration), color = Color(0xFFBDB5C0), fontSize = 11.sp)
+            }
+            Spacer(Modifier.height(14.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onPrevious, modifier = Modifier.size(52.dp)) { Icon(Icons.Rounded.SkipPrevious, "Previous", tint = Color.White, modifier = Modifier.size(31.dp)) }
+                FilledIconButton(onClick = onPlayPause, modifier = Modifier.size(76.dp), shape = RoundedCornerShape(26.dp), colors = IconButtonDefaults.filledIconButtonColors(containerColor = Color(0xFFFF654F), contentColor = Color.White)) {
+                    Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (playing) "Pause" else "Play", modifier = Modifier.size(38.dp))
+                }
+                IconButton(onClick = onNext, modifier = Modifier.size(52.dp)) { Icon(Icons.Rounded.SkipNext, "Next", tint = Color.White, modifier = Modifier.size(31.dp)) }
+            }
+            Spacer(Modifier.weight(.55f))
         }
-        Spacer(Modifier.weight(1f))
     }
 }
 
 @Composable private fun HomeScreen(count: Int, loading: Boolean, error: String, openLibrary: () -> Unit) {
-    Column(Modifier.fillMaxSize().background(Color(0xFF0B0D12)).verticalScroll(rememberScrollState()).padding(horizontal = 22.dp, vertical = 18.dp)) {
+    Column(Modifier.fillMaxSize().background(Color(0xFF0B0A10)).verticalScroll(rememberScrollState()).padding(horizontal = 22.dp)) {
+        Row(Modifier.fillMaxWidth().padding(top = 22.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("YOUR SOUND, YOUR SPACE", color = Color(0xFFFF9679), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp)
+                Text("Good music.\nGood moments.", color = Color.White, fontSize = 34.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp, modifier = Modifier.padding(top = 9.dp))
+            }
+            Box(Modifier.size(48.dp).clip(RoundedCornerShape(17.dp)).background(Color(0xFF211722)), contentAlignment = Alignment.Center) {
+                Image(painterResource(R.drawable.ic_flare_logo), contentDescription = "FlareMusic", modifier = Modifier.size(34.dp))
+            }
+        }
+        Spacer(Modifier.height(24.dp))
+        Box(Modifier.fillMaxWidth().height(224.dp).clip(RoundedCornerShape(28.dp)).background(Brush.linearGradient(listOf(Color(0xFF8C392D), Color(0xFF54263D), Color(0xFF242039)))).clickable { openLibrary() }) {
+            Box(Modifier.align(Alignment.TopEnd).padding(16.dp).size(140.dp).clip(RoundedCornerShape(70.dp)).background(Color.White.copy(alpha = .07f)), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(104.dp).clip(RoundedCornerShape(52.dp)).background(Color.White.copy(alpha = .06f)), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.GraphicEq, null, tint = Color(0xFFFFB39B), modifier = Modifier.size(58.dp)) }
+            }
+            Column(Modifier.align(Alignment.BottomStart).padding(22.dp)) {
+                Text("MADE FOR THE MOMENT", color = Color(0xFFFFC0A8), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp)
+                Text("Let the music\ntake over.", color = Color.White, fontSize = 28.sp, lineHeight = 31.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 7.dp))
+                Row(Modifier.padding(top = 13.dp).clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = .16f)).padding(horizontal = 13.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Explore library", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.width(7.dp)); Icon(Icons.Rounded.ArrowForward, null, tint = Color.White, modifier = Modifier.size(15.dp))
+                }
+            }
+        }
+        Spacer(Modifier.height(27.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            Image(painterResource(R.drawable.ic_flare_logo), contentDescription = "FlareMusic", modifier = Modifier.size(42.dp))
-            Spacer(Modifier.width(10.dp))
-            Column { Text("FLARE MUSIC", color = Color.White, fontWeight = FontWeight.Black, letterSpacing = 2.sp, fontSize = 17.sp); Text("YOUR PERSONAL SOUND", color = Color(0xFF9298A8), fontSize = 9.sp, letterSpacing = 1.6.sp) }
+            Column(Modifier.weight(1f)) {
+                Text("Your library", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+                Text(if (loading) "Finding your music…" else "$count tracks ready when you are", color = Color(0xFF9B94A1), fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+            }
+            TextButton(onClick = openLibrary) { Text("See all", color = Color(0xFFFF8B70), fontWeight = FontWeight.SemiBold) }
         }
-        Spacer(Modifier.height(30.dp))
-        Text("Feel every\nfrequency.", fontSize = 42.sp, lineHeight = 46.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1.4).sp, color = Color.White)
-        Text("Your music, all in one place.", color = Color(0xFFA6ADBC), fontSize = 15.sp, modifier = Modifier.padding(top = 10.dp))
-        Spacer(Modifier.height(26.dp))
-        Box(Modifier.fillMaxWidth().height(210.dp).clip(RoundedCornerShape(28.dp)).background(Brush.linearGradient(listOf(Color(0xFF43233C), Color(0xFF222A49), Color(0xFF153C3B)))).clickable { openLibrary() }) {
-            Box(Modifier.align(Alignment.TopEnd).padding(20.dp).size(112.dp).clip(RoundedCornerShape(56.dp)).background(Color.White.copy(alpha = .07f)), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.GraphicEq, null, tint = Violet, modifier = Modifier.size(64.dp)) }
-            Column(Modifier.align(Alignment.BottomStart).padding(22.dp)) { Text("MADE FOR YOUR MOMENTS", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp); Text("Press play.\nDisappear.", color = Color.White, fontSize = 27.sp, lineHeight = 31.sp, fontWeight = FontWeight.Bold) }
+        Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(11.dp)) {
+            listOf(Triple(Icons.Rounded.MusicNote, "Songs", "All tracks"), Triple(Icons.Rounded.Album, "Albums", "Your collection")).forEach { item ->
+                Column(Modifier.weight(1f).clip(RoundedCornerShape(20.dp)).background(Color(0xFF19151E)).clickable { openLibrary() }.padding(16.dp)) {
+                    Icon(item.first, null, tint = Color(0xFFFF9679), modifier = Modifier.size(24.dp))
+                    Text(item.second, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.padding(top = 17.dp))
+                    Text(item.third, color = Color(0xFF9B94A1), fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
+                }
+            }
         }
-        Spacer(Modifier.height(26.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) { Text("Your library", fontSize = 23.sp, fontWeight = FontWeight.Bold, color = Color.White); Text(if (loading) "Looking for your tracks…" else "$count tracks ready to play", color = Color(0xFFA6ADBC), fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp)) }
-            Box(Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF20232D)), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.LibraryMusic, null, tint = Violet, modifier = Modifier.size(24.dp)) }
+        if (error.isNotBlank()) Text(error, color = Color(0xFFFFA0A0), fontSize = 12.sp, modifier = Modifier.padding(top = 14.dp))
+        Spacer(Modifier.height(18.dp))
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color(0xFF17131B)).clickable { openLibrary() }.padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(Color(0xFF34202A)), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.LibraryMusic, null, tint = Color(0xFFFF9679)) }
+            Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                Text("Pick up where you left off", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                Text("Browse and play something you love", color = Color(0xFF9B94A1), fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
+            }
+            Icon(Icons.Rounded.ChevronRight, null, tint = Color(0xFF9B94A1))
         }
-        if (error.isNotBlank()) Text(error, color = Color(0xFFFF9B9B), fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp))
-        Spacer(Modifier.height(16.dp))
-        Button(onClick = openLibrary, modifier = Modifier.fillMaxWidth().height(54.dp), shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = Violet, contentColor = Color.White)) { Icon(Icons.Rounded.PlayArrow, null); Spacer(Modifier.width(8.dp)); Text("Explore my music", fontWeight = FontWeight.Bold) }
+        Spacer(Modifier.height(12.dp))
     }
 }
 
