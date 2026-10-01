@@ -24,15 +24,18 @@ object YouTubeSessionStore {
             .edit().putString(VALUE, Base64.encodeToString(packed, Base64.NO_WRAP)).apply()
     }
 
-    fun read(context: android.content.Context): String? = try {
-        val encoded = context.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE).getString(VALUE, null) ?: return null
-        val packed = Base64.decode(encoded, Base64.NO_WRAP)
-        val iv = packed.copyOfRange(0, 12)
-        val ciphertext = packed.copyOfRange(12, packed.size)
-        val cipher = Cipher.getInstance("AES/GCM/NoPadding")
-        cipher.init(Cipher.DECRYPT_MODE, secretKey(), GCMParameterSpec(128, iv))
-        String(cipher.doFinal(ciphertext), Charsets.UTF_8)
-    } catch (_: Exception) { null }
+    fun read(context: android.content.Context): String? {
+        return try {
+            val encoded = context.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE).getString(VALUE, null) ?: return null
+            val packed = Base64.decode(encoded, Base64.NO_WRAP)
+            if (packed.size <= 12) return null
+            val iv = packed.copyOfRange(0, 12)
+            val ciphertext = packed.copyOfRange(12, packed.size)
+            val cipher = Cipher.getInstance("AES/GCM/NoPadding")
+            cipher.init(Cipher.DECRYPT_MODE, secretKey(), GCMParameterSpec(128, iv))
+            String(cipher.doFinal(ciphertext), Charsets.UTF_8)
+        } catch (_: Exception) { null }
+    }
 
     fun clear(context: android.content.Context) {
         context.getSharedPreferences(PREFS, android.content.Context.MODE_PRIVATE).edit().remove(VALUE).apply()
