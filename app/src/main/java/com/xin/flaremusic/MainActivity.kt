@@ -578,6 +578,7 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable private fun LibraryScreen(tracks: List<Track>, loading: Boolean, youtubePlaylists: List<YouTubePlaylist>, googleStatus: String, playlistLoading: Boolean, playlistError: String, play: (Track) -> Unit, search: () -> Unit, refresh: () -> Unit, refreshPlaylists: () -> Unit, connectYouTube: () -> Unit) {
+    val libraryContext = LocalContext.current
     Column(Modifier.fillMaxSize().background(Color(0xFF0B0D12)).padding(horizontal = 18.dp)) {
         Row(Modifier.fillMaxWidth().padding(top = 22.dp, bottom = 18.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) { Text("Your library", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp, color = Color.White); Text(tracks.size.toString() + " songs on this device", color = Color(0xFFA6ADBC), fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp)) }
@@ -595,7 +596,7 @@ class MainActivity : ComponentActivity() {
         if (youtubePlaylists.isNotEmpty()) {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 14.dp)) {
                 items(youtubePlaylists, key = { it.id }) { playlist ->
-                    Column(Modifier.width(142.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF171B24)).padding(9.dp)) {
+                    Column(Modifier.width(142.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF171B24)).clickable { val playlistId = playlist.id.removePrefix("VL"); val playlistUrl = if (playlistId.startsWith("PL") || playlistId.startsWith("OLAK5uy")) "https://music.youtube.com/playlist?list=" + Uri.encode(playlistId) else "https://music.youtube.com/browse/" + Uri.encode(playlist.id); libraryContext.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(playlistUrl))) }.padding(9.dp)) {
                         Artwork(playlist.thumbnail, Modifier.fillMaxWidth().height(112.dp).clip(RoundedCornerShape(11.dp)))
                         Text(playlist.title, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
                         Text(if (playlist.itemCount > 0) "${playlist.itemCount} tracks" else playlist.description, color = Color(0xFF9298A8), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
