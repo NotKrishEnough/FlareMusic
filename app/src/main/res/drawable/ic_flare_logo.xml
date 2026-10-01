@@ -5,10 +5,10 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
 
-    <!-- Clean gradient disc -->
-    <path android:pathData="M54,10 A44,44 0,1 1,54 98 A44,44 0,1 1,54 10">
+    <!-- Keep all artwork inside the adaptive-icon safe zone -->
+    <path android:pathData="M54,22 A32,32 0,1 1,54 86 A32,32 0,1 1,54 22">
         <aapt:attr name="android:fillColor">
-            <gradient android:type="linear" android:startX="18" android:startY="14" android:endX="90" android:endY="94">
+            <gradient android:type="linear" android:startX="28" android:startY="24" android:endX="80" android:endY="84">
                 <item android:offset="0" android:color="#FFFFB21A"/>
                 <item android:offset="0.52" android:color="#FFFF4A24"/>
                 <item android:offset="1" android:color="#FFDA176F"/>
@@ -16,13 +16,13 @@
         </aapt:attr>
     </path>
 
-    <!-- Simple, unmistakable audio waveform -->
+    <!-- Centered audio waveform -->
     <path android:fillColor="#FFFFFFFF"
-        android:pathData="M29,47 C29,43.7 31.7,41 35,41 C38.3,41 41,43.7 41,47 L41,61 C41,64.3 38.3,67 35,67 C31.7,67 29,64.3 29,61 Z"/>
+        android:pathData="M35,49 C35,46.8 36.8,45 39,45 C41.2,45 43,46.8 43,49 L43,59 C43,61.2 41.2,63 39,63 C36.8,63 35,61.2 35,59 Z"/>
     <path android:fillColor="#FFFFFFFF"
-        android:pathData="M47,31 C47,27.7 49.7,25 53,25 C56.3,25 59,27.7 59,31 L59,77 C59,80.3 56.3,83 53,83 C49.7,83 47,80.3 47,77 Z"/>
+        android:pathData="M47,40 C47,37.8 48.8,36 51,36 C53.2,36 55,37.8 55,40 L55,68 C55,70.2 53.2,72 51,72 C48.8,72 47,70.2 47,68 Z"/>
     <path android:fillColor="#FFFFFFFF"
-        android:pathData="M65,39 C65,35.7 67.7,33 71,33 C74.3,33 77,35.7 77,39 L77,69 C77,72.3 74.3,75 71,75 C67.7,75 65,72.3 65,69 Z"/>
+        android:pathData="M59,44 C59,41.8 60.8,40 63,40 C65.2,40 67,41.8 67,44 L67,64 C67,66.2 65.2,68 63,68 C60.8,68 59,66.2 59,64 Z"/>
     <path android:fillColor="#FFFFFFFF"
-        android:pathData="M83,49 C83,45.7 85.7,43 89,43 C92.3,43 95,45.7 95,49 L95,59 C95,62.3 92.3,65 89,65 C85.7,65 83,62.3 83,59 Z"/>
+        android:pathData="M71,50 C71,47.8 72.8,46 75,46 C77.2,46 79,47.8 79,50 L79,58 C79,60.2 77.2,62 75,62 C72.8,62 71,60.2 71,58 Z"/>
 </vector>
