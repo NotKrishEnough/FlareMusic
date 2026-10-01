@@ -170,8 +170,11 @@ object YouTubePlaylists {
         }
         val timestamp = System.currentTimeMillis() / 1000
         val digest = MessageDigest.getInstance("SHA-1").digest("$timestamp $sapisid $origin".toByteArray()).joinToString("") { "%02x".format(it) }
-        val id = playlistId.removePrefix("VL")
-        val browseId = if (id.startsWith("PL") || id.startsWith("OLAK")) "VL$id" else id
+        val browseId = when {
+            playlistId.startsWith("VL") -> playlistId
+            playlistId.startsWith("PL") || playlistId.startsWith("OLAK") -> "VL$playlistId"
+            else -> playlistId
+        }
         val body = JSONObject().put("context", JSONObject().put("client", JSONObject()
             .put("clientName", "WEB_REMIX").put("clientVersion", clientVersion).put("hl", "en").put("gl", "US")))
             .put("browseId", browseId).toString()
@@ -192,6 +195,12 @@ object YouTubePlaylists {
                 val runs = obj.optJSONArray("runs") ?: return ""
                 return buildString { for (i in 0 until runs.length()) append(runs.optJSONObject(i)?.optString("text").orEmpty()) }
             }
+            fun flexText(renderer: JSONObject, index: Int): String {
+                val columns = renderer.optJSONArray("flexColumns") ?: return ""
+                val column = columns.optJSONObject(index) ?: return ""
+                val flex = column.optJSONObject("musicResponsiveListItemFlexColumnRenderer") ?: return ""
+                return text(flex.optJSONObject("text"))
+            }
             fun walk(value: Any?) {
                 when (value) {
                     is JSONObject -> {
@@ -199,8 +208,11 @@ object YouTubePlaylists {
                         if (renderer != null) {
                             val videoId = renderer.optJSONObject("playlistItemData")?.optString("videoId").orEmpty()
                                 .ifBlank { renderer.optJSONObject("navigationEndpoint")?.optJSONObject("watchEndpoint")?.optString("videoId").orEmpty() }
-                            val title = text(renderer.optJSONObject("title"))
-                            val artist = text(renderer.optJSONObject("shortBylineText")).ifBlank { text(renderer.optJSONObject("longBylineText")) }
+                                .ifBlank { renderer.optJSONObject("overlay")?.toString()?.let { Regex("""["']videoId["']\\s*:\\s*["']([^"']+)["']""").find(it)?.groupValues?.get(1) }.orEmpty() }
+                            val title = text(renderer.optJSONObject("title")).ifBlank { flexText(renderer, 0) }
+                            val artist = text(renderer.optJSONObject("shortBylineText"))
+                                .ifBlank { text(renderer.optJSONObject("longBylineText")) }
+                                .ifBlank { flexText(renderer, 1) }
                             val thumbs = renderer.optJSONObject("thumbnail")?.optJSONArray("thumbnails")
                             val thumb = thumbs?.optJSONObject((thumbs.length() - 1).coerceAtLeast(0))?.optString("url").orEmpty()
                             if (videoId.isNotBlank() && title.isNotBlank()) result.add(YouTubePlaylistTrack(videoId, title, artist, thumb))
