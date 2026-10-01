@@ -305,9 +305,19 @@ class MainActivity : ComponentActivity() {
             selectedPlaylistLoading = true
             try {
                 val cookies = YouTubeSessionStore.read(context)
-                if (cookies.isNullOrBlank()) throw IllegalStateException("Reconnect your YouTube Music account.")
-                selectedPlaylistTracks = YouTubePlaylists.fetchPlaylistTracks(cookies, playlist.id)
-                if (selectedPlaylistTracks.isEmpty()) selectedPlaylistError = "No tracks found in this playlist."
+                val musicTracks = if (!cookies.isNullOrBlank()) {
+                    runCatching { YouTubePlaylists.fetchPlaylistTracks(cookies, playlist.id) }.getOrDefault(emptyList())
+                } else emptyList()
+                // Fall back to the regular YouTube playlist endpoint; it also handles public YT playlists.
+                val tracksFromYouTube = if (musicTracks.isEmpty()) {
+                    innerTube.fetchPlaylist(playlist.id).map { item ->
+                        YouTubePlaylistTrack(item.videoId, item.title, item.author,
+                            item.thumbnail.ifBlank { "https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg" })
+                    }
+                } else emptyList()
+                selectedPlaylistTracks = (musicTracks + tracksFromYouTube).distinctBy { it.videoId }
+                    .map { item -> if (item.thumbnail.isBlank()) item.copy(thumbnail = "https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg") else item }
+                if (selectedPlaylistTracks.isEmpty()) selectedPlaylistError = "No tracks found. This playlist may be private or unavailable.";
             } catch (e: Exception) {
                 selectedPlaylistError = e.message ?: "Couldn't load this playlist."
             } finally { selectedPlaylistLoading = false }
