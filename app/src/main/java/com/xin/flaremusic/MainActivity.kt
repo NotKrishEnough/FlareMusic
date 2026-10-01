@@ -290,16 +290,37 @@ class MainActivity : ComponentActivity() {
                 if (totalDuration > 0) { Spacer(Modifier.width(6.dp)); Text(formatTime(position), color = Color.LightGray, fontSize = 10.sp) }
             }
             if (current != null && totalDuration > 0) Slider(value = (position.toFloat() / totalDuration.toFloat()).coerceIn(0f, 1f), onValueChange = { player.seekTo((it * totalDuration).toLong()) }, modifier = Modifier.fillMaxWidth().height(18.dp).padding(horizontal = 12.dp), colors = SliderDefaults.colors(thumbColor = Violet, activeTrackColor = Violet, inactiveTrackColor = Panel))
-            Box(Modifier.fillMaxWidth().padding(horizontal = 28.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
-                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background((if (amoled) Color.Black else Panel).copy(alpha = 0.98f)).padding(horizontal = 10.dp, vertical = 7.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
+                Row(
+                    Modifier.fillMaxWidth()
+                        .clip(RoundedCornerShape(30.dp))
+                        .background((if (amoled) Color(0xFF111111) else Color(0xFF24212B)).copy(alpha = 0.96f))
+                        .padding(horizontal = 7.dp, vertical = 7.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
                     listOf("Home", "Search", "Library", "Settings").forEach { item ->
                         val selected = tab == item
-                        Row(Modifier.clip(RoundedCornerShape(22.dp)).background(if (selected) Violet.copy(alpha = 0.18f) else Color.Transparent).clickable { selectTab(item) }.padding(horizontal = 15.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
-                            Icon(when(item) { "Home" -> Icons.Rounded.Home; "Search" -> Icons.Rounded.Search; "Library" -> Icons.Rounded.LibraryMusic; else -> Icons.Rounded.Settings }, null, tint = if (selected) Violet else Color.LightGray)
-                            if (selected) { Spacer(Modifier.width(7.dp)); Text(item, color = Violet, fontWeight = FontWeight.SemiBold, fontSize = 12.sp) }
+                        Column(
+                            Modifier.weight(1f)
+                                .clip(RoundedCornerShape(24.dp))
+                                .background(if (selected) Violet.copy(alpha = 0.20f) else Color.Transparent)
+                                .clickable { selectTab(item) }
+                                .padding(vertical = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                when(item) { "Home" -> Icons.Rounded.Home; "Search" -> Icons.Rounded.Search; "Library" -> Icons.Rounded.LibraryMusic; else -> Icons.Rounded.Settings },
+                                contentDescription = item,
+                                tint = if (selected) Violet else Color(0xFFAAA6B2),
+                                modifier = Modifier.size(21.dp)
+                            )
+                            Text(item, color = if (selected) Violet else Color(0xFFAAA6B2), fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp), maxLines = 1)
                         }
                     }
                 }
+            }
             }
         }
     }) { padding ->
