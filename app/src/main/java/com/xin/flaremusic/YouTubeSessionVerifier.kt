@@ -50,7 +50,7 @@ object YouTubeSessionVerifier {
                     val params = tracking.optJSONObject(i)?.optJSONArray("params") ?: continue
                     for (j in 0 until params.length()) {
                         val item = params.optJSONObject(j)
-                        if (item?.optString("key") == "logged_in" && item.optString("value") == "1") loggedIn = true
+                        if (item != null && item.optString("key") == "logged_in" && item.optString("value") == "1") loggedIn = true
                     }
                 }
                 loggedIn || json.toString().contains("\"musicAccountMenuRenderer\"")
