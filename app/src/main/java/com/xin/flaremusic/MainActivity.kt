@@ -243,6 +243,10 @@ class MainActivity : ComponentActivity() {
     var query by remember { mutableStateOf("") }
     var error by remember { mutableStateOf("") }
     var onlineResults by remember { mutableStateOf(emptyList<OnlineTrack>()) }
+    var selectedPlaylist by remember { mutableStateOf<YouTubePlaylist?>(null) }
+    var selectedPlaylistTracks by remember { mutableStateOf(emptyList<YouTubePlaylistTrack>()) }
+    var selectedPlaylistLoading by remember { mutableStateOf(false) }
+    var selectedPlaylistError by remember { mutableStateOf("") }
     var searching by remember { mutableStateOf(false) }
     var position by remember { mutableLongStateOf(0L) }
     var totalDuration by remember { mutableLongStateOf(0L) }
@@ -291,6 +295,22 @@ class MainActivity : ComponentActivity() {
                 play(Track(-track.videoId.hashCode().toLong().let { kotlin.math.abs(it) }, track.title, track.author, "YouTube", Uri.parse(url), 0L, track.thumbnail))
                 loading = false
             } catch (e: Exception) { error = e.message ?: "Could not load stream" }
+        }
+    }
+    fun openYouTubePlaylist(playlist: YouTubePlaylist) {
+        selectedPlaylist = playlist
+        selectedPlaylistTracks = emptyList()
+        selectedPlaylistError = ""
+        scope.launch {
+            selectedPlaylistLoading = true
+            try {
+                val cookies = YouTubeSessionStore.read(context)
+                if (cookies.isNullOrBlank()) throw IllegalStateException("Reconnect your YouTube Music account.")
+                selectedPlaylistTracks = YouTubePlaylists.fetchPlaylistTracks(cookies, playlist.id)
+                if (selectedPlaylistTracks.isEmpty()) selectedPlaylistError = "No tracks found in this playlist."
+            } catch (e: Exception) {
+                selectedPlaylistError = e.message ?: "Couldn't load this playlist."
+            } finally { selectedPlaylistLoading = false }
         }
     }
     fun searchOnline(term: String) {
@@ -359,7 +379,7 @@ class MainActivity : ComponentActivity() {
             when(page) {
                 "Home" -> HomeScreen(tracks.size, loading, error, Violet) { selectTab("Library") }
                 "Search" -> SearchScreen(query, { query = it }, tracks.filter { it.title.contains(query, true) || it.artist.contains(query, true) }, ::play, onlineResults, searching, ::searchOnline, ::playOnline, error)
-                "Library" -> LibraryScreen(tracks, loading, youtubePlaylists, googleStatus, playlistLoading, playlistError, ::play, { selectTab("Search") }, { tracks = emptyList(); loading = true }, onSyncPlaylists, onConnectGoogle)
+                "Library" -> LibraryScreen(tracks, loading, youtubePlaylists, googleStatus, playlistLoading, playlistError, selectedPlaylist, selectedPlaylistTracks, selectedPlaylistLoading, selectedPlaylistError, ::openYouTubePlaylist, { selectedPlaylist = null; selectedPlaylistTracks = emptyList() }, { item -> playOnline(OnlineTrack(item.videoId, item.title, item.artist, "", item.thumbnail)) }, ::play, { selectTab("Search") }, { tracks = emptyList(); loading = true }, onSyncPlaylists, onConnectGoogle)
                 else -> SettingsScreen(amoled, onAmoledChange, googleStatus, youtubePlaylists, playlistLoading, playlistError, onConnectGoogle, onSyncPlaylists, onDisconnectYouTube)
             }
         }
@@ -577,7 +597,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable private fun LibraryScreen(tracks: List<Track>, loading: Boolean, youtubePlaylists: List<YouTubePlaylist>, googleStatus: String, playlistLoading: Boolean, playlistError: String, play: (Track) -> Unit, search: () -> Unit, refresh: () -> Unit, refreshPlaylists: () -> Unit, connectYouTube: () -> Unit) {
+@Composable private fun LibraryScreen(tracks: List<Track>, loading: Boolean, youtubePlaylists: List<YouTubePlaylist>, googleStatus: String, playlistLoading: Boolean, playlistError: String, selectedPlaylist: YouTubePlaylist?, selectedPlaylistTracks: List<YouTubePlaylistTrack>, selectedPlaylistLoading: Boolean, selectedPlaylistError: String, openPlaylist: (YouTubePlaylist) -> Unit, closePlaylist: () -> Unit, playPlaylistTrack: (YouTubePlaylistTrack) -> Unit, play: (Track) -> Unit, search: () -> Unit, refresh: () -> Unit, refreshPlaylists: () -> Unit, connectYouTube: () -> Unit) {
     val libraryContext = LocalContext.current
     Column(Modifier.fillMaxSize().background(Color(0xFF0B0D12)).padding(horizontal = 18.dp)) {
         Row(Modifier.fillMaxWidth().padding(top = 22.dp, bottom = 18.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -596,7 +616,7 @@ class MainActivity : ComponentActivity() {
         if (youtubePlaylists.isNotEmpty()) {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 14.dp)) {
                 items(youtubePlaylists, key = { it.id }) { playlist ->
-                    Column(Modifier.width(142.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF171B24)).clickable { val playlistId = playlist.id.removePrefix("VL"); val playlistUrl = if (playlistId.startsWith("PL") || playlistId.startsWith("OLAK5uy")) "https://music.youtube.com/playlist?list=" + Uri.encode(playlistId) else "https://music.youtube.com/browse/" + Uri.encode(playlist.id); libraryContext.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(playlistUrl))) }.padding(9.dp)) {
+                    Column(Modifier.width(142.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF171B24)).clickable { openPlaylist(playlist) }.padding(9.dp)) {
                         Artwork(playlist.thumbnail, Modifier.fillMaxWidth().height(112.dp).clip(RoundedCornerShape(11.dp)))
                         Text(playlist.title, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
                         Text(if (playlist.itemCount > 0) "${playlist.itemCount} tracks" else playlist.description, color = Color(0xFF9298A8), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
