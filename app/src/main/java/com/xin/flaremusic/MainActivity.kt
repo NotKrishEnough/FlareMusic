@@ -260,6 +260,10 @@ class MainActivity : ComponentActivity() {
     var searching by remember { mutableStateOf(false) }
     var position by remember { mutableLongStateOf(0L) }
     var totalDuration by remember { mutableLongStateOf(0L) }
+    var favouriteIds by remember {
+        mutableStateOf(context.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE)
+            .getStringSet("favourite_ids", emptySet())?.toSet() ?: emptySet())
+    }
     val innerTube = remember { InnerTubeClient() }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
@@ -278,6 +282,13 @@ class MainActivity : ComponentActivity() {
         loading = true
         try { tracks = scan() } catch (e: Exception) { error = e.message ?: "Unable to read music" }
         loading = false
+    }
+    fun toggleFavourite(track: Track) {
+        val updated = favouriteIds.toMutableSet()
+        if (!updated.add(track.id.toString())) updated.remove(track.id.toString())
+        favouriteIds = updated
+        context.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE)
+            .edit().putStringSet("favourite_ids", updated).apply()
     }
     fun play(track: Track) {
         error = ""
@@ -485,13 +496,26 @@ class MainActivity : ComponentActivity() {
             when(page) {
                 "Home" -> HomeScreen(tracks.size, loading, error, Violet) { selectTab("Library") }
                 "Search" -> SearchScreen(query, { query = it }, tracks.filter { it.title.contains(query, true) || it.artist.contains(query, true) }, ::play, onlineResults, searching, ::searchOnline, ::playOnline, error)
-                "Library" -> LibraryScreen(tracks, loading, youtubePlaylists, googleStatus, playlistLoading, playlistError, selectedPlaylist, selectedPlaylistTracks, selectedPlaylistLoading, selectedPlaylistError, ::openYouTubePlaylist, { selectedPlaylist = null; selectedPlaylistTracks = emptyList() }, { item -> playYouTubePlaylistQueue(item) }, ::play, { selectTab("Search") }, { tracks = emptyList(); loading = true }, onSyncPlaylists, onConnectGoogle)
+                "Library" -> LibraryScreen(tracks, loading, tracks.filter { it.id.toString() in favouriteIds }, youtubePlaylists, googleStatus, playlistLoading, playlistError, selectedPlaylist, selectedPlaylistTracks, selectedPlaylistLoading, selectedPlaylistError, ::openYouTubePlaylist, { selectedPlaylist = null; selectedPlaylistTracks = emptyList() }, { item -> playYouTubePlaylistQueue(item) }, ::play, { selectTab("Search") }, { tracks = emptyList(); loading = true }, onSyncPlaylists, onConnectGoogle)
                 else -> SettingsScreen(amoled, onAmoledChange, googleStatus, youtubePlaylists, playlistLoading, playlistError, onConnectGoogle, onSyncPlaylists, onDisconnectYouTube)
             }
         }
     }
     AnimatedVisibility(visible = playerExpanded && current != null, modifier = Modifier.fillMaxSize(), enter = fadeIn() + slideInVertically { it / 6 }, exit = fadeOut() + slideOutVertically { it / 6 }) {
-        current?.let { track -> FullPlayer(track, playing, position, totalDuration, onClose = { playerExpanded = false }, onPlayPause = { if (playing) player.pause() else player.play() }, onSeek = { player.seekTo(it) }, onPrevious = { player.seekToPreviousMediaItem() }, onNext = { player.seekToNextMediaItem() }) }
+        current?.let { track ->
+            val queue = (0 until player.mediaItemCount).mapNotNull { index -> queueTracks[player.getMediaItemAt(index).mediaId] }
+            FullPlayer(track, playing, position, totalDuration,
+                isFavourite = track.id.toString() in favouriteIds, queue = queue,
+                onClose = { playerExpanded = false },
+                onPlayPause = { if (playing) player.pause() else player.play() },
+                onSeek = { player.seekTo(it) }, onPrevious = { player.seekToPreviousMediaItem() }, onNext = { player.seekToNextMediaItem() },
+                onToggleFavourite = { toggleFavourite(track) },
+                onPlayQueueItem = { player.seekTo(it); player.play() },
+                onRemoveQueueItem = { if (it in 0 until player.mediaItemCount) player.removeMediaItem(it) },
+                onClearQueue = { if (player.mediaItemCount > 0) player.clearMediaItems() },
+                onStartSleepTimer = { minutes -> scope.launch { delay(minutes * 60_000L); player.pause() } }
+            )
+        }
     }
     }
 }
@@ -591,7 +615,10 @@ class MainActivity : ComponentActivity() {
     else Box(modifier.background(Color(0xFF100D18)), contentAlignment = Alignment.Center) { Image(painterResource(R.drawable.ic_flare_logo), contentDescription = "FlareMusic logo", modifier = Modifier.fillMaxSize().padding(5.dp), contentScale = androidx.compose.ui.layout.ContentScale.Fit) }
 }
 
-@Composable private fun FullPlayer(track: Track, playing: Boolean, position: Long, duration: Long, onClose: () -> Unit, onPlayPause: () -> Unit, onSeek: (Long) -> Unit, onPrevious: () -> Unit, onNext: () -> Unit) {
+@Composable private fun FullPlayer(track: Track, playing: Boolean, position: Long, duration: Long, isFavourite: Boolean, queue: List<Track>, onClose: () -> Unit, onPlayPause: () -> Unit, onSeek: (Long) -> Unit, onPrevious: () -> Unit, onNext: () -> Unit, onToggleFavourite: () -> Unit, onPlayQueueItem: (Int) -> Unit, onRemoveQueueItem: (Int) -> Unit, onClearQueue: () -> Unit, onStartSleepTimer: (Int) -> Unit) {
+    var showQueue by remember { mutableStateOf(false) }
+    var showSleepTimer by remember { mutableStateOf(false) }
+    var sleepTimerMinutes by remember { mutableIntStateOf(0) }
     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF25151F), Color(0xFF100D14), Color(0xFF09070F))))) {
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().displayCutoutPadding().padding(horizontal = 24.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
@@ -602,7 +629,7 @@ class MainActivity : ComponentActivity() {
                     Text("FlareMusic", color = Color(0xFFB8AEB7), fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
                 }
                 Spacer(Modifier.weight(1f))
-                IconButton(onClick = onClose) { Icon(Icons.Rounded.MoreHoriz, "More options", tint = Color.White) }
+                IconButton(onClick = { showQueue = true }) { Icon(Icons.Rounded.QueueMusic, "Queue", tint = Color.White) }
             }
             Spacer(Modifier.weight(.65f))
             Box(Modifier.fillMaxWidth().aspectRatio(1f).padding(horizontal = 8.dp).clip(RoundedCornerShape(30.dp)).background(Brush.linearGradient(listOf(Color(0xFF3A202F), Color(0xFF1A1726)))).padding(10.dp)) {
@@ -614,7 +641,7 @@ class MainActivity : ComponentActivity() {
                     Text(track.title, color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(track.artist, color = Color(0xFFBDB5C0), fontSize = 15.sp, modifier = Modifier.padding(top = 5.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                Icon(Icons.Rounded.FavoriteBorder, "Favorite", tint = Color(0xFFFF8B78), modifier = Modifier.size(25.dp))
+                IconButton(onClick = onToggleFavourite) { Icon(if (isFavourite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, "Favourite", tint = Color(0xFFFF8B78), modifier = Modifier.size(25.dp)) }
             }
             Spacer(Modifier.height(22.dp))
             Slider(value = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f, onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) }, colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = Color(0xFFFF755B), inactiveTrackColor = Color(0xFF51434E)))
@@ -630,8 +657,39 @@ class MainActivity : ComponentActivity() {
                 }
                 IconButton(onClick = onNext, modifier = Modifier.size(52.dp)) { Icon(Icons.Rounded.SkipNext, "Next", tint = Color.White, modifier = Modifier.size(31.dp)) }
             }
-            Spacer(Modifier.weight(.55f))
+            Spacer(Modifier.height(8.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
+                TextButton(onClick = { showSleepTimer = true }) {
+                    Icon(Icons.Rounded.Bedtime, null, tint = Color(0xFFFF9A79), modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(7.dp))
+                    Text(if (sleepTimerMinutes > 0) "Sleep timer: " + sleepTimerMinutes + " min" else "Sleep timer", color = Color(0xFFFF9A79))
+                }
+            }
+            Spacer(Modifier.weight(.35f))
         }
+        if (showQueue) AlertDialog(onDismissRequest = { showQueue = false }, title = { Text("Playing queue") }, text = {
+            if (queue.isEmpty()) Text("The queue is empty.") else LazyColumn(Modifier.heightIn(max = 420.dp)) {
+                items(queue.size) { index -> val item = queue[index]
+                    Row(Modifier.fillMaxWidth().clickable { onPlayQueueItem(index); showQueue = false }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Artwork(item.artwork, Modifier.size(42.dp).clip(RoundedCornerShape(10.dp)))
+                        Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
+                            Text(item.title, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(item.artist, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        }
+                        IconButton(onClick = { onRemoveQueueItem(index) }) { Icon(Icons.Rounded.Close, "Remove", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
+                    }
+                }
+            }
+        }, confirmButton = { TextButton(onClick = { showQueue = false }) { Text("Done") } }, dismissButton = { TextButton(onClick = onClearQueue) { Text("Clear queue") } })
+        if (showSleepTimer) AlertDialog(onDismissRequest = { showSleepTimer = false }, title = { Text("Sleep timer") }, text = { Column {
+            Text("Pause playback after", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            listOf(5, 10, 15, 30, 45, 60).forEach { minutes ->
+                Row(Modifier.fillMaxWidth().clickable { sleepTimerMinutes = minutes }.padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(selected = sleepTimerMinutes == minutes, onClick = { sleepTimerMinutes = minutes })
+                    Text("$minutes minutes", color = MaterialTheme.colorScheme.onSurface)
+                }
+            }
+        } }, confirmButton = { TextButton(onClick = { if (sleepTimerMinutes > 0) onStartSleepTimer(sleepTimerMinutes); showSleepTimer = false }) { Text("Start") } }, dismissButton = { TextButton(onClick = { sleepTimerMinutes = 0; showSleepTimer = false }) { Text("Cancel") } })
     }
 }
 
@@ -717,7 +775,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable private fun LibraryScreen(tracks: List<Track>, loading: Boolean, youtubePlaylists: List<YouTubePlaylist>, googleStatus: String, playlistLoading: Boolean, playlistError: String, selectedPlaylist: YouTubePlaylist?, selectedPlaylistTracks: List<YouTubePlaylistTrack>, selectedPlaylistLoading: Boolean, selectedPlaylistError: String, openPlaylist: (YouTubePlaylist) -> Unit, closePlaylist: () -> Unit, playPlaylistTrack: (YouTubePlaylistTrack) -> Unit, play: (Track) -> Unit, search: () -> Unit, refresh: () -> Unit, refreshPlaylists: () -> Unit, connectYouTube: () -> Unit) {
+@Composable private fun LibraryScreen(tracks: List<Track>, loading: Boolean, favouriteTracks: List<Track>, youtubePlaylists: List<YouTubePlaylist>, googleStatus: String, playlistLoading: Boolean, playlistError: String, selectedPlaylist: YouTubePlaylist?, selectedPlaylistTracks: List<YouTubePlaylistTrack>, selectedPlaylistLoading: Boolean, selectedPlaylistError: String, openPlaylist: (YouTubePlaylist) -> Unit, closePlaylist: () -> Unit, playPlaylistTrack: (YouTubePlaylistTrack) -> Unit, play: (Track) -> Unit, search: () -> Unit, refresh: () -> Unit, refreshPlaylists: () -> Unit, connectYouTube: () -> Unit) {
     val libraryContext = LocalContext.current
     Column(Modifier.fillMaxSize().background(Color(0xFF0B0D12)).padding(horizontal = 18.dp)) {
         Row(Modifier.fillMaxWidth().padding(top = 22.dp, bottom = 18.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -749,6 +807,12 @@ class MainActivity : ComponentActivity() {
                 }
             }
         } else {
+        if (favouriteTracks.isNotEmpty()) {
+            Text("FAVOURITES", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp, modifier = Modifier.padding(top = 8.dp, bottom = 6.dp))
+            LazyColumn(Modifier.heightIn(max = 230.dp), contentPadding = PaddingValues(bottom = 8.dp)) {
+                items(favouriteTracks, key = { "fav:${it.id}" }) { TrackRow(it, onClick = { play(it) }) }
+            }
+        }
         Text("YOUTUBE MUSIC PLAYLISTS", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp, modifier = Modifier.padding(top = 8.dp, bottom = 9.dp))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Text(if (googleStatus.startsWith("Connected")) "Your online library" else "Connect your account to see playlists", color = Color(0xFFA6ADBC), fontSize = 12.sp, modifier = Modifier.weight(1f))
