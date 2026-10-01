@@ -510,7 +510,7 @@ class MainActivity : ComponentActivity() {
                 onPlayPause = { if (playing) player.pause() else player.play() },
                 onSeek = { player.seekTo(it) }, onPrevious = { player.seekToPreviousMediaItem() }, onNext = { player.seekToNextMediaItem() },
                 onToggleFavourite = { toggleFavourite(track) },
-                onPlayQueueItem = { player.seekTo(it); player.play() },
+                onPlayQueueItem = { index -> player.seekTo(index, 0L); player.play() },
                 onRemoveQueueItem = { if (it in 0 until player.mediaItemCount) player.removeMediaItem(it) },
                 onClearQueue = { if (player.mediaItemCount > 0) player.clearMediaItems() },
                 onStartSleepTimer = { minutes -> scope.launch { delay(minutes * 60_000L); player.pause() } }
