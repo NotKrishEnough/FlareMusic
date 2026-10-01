@@ -215,6 +215,7 @@ object YouTubePlaylists {
                                 .ifBlank { flexText(renderer, 1) }
                             val thumbs = renderer.optJSONObject("thumbnail")?.optJSONArray("thumbnails")
                             val thumb = thumbs?.optJSONObject((thumbs.length() - 1).coerceAtLeast(0))?.optString("url").orEmpty()
+                                .ifBlank { "https://i.ytimg.com/vi/$videoId/hqdefault.jpg" }
                             if (videoId.isNotBlank() && title.isNotBlank()) result.add(YouTubePlaylistTrack(videoId, title, artist, thumb))
                         }
                         val keys = value.keys(); while (keys.hasNext()) walk(value.opt(keys.next()))
