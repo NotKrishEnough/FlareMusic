@@ -43,6 +43,13 @@ jobs:
           gradle-version: '8.9'
       - name: Build debug APK
         run: gradle assembleDebug
+      - name: Verify APK version and signing certificate
+        run: |
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          APKSIGNER="$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -n 1)"
+          "$APKSIGNER" verify --print-certs "$APK"
+          echo "APK version:"
+          aapt dump badging "$APK" | grep -m1 "^package:"
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
