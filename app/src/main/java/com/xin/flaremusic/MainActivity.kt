@@ -211,6 +211,7 @@ class MainActivity : ComponentActivity() {
     var tab by remember { mutableStateOf("Home") }
     var tracks by remember { mutableStateOf(emptyList<Track>()) }
     var current by remember { mutableStateOf<Track?>(null) }
+    var queueTracks by remember { mutableStateOf(emptyMap<String, Track>()) }
     var playing by remember { mutableStateOf(false) }
     var playerExpanded by remember { mutableStateOf(false) }
     var loading by remember { mutableStateOf(false) }
@@ -227,6 +228,9 @@ class MainActivity : ComponentActivity() {
     LaunchedEffect(Unit) {
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) { playing = isPlaying }
+            override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+                current = mediaItem?.mediaId?.let { queueTracks[it] }
+            }
             override fun onPlayerError(playbackError: androidx.media3.common.PlaybackException) {
                 error = "Playback failed: ${playbackError.errorCodeName}. ${playbackError.message ?: "Stream rejected"}"
                 playing = false
@@ -238,13 +242,17 @@ class MainActivity : ComponentActivity() {
     }
     fun play(track: Track) {
         error = ""
+        val localQueue = tracks
+        val selectedIndex = localQueue.indexOfFirst { it.id == track.id }
+        val queue = if (selectedIndex >= 0 && localQueue.isNotEmpty()) localQueue else listOf(track)
+        queueTracks = queue.associateBy { it.id.toString() }
+        val mediaItems = queue.map { item ->
+            val metadataBuilder = MediaMetadata.Builder().setTitle(item.title).setArtist(item.artist).setAlbumTitle(item.album)
+            item.artwork?.let { artwork -> metadataBuilder.setArtworkUri(Uri.parse(artwork)) }
+            MediaItem.Builder().setMediaId(item.id.toString()).setUri(item.uri).setMediaMetadata(metadataBuilder.build()).build()
+        }
         current = track
-        player.stop()
-        player.clearMediaItems()
-        val metadataBuilder = MediaMetadata.Builder().setTitle(track.title).setArtist(track.artist).setAlbumTitle(track.album)
-        track.artwork?.let { artwork -> metadataBuilder.setArtworkUri(Uri.parse(artwork)) }
-        val metadata = metadataBuilder.build()
-        player.setMediaItem(MediaItem.Builder().setUri(track.uri).setMediaMetadata(metadata).build())
+        player.setMediaItems(mediaItems, if (selectedIndex >= 0) selectedIndex else 0, 0L)
         player.prepare()
         player.play()
     }
