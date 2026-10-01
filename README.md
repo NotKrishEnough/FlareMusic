@@ -112,6 +112,26 @@ You can also build without setting up a Linux environment locally:
 3. Open a completed run.
 4. Download the APK from the run's **Artifacts** section, if the workflow uploaded one.
 
+## Automated releases
+
+A GitHub Actions workflow builds the debug APK and publishes a GitHub Release with automatically generated release notes (changelog).
+
+**To publish a release manually:**
+
+1. Open **Actions → Build and Release**.
+2. Select **Run workflow**.
+3. Enter a version tag such as `v1.0.0`.
+4. Run the workflow. After the build succeeds, open the repository's **Releases** page.
+
+You can also create and push a version tag from your local checkout:
+
+```bash
+git tag v1.0.0
+git push origin v1.0.0
+```
+
+Pushing a `v*` tag triggers the same workflow. Each release includes the APK and a SHA-256 checksum file. GitHub generates the changelog from the repository's merged pull requests and commits since the previous release. Review the generated notes before sharing a release.
+
 ## Project details
 
 | Setting | Value |
