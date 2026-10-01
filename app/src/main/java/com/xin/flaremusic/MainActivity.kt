@@ -525,7 +525,7 @@ class MainActivity : ComponentActivity() {
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color(0xFF171B24)).padding(17.dp)) {
             Text("Accent colour", color = Color.White, fontWeight = FontWeight.SemiBold)
             Text("Choose the colour used for highlights and controls.", color = Color(0xFFA6ADBC), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp, bottom = 13.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(13.dp)) {
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(13.dp)) {
                 FlarePreferences.accents.forEachIndexed { index, color ->
                     Box(Modifier.size(42.dp).clip(RoundedCornerShape(15.dp)).background(color).clickable {
                         FlarePreferences.accentIndex.intValue = index
