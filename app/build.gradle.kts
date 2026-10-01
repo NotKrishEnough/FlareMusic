@@ -10,10 +10,12 @@ android {
         applicationId = "com.xin.flaremusic"
         minSdk = 26
         targetSdk = 35
-        // GitHub Actions run numbers increase on every build, allowing Android to
-        // recognize each downloaded APK as an upgrade over the previous one.
-        versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
-        versionName = "0.1.${System.getenv("GITHUB_RUN_NUMBER") ?: "local"}"
+        // Use a monotonically increasing build timestamp shared by CI workflows.
+        // Android requires a higher versionCode to install an APK as an update.
+        val buildCode = System.getenv("BUILD_VERSION_CODE")?.toIntOrNull()
+            ?: (System.currentTimeMillis() / 1000L).toInt()
+        versionCode = buildCode
+        versionName = "0.1.$buildCode"
     }
     buildFeatures { compose = true }
     compileOptions { isCoreLibraryDesugaringEnabled = true; sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
