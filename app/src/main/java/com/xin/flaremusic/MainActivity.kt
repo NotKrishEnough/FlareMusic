@@ -49,9 +49,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.google.android.gms.auth.api.identity.AuthorizationRequest
-import com.google.android.gms.auth.api.identity.Identity
-import com.google.android.gms.common.api.Scope
 import androidx.core.content.ContextCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
@@ -84,24 +81,43 @@ class MainActivity : ComponentActivity() {
     private var player: MediaController? = null
     private var controllerFuture: com.google.common.util.concurrent.ListenableFuture<MediaController>? = null
     private var amoledMode by mutableStateOf(false)
-    private lateinit var googleAuthLauncher: ActivityResultLauncher<IntentSenderRequest>
+    private lateinit var youtubeLoginLauncher: ActivityResultLauncher<Intent>
     private var googleStatus by mutableStateOf("Not connected")
     private var youtubePlaylists by mutableStateOf(emptyList<YouTubePlaylist>())
     private var playlistLoading by mutableStateOf(false)
     private var playlistError by mutableStateOf("")
-    private var youtubeAccessToken: String? = null
     private val permission = registerForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) showApp()
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        googleAuthLauncher = registerForActivityResult(ActivityResultContracts.StartIntentSenderForResult()) { result ->
-            try {
-                val auth = Identity.getAuthorizationClient(this).getAuthorizationResultFromIntent(result.data)
-                acceptYouTubeAuthorization(auth.accessToken)
-            } catch (e: Exception) {
+        youtubeLoginLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+            val cookieHeader = result.data?.getStringExtra(YouTubeCookieLoginActivity.EXTRA_COOKIE_HEADER)
+            if (result.resultCode == RESULT_OK && !cookieHeader.isNullOrBlank()) {
+                lifecycleScope.launch {
+                    playlistLoading = true
+                    playlistError = ""
+                    val valid = YouTubeSessionVerifier.verify(cookieHeader)
+                    if (valid) {
+                        YouTubeSessionStore.save(this@MainActivity, cookieHeader)
+                        googleStatus = "Connected to YouTube Music"
+                    } else {
+                        googleStatus = "Not connected"
+                        playlistError = "Could not verify the YouTube Music session. Try signing in again."
+                    }
+                    playlistLoading = false
+                }
+            } else {
                 googleStatus = "Not connected"
-                playlistError = e.message ?: "Google authorization cancelled"
+            }
+        }
+        lifecycleScope.launch {
+            val savedCookies = YouTubeSessionStore.read(this@MainActivity)
+            if (!savedCookies.isNullOrBlank()) {
+                googleStatus = if (YouTubeSessionVerifier.verify(savedCookies)) "Connected to YouTube Music" else {
+                    YouTubeSessionStore.clear(this@MainActivity)
+                    "Not connected"
+                }
             }
         }
         amoledMode = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("amoled", false)
@@ -120,41 +136,31 @@ class MainActivity : ComponentActivity() {
     private fun showApp() {
         val activePlayer = player ?: return
         if (ContextCompat.checkSelfPermission(this, audioPermission()) != PackageManager.PERMISSION_GRANTED) return
-        setContent { FlareTheme(amoledMode) { FlareApp(activePlayer, ::loadTracks, amoledMode, googleStatus, youtubePlaylists, playlistLoading, playlistError, ::connectGoogle, ::syncYouTubePlaylists) { enabled -> amoledMode = enabled; getSharedPreferences("flare_settings", MODE_PRIVATE).edit().putBoolean("amoled", enabled).apply() } } }
+        setContent { FlareTheme(amoledMode) { FlareApp(activePlayer, ::loadTracks, amoledMode, googleStatus, youtubePlaylists, playlistLoading, playlistError, ::connectGoogle, ::syncYouTubePlaylists, ::disconnectYouTube) { enabled -> amoledMode = enabled; getSharedPreferences("flare_settings", MODE_PRIVATE).edit().putBoolean("amoled", enabled).apply() } } }
     }
 
     private fun connectGoogle() {
         playlistError = ""
-        val request = AuthorizationRequest.builder()
-            .setRequestedScopes(listOf(Scope("https://www.googleapis.com/auth/youtube.readonly")))
-            .build()
-        Identity.getAuthorizationClient(this).authorize(request)
-            .addOnSuccessListener { auth ->
-                if (auth.hasResolution()) {
-                    val pending = auth.pendingIntent
-                    if (pending != null) googleAuthLauncher.launch(IntentSenderRequest.Builder(pending.intentSender).build())
-                    else playlistError = "Google authorization needs to be retried"
-                } else acceptYouTubeAuthorization(auth.accessToken)
-            }
-            .addOnFailureListener { e -> playlistError = e.message ?: "Google authorization failed" }
-    }
-
-    private fun acceptYouTubeAuthorization(token: String?) {
-        if (token.isNullOrBlank()) { playlistError = "Google did not return an access token"; return }
-        youtubeAccessToken = token
-        googleStatus = "Connected to YouTube"
-        syncYouTubePlaylists()
+        youtubeLoginLauncher.launch(Intent(this, YouTubeCookieLoginActivity::class.java))
     }
 
     private fun syncYouTubePlaylists() {
-        val token = youtubeAccessToken ?: run { connectGoogle(); return }
         lifecycleScope.launch {
             playlistLoading = true
-            playlistError = ""
-            try { youtubePlaylists = YouTubePlaylists.fetch(token) }
-            catch (e: Exception) { playlistError = e.message ?: "Could not sync playlists" }
+            val savedCookies = YouTubeSessionStore.read(this@MainActivity)
+            val valid = !savedCookies.isNullOrBlank() && YouTubeSessionVerifier.verify(savedCookies)
+            googleStatus = if (valid) "Connected to YouTube Music" else "Not connected"
+            if (!valid) YouTubeSessionStore.clear(this@MainActivity)
+            playlistError = if (valid) "" else "Your YouTube Music session needs to be connected again."
             playlistLoading = false
         }
+    }
+
+    private fun disconnectYouTube() {
+        YouTubeSessionStore.clear(this)
+        googleStatus = "Not connected"
+        youtubePlaylists = emptyList()
+        playlistError = ""
     }
 
     private fun audioPermission() = if (Build.VERSION.SDK_INT >= 33) Manifest.permission.READ_MEDIA_AUDIO else Manifest.permission.READ_EXTERNAL_STORAGE
@@ -208,7 +214,7 @@ class MainActivity : ComponentActivity() {
     )
 }
 
-@Composable private fun FlareApp(player: Player, scan: suspend () -> List<Track>, amoled: Boolean, googleStatus: String, youtubePlaylists: List<YouTubePlaylist>, playlistLoading: Boolean, playlistError: String, onConnectGoogle: () -> Unit, onSyncPlaylists: () -> Unit, onAmoledChange: (Boolean) -> Unit) {
+@Composable private fun FlareApp(player: Player, scan: suspend () -> List<Track>, amoled: Boolean, googleStatus: String, youtubePlaylists: List<YouTubePlaylist>, playlistLoading: Boolean, playlistError: String, onConnectGoogle: () -> Unit, onSyncPlaylists: () -> Unit, onDisconnectYouTube: () -> Unit, onAmoledChange: (Boolean) -> Unit) {
     val uiViewModel: FlareUiViewModel = viewModel()
     val tab = uiViewModel.selectedTab
     val selectTab: (String) -> Unit = uiViewModel::selectTab
