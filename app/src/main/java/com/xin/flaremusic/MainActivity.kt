@@ -397,6 +397,27 @@ class MainActivity : ComponentActivity() {
                 })
             }
         }
+        Text("YOUTUBE MUSIC", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(bottom = 9.dp))
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color(0xFF171B24)).padding(17.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Rounded.MusicNote, null, tint = Mint, modifier = Modifier.size(25.dp))
+                Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                    Text("YouTube Music account", color = Color.White, fontWeight = FontWeight.SemiBold)
+                    Text(googleStatus, color = if (googleStatus.startsWith("Connected")) Mint else Color(0xFFA6ADBC), fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp))
+                }
+                if (loading) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Mint)
+            }
+            Text("Sign in through Google's page. Your session is encrypted on this device.", color = Color(0xFFA6ADBC), fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp, bottom = 14.dp))
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(onClick = onConnect, modifier = Modifier.weight(1f), enabled = !loading) {
+                    Text(if (googleStatus.startsWith("Connected")) "Reconnect" else "Connect")
+                }
+                if (googleStatus.startsWith("Connected")) {
+                    OutlinedButton(onClick = onDisconnectYouTube, enabled = !loading) { Text("Disconnect") }
+                }
+            }
+            if (error.isNotBlank()) Text(error, color = Color(0xFFFF8A80), fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp))
+        }
         Spacer(Modifier.height(20.dp))
         Text("FLAREMUSIC  •  MADE FOR YOUR MUSIC", color = Color(0xFF626A79), fontSize = 9.sp, letterSpacing = 1.2.sp, modifier = Modifier.align(Alignment.CenterHorizontally).padding(vertical = 14.dp))
     }
