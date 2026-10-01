@@ -68,9 +68,9 @@ object YouTubePlaylists {
         val (apiKey, clientVersion) = http.newCall(pageRequest).execute().use { response ->
             val html = response.body?.string().orEmpty()
             if (!response.isSuccessful) throw IllegalStateException("Couldn't load YouTube Music config: HTTP ${response.code}")
-            val key = Regex("""["']INNERTUBE_API_KEY["']\\s*:\\s*["']([^"']+)["']""").find(html)?.groupValues?.get(1)
+            val key = Regex("""["']INNERTUBE_API_KEY["']\s*:\s*["']([^"']+)["']""").find(html)?.groupValues?.get(1)
                 ?: throw IllegalStateException("YouTube Music did not provide an API key. Please try again later.")
-            val version = Regex("""["']INNERTUBE_CLIENT_VERSION["']\\s*:\\s*["']([^"']+)["']""").find(html)?.groupValues?.get(1)
+            val version = Regex("""["']INNERTUBE_CLIENT_VERSION["']\s*:\s*["']([^"']+)["']""").find(html)?.groupValues?.get(1)
                 ?: "1.20260304.03.00"
             key to version
         }
