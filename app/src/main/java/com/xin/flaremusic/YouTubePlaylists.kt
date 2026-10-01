@@ -83,21 +83,33 @@ object YouTubePlaylists {
                 .put("clientName", "WEB_REMIX")
                 .put("clientVersion", clientVersion)
                 .put("hl", "en").put("gl", "US")))
-            .put("browseId", "FEmusic_library_playlists").toString()
+            .put("browseId", "FEplaylist_aggregation").toString()
         val url = okhttp3.HttpUrl.Builder().scheme("https").host("music.youtube.com")
-            .addPathSegments("youtubei/v1/browse").addQueryParameter("key", apiKey)
+            .addPathSegments("youtubei/v1/browse")
             .addQueryParameter("prettyPrint", "false").build()
         val request = Request.Builder().url(url)
             .post(body.toRequestBody("application/json; charset=utf-8".toMediaType()))
             .header("Cookie", cookieHeader)
             .header("Authorization", "SAPISIDHASH ${timestamp}_$digest")
             .header("Origin", origin)
+            .header("Referer", "$origin/")
             .header("X-Origin", origin)
+            .header("X-YouTube-Client-Name", "67")
+            .header("X-YouTube-Client-Version", clientVersion)
+            .header("X-Goog-AuthUser", "0")
+            .header("X-YouTube-Bootstrap-Logged-In", "true")
             .header("User-Agent", userAgent)
             .build()
         http.newCall(request).execute().use { response ->
             val raw = response.body?.string().orEmpty()
-            if (!response.isSuccessful) throw IllegalStateException("YouTube Music library failed: HTTP ${response.code} - ${raw.take(350)}")
+            if (!response.isSuccessful) {
+                val detail = runCatching { JSONObject(raw).optJSONObject("error")?.optString("message").orEmpty() }.getOrDefault("")
+                val safeDetail = detail.take(140).replace(Regex("\\s+"), " ")
+                throw IllegalStateException(
+                    if (safeDetail.isNotBlank()) "YouTube Music rejected the playlist request (HTTP ${response.code}): $safeDetail"
+                    else "YouTube Music rejected the playlist request (HTTP ${response.code}). Please reconnect and retry."
+                )
+            }
             val root = JSONObject(raw)
             val found = mutableListOf<YouTubePlaylist>()
             fun text(value: JSONObject?): String {
