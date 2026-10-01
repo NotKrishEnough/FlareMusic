@@ -13,6 +13,8 @@ import java.util.concurrent.TimeUnit
 
 data class YouTubePlaylist(val id: String, val title: String, val description: String, val itemCount: Int, val thumbnail: String)
 
+data class YouTubePlaylistTrack(val videoId: String, val title: String, val artist: String, val thumbnail: String)
+
 object YouTubePlaylists {
     private val http = OkHttpClient.Builder().callTimeout(25, TimeUnit.SECONDS).build()
 
@@ -148,6 +150,68 @@ object YouTubePlaylists {
             }
             walk(root)
             found.distinctBy { it.id }
+        }
+    }
+
+
+    suspend fun fetchPlaylistTracks(cookieHeader: String, playlistId: String): List<YouTubePlaylistTrack> = withContext(Dispatchers.IO) {
+        val origin = "https://music.youtube.com"
+        val userAgent = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36"
+        val cookies = cookieHeader.split(';').mapNotNull { part ->
+            val trimmed = part.trim(); val index = trimmed.indexOf('=')
+            if (index <= 0) null else trimmed.substring(0, index) to trimmed.substring(index + 1)
+        }.toMap()
+        val sapisid = cookies["SAPISID"] ?: cookies["__Secure-3PAPISID"]
+            ?: throw IllegalStateException("YouTube Music session expired. Reconnect your account.")
+        val page = Request.Builder().url(origin).header("Cookie", cookieHeader).header("User-Agent", userAgent).get().build()
+        val clientVersion = http.newCall(page).execute().use { response ->
+            val html = response.body?.string().orEmpty()
+            Regex("""["']INNERTUBE_CLIENT_VERSION["']\s*:\s*["']([^"']+)["']""").find(html)?.groupValues?.get(1) ?: "1.20260304.03.00"
+        }
+        val timestamp = System.currentTimeMillis() / 1000
+        val digest = MessageDigest.getInstance("SHA-1").digest("$timestamp $sapisid $origin".toByteArray()).joinToString("") { "%02x".format(it) }
+        val id = playlistId.removePrefix("VL")
+        val browseId = if (id.startsWith("PL") || id.startsWith("OLAK")) "VL$id" else id
+        val body = JSONObject().put("context", JSONObject().put("client", JSONObject()
+            .put("clientName", "WEB_REMIX").put("clientVersion", clientVersion).put("hl", "en").put("gl", "US")))
+            .put("browseId", browseId).toString()
+        val url = okhttp3.HttpUrl.Builder().scheme("https").host("music.youtube.com").addPathSegments("youtubei/v1/browse").build()
+        val request = Request.Builder().url(url).post(body.toRequestBody("application/json; charset=utf-8".toMediaType()))
+            .header("Cookie", cookieHeader).header("Authorization", "SAPISIDHASH ${timestamp}_$digest")
+            .header("Origin", origin).header("Referer", "$origin/").header("X-Origin", origin)
+            .header("X-YouTube-Client-Name", "67").header("X-YouTube-Client-Version", clientVersion)
+            .header("User-Agent", userAgent).build()
+        http.newCall(request).execute().use { response ->
+            val raw = response.body?.string().orEmpty()
+            if (!response.isSuccessful) throw IllegalStateException("Couldn't open playlist (HTTP ${response.code}).")
+            val root = JSONObject(raw)
+            val result = mutableListOf<YouTubePlaylistTrack>()
+            fun text(obj: JSONObject?): String {
+                if (obj == null) return ""
+                obj.optString("simpleText").takeIf { it.isNotBlank() }?.let { return it }
+                val runs = obj.optJSONArray("runs") ?: return ""
+                return buildString { for (i in 0 until runs.length()) append(runs.optJSONObject(i)?.optString("text").orEmpty()) }
+            }
+            fun walk(value: Any?) {
+                when (value) {
+                    is JSONObject -> {
+                        val renderer = value.optJSONObject("playlistVideoRenderer") ?: value.optJSONObject("musicResponsiveListItemRenderer")
+                        if (renderer != null) {
+                            val videoId = renderer.optJSONObject("playlistItemData")?.optString("videoId").orEmpty()
+                                .ifBlank { renderer.optJSONObject("navigationEndpoint")?.optJSONObject("watchEndpoint")?.optString("videoId").orEmpty() }
+                            val title = text(renderer.optJSONObject("title"))
+                            val artist = text(renderer.optJSONObject("shortBylineText")).ifBlank { text(renderer.optJSONObject("longBylineText")) }
+                            val thumbs = renderer.optJSONObject("thumbnail")?.optJSONArray("thumbnails")
+                            val thumb = thumbs?.optJSONObject((thumbs.length() - 1).coerceAtLeast(0))?.optString("url").orEmpty()
+                            if (videoId.isNotBlank() && title.isNotBlank()) result.add(YouTubePlaylistTrack(videoId, title, artist, thumb))
+                        }
+                        val keys = value.keys(); while (keys.hasNext()) walk(value.opt(keys.next()))
+                    }
+                    is org.json.JSONArray -> for (i in 0 until value.length()) walk(value.opt(i))
+                }
+            }
+            walk(root)
+            result.distinctBy { it.videoId }
         }
     }
 
