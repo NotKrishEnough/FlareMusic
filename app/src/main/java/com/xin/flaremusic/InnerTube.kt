@@ -63,6 +63,30 @@ class InnerTubeClient {
         return buildString { for (i in 0 until runs.length()) append(runs.optJSONObject(i)?.optString("text") ?: "") }.takeIf { it.isNotBlank() }
     }
 
+
+    /** Reads public YouTube playlists too, so playlist playback is not limited to Music library responses. */
+    suspend fun fetchPlaylist(playlistId: String): List<OnlineTrack> = withContext(Dispatchers.IO) {
+        val id = playlistId.removePrefix("VL")
+        val browseId = if (id.startsWith("PL") || id.startsWith("UU") || id.startsWith("LL") || id.startsWith("OLAK")) "VL$id" else id
+        val body = JSONObject()
+            .put("context", JSONObject().put("client", JSONObject()
+                .put("clientName", "WEB").put("clientVersion", "2.20250626.01.00")
+                .put("hl", "en").put("gl", "US")))
+            .put("browseId", browseId).toString()
+        val request = Request.Builder().url("$endpoint/browse?prettyPrint=false")
+            .post(body.toRequestBody(jsonType))
+            .header("User-Agent", "com.google.android.youtube/19.09.37 (Linux; U; Android 14)")
+            .build()
+        http.newCall(request).execute().use { response ->
+            val raw = response.body?.string().orEmpty()
+            if (!response.isSuccessful) throw IllegalStateException("YouTube playlist failed: HTTP ${response.code}")
+            val root = JSONObject(raw)
+            val found = mutableListOf<OnlineTrack>()
+            collectVideos(root, found)
+            found.distinctBy { it.videoId }
+        }
+    }
+
     /** Uses NewPipe Extractor's maintained YouTube stream extraction instead of hand-parsing player JSON. */
     suspend fun resolveProgressiveUrl(videoId: String): String = NewPipeAudioResolver.resolve(videoId)
 }
