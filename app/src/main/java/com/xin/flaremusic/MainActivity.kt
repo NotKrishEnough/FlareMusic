@@ -60,6 +60,7 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.async
 import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.sync.withPermit
@@ -334,7 +335,7 @@ class MainActivity : ComponentActivity() {
                 val semaphore = kotlinx.coroutines.sync.Semaphore(permits = 3)
                 val resolved = kotlinx.coroutines.coroutineScope {
                     selectedPlaylistTracks.map { item ->
-                        kotlinx.coroutines.async {
+                        async {
                             semaphore.withPermit {
                                 runCatching { item to innerTube.resolveProgressiveUrl(item.videoId) }.getOrNull()
                             }
