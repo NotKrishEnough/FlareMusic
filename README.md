@@ -1,12 +1,130 @@
-# Flare Music
+# FlareMusic
 
-A clean Android music-player project built from scratch.
+A modern Android music player built with **Kotlin**, **Jetpack Compose**, and **Media3**.
 
-## Current status
-This is the initial UI and Android build scaffold. It is **not yet a working streaming player**: InnerTube search/playback, local MediaStore browsing, queue management, and Media3 service integration are the next implementation steps.
+> FlareMusic is under active development. Features and interfaces may change between builds.
 
-## Build
-Open this repository in Android Studio, or run:
-`./gradlew assembleDebug`
+[![Android CI](https://github.com/NotKrishEnough/FlareMusic/actions/workflows/android.yml/badge.svg)](https://github.com/NotKrishEnough/FlareMusic/actions/workflows/android.yml)
 
-The GitHub Actions workflow builds a debug APK on pushes and pull requests.
+## Overview
+
+FlareMusic is an Android music player project focused on a clean, customizable experience.
+
+### Tech stack
+
+- Kotlin
+- Jetpack Compose and Material 3
+- AndroidX
+- AndroidX Media3
+- NewPipe Extractor
+
+## Build the APK on Linux
+
+You can build FlareMusic locally on Ubuntu, Debian, Fedora, Arch, or another Linux distribution. The commands below use Ubuntu/Debian package names; install the equivalent packages on other distributions.
+
+### 1. Install the required tools
+
+Install Git, **JDK 17**, and the Android SDK. Android Studio is the simplest way to install and manage the SDK.
+
+On Ubuntu/Debian:
+
+```bash
+sudo apt update
+sudo apt install git openjdk-17-jdk
+```
+
+Check that Java 17 is active:
+
+```bash
+java -version
+```
+
+Install Android Studio from the [official Android developer site](https://developer.android.com/studio), then use **Tools → SDK Manager** to install:
+
+- Android SDK Platform 35
+- Android SDK Build-Tools (the version recommended by Android Studio)
+- Android SDK Command-line Tools (latest)
+
+Accept the Android SDK licences in Android Studio, or run the following after installing the command-line tools (adjust the SDK path if yours differs):
+
+```bash
+\$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+```
+
+If your SDK is not at the default location, set the environment variable. For example:
+
+```bash
+export ANDROID_HOME="$HOME/Android/Sdk"
+export PATH="$PATH:$ANDROID_HOME/platform-tools:$ANDROID_HOME/cmdline-tools/latest/bin"
+```
+
+Add those exports to your shell profile (such as `~/.bashrc`) if you want them to persist. You can also create a local `local.properties` file in the project root containing `sdk.dir=/absolute/path/to/Android/Sdk`. Do not commit that machine-specific file.
+
+### 2. Clone the repository
+
+```bash
+git clone https://github.com/NotKrishEnough/FlareMusic.git
+cd FlareMusic
+```
+
+### 3. Build a debug APK
+
+The repository includes the Gradle wrapper, so you do not need to install Gradle globally.
+
+```bash
+chmod +x gradlew
+./gradlew assembleDebug
+```
+
+The first build may take a while because Gradle downloads the required dependencies.
+
+When the build succeeds, the APK is generated at:
+
+```text
+app/build/outputs/apk/debug/app-debug.apk
+```
+
+### 4. Install on a connected Android device (optional)
+
+Enable USB debugging on your device, connect it to the computer, then run:
+
+```bash
+./gradlew installDebug
+```
+
+Or transfer `app-debug.apk` to your phone and install it manually. You may need to allow installation from that file manager.
+
+### Useful Gradle commands
+
+| Command | Purpose |
+| --- | --- |
+| `./gradlew assembleDebug` | Build the debug APK |
+| `./gradlew installDebug` | Build and install on a connected device |
+| `./gradlew clean` | Remove generated build files |
+| `./gradlew test` | Run available unit tests |
+
+## Build with GitHub Actions
+
+You can also build without setting up a Linux environment locally:
+
+1. Open the [Actions](https://github.com/NotKrishEnough/FlareMusic/actions) tab.
+2. Select the Android build workflow.
+3. Open a completed run.
+4. Download the APK from the run's **Artifacts** section, if the workflow uploaded one.
+
+## Project details
+
+| Setting | Value |
+| --- | --- |
+| Application ID | `com.xin.flaremusic` |
+| Minimum Android version | Android 8.0 (API 26) |
+| Compile / target SDK | 35 |
+| Java compatibility | 17 |
+
+## Contributing
+
+Issues and pull requests are welcome. When reporting a bug, include your device model, Android version, steps to reproduce, and relevant build or crash logs. Please avoid posting private account data, session cookies, or other secrets.
+
+## License
+
+No license has been specified in this repository yet. Unless a license is added, the source is not granted permission for reuse, redistribution, or modification by default.
