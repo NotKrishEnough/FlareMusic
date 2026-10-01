@@ -426,7 +426,7 @@ class MainActivity : ComponentActivity() {
         Column(Modifier.padding(bottom = 12.dp)) {
             if (current != null) Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).clip(RoundedCornerShape(20.dp)).background(if (amoled) Color.Black else Panel).clickable { playerExpanded = true }.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
                 Artwork(current!!.artwork, Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)))
-                Column(Modifier.weight(1f).padding(start = 12.dp)) { Text(current!!.title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis); Text(current!!.artist, color = Color.LightGray, fontSize = 12.sp, maxLines = 1) }
+                Column(Modifier.weight(1f).padding(start = 12.dp)) { Text(current!!.title, color = Color.White, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis); Text(current!!.artist, color = Color(0xFFBDB5C0), fontSize = 12.sp, maxLines = 1) }
                 IconButton(onClick = { if (playing) player.pause() else player.play() }) { Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = Violet) }
                 IconButton(onClick = { player.seekToNextMediaItem() }) { Icon(Icons.Rounded.SkipNext, null, tint = Violet) }
                 if (totalDuration > 0) { Spacer(Modifier.width(6.dp)); Text(formatTime(position), color = Color.LightGray, fontSize = 10.sp) }
