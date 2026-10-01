@@ -76,7 +76,11 @@ private object FlarePreferences {
     val accentIndex = mutableIntStateOf(0)
     val animations = mutableStateOf(true)
     val compact = mutableStateOf(false)
-    val accents = listOf(Color(0xFFFF694F), Color(0xFF9B8CFF), Color(0xFF35C9A5), Color(0xFFFFB84D))
+    val dynamicColors = mutableStateOf(true)
+    val accents = listOf(
+        Color(0xFFFF694F), Color(0xFF9B8CFF), Color(0xFF35C9A5), Color(0xFFFFB84D),
+        Color(0xFF64B5F6), Color(0xFFE879B9), Color(0xFFB0C46A), Color(0xFFB39DDB)
+    )
 }
 
 data class Track(val id: Long, val title: String, val artist: String, val album: String, val uri: Uri, val duration: Long, val artwork: String? = null)
@@ -134,6 +138,7 @@ class MainActivity : ComponentActivity() {
         FlarePreferences.accentIndex.intValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getInt("accent_index", 0).coerceIn(0, FlarePreferences.accents.lastIndex)
         FlarePreferences.animations.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("animations", true)
         FlarePreferences.compact.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("compact", false)
+        FlarePreferences.dynamicColors.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("dynamic_colors", true)
         val token = SessionToken(this, android.content.ComponentName(this, FlarePlaybackService::class.java))
         controllerFuture = MediaController.Builder(this, token).buildAsync()
         controllerFuture?.addListener({
@@ -146,7 +151,7 @@ class MainActivity : ComponentActivity() {
     private fun showApp() {
         val activePlayer = player ?: return
         if (ContextCompat.checkSelfPermission(this, audioPermission()) != PackageManager.PERMISSION_GRANTED) return
-        setContent { FlareTheme(amoledMode) { FlareApp(activePlayer, ::loadTracks, amoledMode, googleStatus, youtubePlaylists, playlistLoading, playlistError, ::connectGoogle, ::syncYouTubePlaylists, ::disconnectYouTube) { enabled -> amoledMode = enabled; getSharedPreferences("flare_settings", MODE_PRIVATE).edit().putBoolean("amoled", enabled).apply() } } }
+        setContent { FlareTheme(amoledMode, FlarePreferences.dynamicColors.value) { FlareApp(activePlayer, ::loadTracks, amoledMode, googleStatus, youtubePlaylists, playlistLoading, playlistError, ::connectGoogle, ::syncYouTubePlaylists, ::disconnectYouTube) { enabled -> amoledMode = enabled; getSharedPreferences("flare_settings", MODE_PRIVATE).edit().putBoolean("amoled", enabled).apply() } } }
     }
 
     private fun connectGoogle() {
@@ -207,7 +212,7 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() { controllerFuture?.let { MediaController.releaseFuture(it) }; super.onDestroy() }
 }
 
-@Composable private fun FlareTheme(amoled: Boolean, content: @Composable () -> Unit) {
+@Composable private fun FlareTheme(amoled: Boolean, dynamicColors: Boolean, content: @Composable () -> Unit) {
     val context = LocalContext.current
     val accent = FlarePreferences.accents[FlarePreferences.accentIndex.intValue.coerceIn(0, FlarePreferences.accents.lastIndex)]
     val fallback = darkColorScheme(
@@ -219,7 +224,7 @@ class MainActivity : ComponentActivity() {
         onSurfaceVariant = Color(0xFFE1E3EA), inverseSurface = Color(0xFFE1E3EA),
         inverseOnSurface = Color(0xFF17191F)
     )
-    val wallpaperScheme = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) dynamicDarkColorScheme(context) else fallback
+    val wallpaperScheme = if (dynamicColors && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) dynamicDarkColorScheme(context) else fallback
     val expressiveScheme = wallpaperScheme.copy(
         primary = accent,
         secondary = accent.copy(alpha = .88f),
@@ -501,7 +506,21 @@ class MainActivity : ComponentActivity() {
             Column(Modifier.weight(1f).padding(start = 13.dp)) { Text("AMOLED mode", color = Color.White, fontWeight = FontWeight.SemiBold); Text("Pure black backgrounds", color = Color(0xFF9298A8), fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp)) }
             Switch(checked = amoled, onCheckedChange = onAmoledChange)
         }
-        Text("FlareMusic uses a dark-first palette.", color = Color(0xFF9298A8), fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp, bottom = 20.dp))
+        Text("Material You colours adapt to your wallpaper on supported Android versions.", color = Color(0xFF9298A8), fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp, bottom = 14.dp))
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color(0xFF171B24)).clickable {
+            FlarePreferences.dynamicColors.value = !FlarePreferences.dynamicColors.value
+            settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("dynamic_colors", FlarePreferences.dynamicColors.value).apply()
+        }.padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Material You dynamic colours", color = Color.White, fontWeight = FontWeight.SemiBold)
+                Text("Use colours from your wallpaper", color = Color(0xFFA6ADBC), fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp))
+            }
+            Switch(checked = FlarePreferences.dynamicColors.value, onCheckedChange = {
+                FlarePreferences.dynamicColors.value = it
+                settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("dynamic_colors", it).apply()
+            })
+        }
+        Text("Choose a preset or let Android generate a palette from your wallpaper.", color = Color(0xFF9298A8), fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp, bottom = 20.dp))
         Text("PERSONALIZATION", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(bottom = 9.dp))
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color(0xFF171B24)).padding(17.dp)) {
             Text("Accent colour", color = Color.White, fontWeight = FontWeight.SemiBold)
