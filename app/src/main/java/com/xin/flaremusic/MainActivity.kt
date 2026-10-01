@@ -331,49 +331,63 @@ class MainActivity : ComponentActivity() {
         scope.launch {
             error = ""
             loading = true
+            val playlist = selectedPlaylistTracks
+            val playlistTitle = selectedPlaylist?.title ?: "YouTube playlist"
             try {
-                val semaphore = kotlinx.coroutines.sync.Semaphore(permits = 3)
-                val resolved = kotlinx.coroutines.coroutineScope {
-                    selectedPlaylistTracks.map { item ->
-                        async {
-                            semaphore.withPermit {
-                                runCatching { item to innerTube.resolveProgressiveUrl(item.videoId) }.getOrNull()
-                            }
-                        }
-                    }.awaitAll().filterNotNull()
-                }
-                if (resolved.isEmpty()) {
-                    error = "Couldn't prepare any tracks from this playlist."
-                    return@launch
-                }
-                val mediaItems = resolved.map { (item, url) ->
+                val startIndex = playlist.indexOfFirst { it.videoId == startItem.videoId }
+                    .takeIf { it >= 0 } ?: 0
+                // Resolve and start the tapped song first; never wait for the whole playlist.
+                val firstUrl = innerTube.resolveProgressiveUrl(startItem.videoId)
+                fun makeItem(item: YouTubePlaylistTrack, url: String): MediaItem {
                     val mediaId = "yt:${item.videoId}"
+                    val artwork = item.thumbnail.ifBlank { "https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg" }
                     val metadata = MediaMetadata.Builder()
                         .setTitle(item.title)
                         .setArtist(item.artist.ifBlank { "YouTube" })
-                        .setAlbumTitle(selectedPlaylist?.title ?: "YouTube playlist")
-                        .setArtworkUri(Uri.parse(item.thumbnail.ifBlank { "https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg" }))
+                        .setAlbumTitle(playlistTitle)
+                        .setArtworkUri(Uri.parse(artwork))
                         .build()
-                    MediaItem.Builder().setMediaId(mediaId).setUri(url).setMediaMetadata(metadata).build()
+                    return MediaItem.Builder().setMediaId(mediaId).setUri(url).setMediaMetadata(metadata).build()
                 }
-                val queue = resolved.associate { (item, _) ->
-                    "yt:${item.videoId}" to Track(
-                        -kotlin.math.abs(item.videoId.hashCode().toLong()).coerceAtLeast(1L),
-                        item.title, item.artist.ifBlank { "YouTube" },
-                        selectedPlaylist?.title ?: "YouTube playlist",
-                        Uri.parse("https://www.youtube.com/watch?v=${item.videoId}"),
-                        0L, item.thumbnail.ifBlank { "https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg" }
-                    )
-                }
-                val startIndex = resolved.indexOfFirst { it.first.videoId == startItem.videoId }.coerceAtLeast(0)
-                queueTracks = queue
-                current = queue[mediaItems[startIndex].mediaId]
-                player.setMediaItems(mediaItems, startIndex, 0L)
+                fun makeTrack(item: YouTubePlaylistTrack): Track = Track(
+                    -kotlin.math.abs(item.videoId.hashCode().toLong()).coerceAtLeast(1L),
+                    item.title, item.artist.ifBlank { "YouTube" }, playlistTitle,
+                    Uri.parse("https://www.youtube.com/watch?v=${item.videoId}"), 0L,
+                    item.thumbnail.ifBlank { "https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg" }
+                )
+                val firstMediaItem = makeItem(startItem, firstUrl)
+                queueTracks = mapOf(firstMediaItem.mediaId to makeTrack(startItem))
+                current = makeTrack(startItem)
+                player.setMediaItem(firstMediaItem)
                 player.prepare()
                 player.play()
+                loading = false
+
+                // Fill the rest of the queue in the background while the first song plays.
+                val semaphore = kotlinx.coroutines.sync.Semaphore(permits = 3)
+                val resolvedOthers = kotlinx.coroutines.coroutineScope {
+                    playlist.filterNot { it.videoId == startItem.videoId }.mapIndexed { index, item ->
+                        async {
+                            semaphore.withPermit {
+                                runCatching { Triple(index, item, innerTube.resolveProgressiveUrl(item.videoId)) }.getOrNull()
+                            }
+                        }
+                    }.awaitAll().filterNotNull().sortedBy { it.first }
+                }
+                if (resolvedOthers.isNotEmpty()) {
+                    val prior = resolvedOthers.filter { it.first < startIndex }
+                    val following = resolvedOthers.filter { it.first > startIndex }
+                    val priorItems = prior.map { makeItem(it.second, it.third) }
+                    val followingItems = following.map { makeItem(it.second, it.third) }
+                    queueTracks = queueTracks + resolvedOthers.associate { (_, item, _) ->
+                        "yt:${item.videoId}" to makeTrack(item)
+                    }
+                    // Insert previous tracks before the current item and following tracks after it.
+                    if (priorItems.isNotEmpty()) player.addMediaItems(0, priorItems)
+                    if (followingItems.isNotEmpty()) player.addMediaItems(followingItems)
+                }
             } catch (e: Exception) {
-                error = e.message ?: "Couldn't start playlist playback."
-            } finally {
+                error = e.message ?: "Couldn't start this song."
                 loading = false
             }
         }
