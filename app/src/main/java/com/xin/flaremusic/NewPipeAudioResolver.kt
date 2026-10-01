@@ -13,6 +13,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.IOException
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.ConcurrentHashMap
 
 /**
  * NewPipe Extractor adapter. It resolves YouTube's changing player formats and
@@ -26,6 +27,9 @@ object NewPipeAudioResolver {
         .build()
 
     @Volatile private var initialized = false
+    private data class CachedStream(val url: String, val savedAt: Long)
+    private val streamCache = ConcurrentHashMap<String, CachedStream>()
+    private val cacheTtlMs = TimeUnit.MINUTES.toMillis(20)
 
     @Synchronized private fun initialize() {
         if (initialized) return
@@ -61,12 +65,14 @@ object NewPipeAudioResolver {
 
     suspend fun resolve(videoId: String): String = withContext(Dispatchers.IO) {
         require(videoId.matches(Regex("[A-Za-z0-9_-]{11}"))) { "Invalid YouTube video ID" }
+        val now = System.currentTimeMillis()
+        streamCache[videoId]?.takeIf { now - it.savedAt < cacheTtlMs }?.let { return@withContext it.url }
         initialize()
         val info = StreamInfo.getInfo("https://www.youtube.com/watch?v=$videoId")
         val audio = info.audioStreams
             .filter { it.isUrl && it.content.startsWith("https://") }
             .maxByOrNull { it.averageBitrate }
             ?: throw IOException("NewPipe found no direct audio-only stream for this video")
-        audio.content
+        audio.content.also { streamCache[videoId] = CachedStream(it, now) }
     }
 }
