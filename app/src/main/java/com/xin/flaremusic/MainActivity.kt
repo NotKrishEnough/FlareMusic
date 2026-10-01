@@ -321,7 +321,6 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
-            }
         }
     }) { padding ->
         AnimatedContent(
