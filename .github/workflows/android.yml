@@ -6,6 +6,10 @@ on:
     branches: [main]
   workflow_dispatch:
 
+concurrency:
+  group: flaremusic-android-build
+  cancel-in-progress: false
+
 permissions:
   contents: read
 
