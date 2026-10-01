@@ -335,7 +335,7 @@ class MainActivity : ComponentActivity() {
             }
         ) { page ->
             when(page) {
-                "Home" -> HomeScreen(tracks.size, loading, error) { selectTab("Library") }
+                "Home" -> HomeScreen(tracks.size, loading, error, Violet) { selectTab("Library") }
                 "Search" -> SearchScreen(query, { query = it }, tracks.filter { it.title.contains(query, true) || it.artist.contains(query, true) }, ::play, onlineResults, searching, ::searchOnline, ::playOnline, error)
                 "Library" -> LibraryScreen(tracks, loading, ::play, { selectTab("Search") }, { tracks = emptyList(); loading = true })
                 else -> SettingsScreen(amoled, onAmoledChange, googleStatus, youtubePlaylists, playlistLoading, playlistError, onConnectGoogle, onSyncPlaylists)
@@ -452,11 +452,11 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable private fun HomeScreen(count: Int, loading: Boolean, error: String, openLibrary: () -> Unit) {
+@Composable private fun HomeScreen(count: Int, loading: Boolean, error: String, accent: Color, openLibrary: () -> Unit) {
     Column(Modifier.fillMaxSize().background(Color(0xFF0B0A10)).verticalScroll(rememberScrollState()).padding(horizontal = 22.dp)) {
         Row(Modifier.fillMaxWidth().padding(top = 22.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("YOUR SOUND, YOUR SPACE", color = Color(0xFFFF9679), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp)
+                Text("YOUR SOUND, YOUR SPACE", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp)
                 Text("Good music.\nGood moments.", color = Color.White, fontSize = 34.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp, modifier = Modifier.padding(top = 9.dp))
             }
             Box(Modifier.size(48.dp).clip(RoundedCornerShape(17.dp)).background(Color(0xFF211722)), contentAlignment = Alignment.Center) {
@@ -466,10 +466,10 @@ class MainActivity : ComponentActivity() {
         Spacer(Modifier.height(24.dp))
         Box(Modifier.fillMaxWidth().height(224.dp).clip(RoundedCornerShape(28.dp)).background(Brush.linearGradient(listOf(Color(0xFF8C392D), Color(0xFF54263D), Color(0xFF242039)))).clickable { openLibrary() }) {
             Box(Modifier.align(Alignment.TopEnd).padding(16.dp).size(140.dp).clip(RoundedCornerShape(70.dp)).background(Color.White.copy(alpha = .07f)), contentAlignment = Alignment.Center) {
-                Box(Modifier.size(104.dp).clip(RoundedCornerShape(52.dp)).background(Color.White.copy(alpha = .06f)), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.GraphicEq, null, tint = Color(0xFFFFB39B), modifier = Modifier.size(58.dp)) }
+                Box(Modifier.size(104.dp).clip(RoundedCornerShape(52.dp)).background(Color.White.copy(alpha = .06f)), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.GraphicEq, null, tint = accent.copy(alpha = .72f), modifier = Modifier.size(58.dp)) }
             }
             Column(Modifier.align(Alignment.BottomStart).padding(22.dp)) {
-                Text("MADE FOR THE MOMENT", color = Color(0xFFFFC0A8), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp)
+                Text("MADE FOR THE MOMENT", color = accent.copy(alpha = .82f), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp)
                 Text("Let the music\ntake over.", color = Color.White, fontSize = 28.sp, lineHeight = 31.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 7.dp))
                 Row(Modifier.padding(top = 13.dp).clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = .16f)).padding(horizontal = 13.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text("Explore library", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
@@ -483,7 +483,7 @@ class MainActivity : ComponentActivity() {
                 Text("Your library", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Bold)
                 Text(if (loading) "Finding your music…" else "$count tracks ready when you are", color = Color(0xFF9B94A1), fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
             }
-            TextButton(onClick = openLibrary) { Text("See all", color = Color(0xFFFF8B70), fontWeight = FontWeight.SemiBold) }
+            TextButton(onClick = openLibrary) { Text("See all", color = accent, fontWeight = FontWeight.SemiBold) }
         }
         Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(11.dp)) {
             listOf(Triple(Icons.Rounded.MusicNote, "Songs", "All tracks"), Triple(Icons.Rounded.Album, "Albums", "Your collection")).forEach { item ->
