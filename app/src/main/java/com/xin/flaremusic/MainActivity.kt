@@ -525,7 +525,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable private fun Artwork(source: String?, modifier: Modifier = Modifier) {
+@Composable private fun Artwork(source: String?, modifier: Modifier = Modifier, fitArtwork: Boolean = false) {
     var bitmap by remember(source) { mutableStateOf<android.graphics.Bitmap?>(null) }
     LaunchedEffect(source) {
         bitmap = withContext(Dispatchers.IO) {
@@ -533,13 +533,13 @@ class MainActivity : ComponentActivity() {
             catch (_: Exception) { null }
         }
     }
-    if (bitmap != null) Image(bitmap = bitmap!!.asImageBitmap(), contentDescription = "Album art", modifier = modifier, contentScale = androidx.compose.ui.layout.ContentScale.Crop)
+    if (bitmap != null) Image(bitmap = bitmap!!.asImageBitmap(), contentDescription = "Album art", modifier = modifier, contentScale = if (fitArtwork) androidx.compose.ui.layout.ContentScale.Fit else androidx.compose.ui.layout.ContentScale.Crop)
     else Box(modifier.background(Color(0xFF100D18)), contentAlignment = Alignment.Center) { Image(painterResource(R.drawable.ic_flare_logo), contentDescription = "FlareMusic logo", modifier = Modifier.fillMaxSize().padding(5.dp), contentScale = androidx.compose.ui.layout.ContentScale.Fit) }
 }
 
 @Composable private fun FullPlayer(track: Track, playing: Boolean, position: Long, duration: Long, onClose: () -> Unit, onPlayPause: () -> Unit, onSeek: (Long) -> Unit, onPrevious: () -> Unit, onNext: () -> Unit) {
     Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF25151F), Color(0xFF100D14), Color(0xFF09070F))))) {
-        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 24.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().displayCutoutPadding().padding(horizontal = 24.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onClose) { Icon(Icons.Rounded.KeyboardArrowDown, "Collapse player", tint = Color.White, modifier = Modifier.size(30.dp)) }
                 Spacer(Modifier.weight(1f))
@@ -552,7 +552,7 @@ class MainActivity : ComponentActivity() {
             }
             Spacer(Modifier.weight(.65f))
             Box(Modifier.fillMaxWidth().aspectRatio(1f).padding(horizontal = 8.dp).clip(RoundedCornerShape(30.dp)).background(Brush.linearGradient(listOf(Color(0xFF3A202F), Color(0xFF1A1726)))).padding(10.dp)) {
-                Artwork(track.artwork, Modifier.fillMaxSize().clip(RoundedCornerShape(23.dp)))
+                Artwork(track.artwork, Modifier.fillMaxSize().clip(RoundedCornerShape(23.dp)), fitArtwork = true)
             }
             Spacer(Modifier.weight(.65f))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
