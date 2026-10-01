@@ -83,7 +83,7 @@ object YouTubePlaylists {
                 .put("clientName", "WEB_REMIX")
                 .put("clientVersion", clientVersion)
                 .put("hl", "en").put("gl", "US")))
-            .put("browseId", "FEplaylist_aggregation").toString()
+            .put("browseId", "FEmusic_liked_playlists").toString()
         val url = okhttp3.HttpUrl.Builder().scheme("https").host("music.youtube.com")
             .addPathSegments("youtubei/v1/browse")
             .addQueryParameter("prettyPrint", "false").build()
@@ -124,11 +124,13 @@ object YouTubePlaylists {
                         val renderer = value.optJSONObject("musicTwoRowItemRenderer")
                             ?: value.optJSONObject("gridPlaylistRenderer")
                             ?: value.optJSONObject("playlistRenderer")
+                            ?: value.optJSONObject("musicResponsiveListItemRenderer")
                         if (renderer != null) {
                             val title = text(renderer.optJSONObject("title"))
                             val navigation = renderer.optJSONObject("navigationEndpoint")
                                 ?.optJSONObject("browseEndpoint")
                             val id = navigation?.optString("browseId").orEmpty()
+                                .ifBlank { navigation?.optString("playlistId").orEmpty() }
                                 .ifBlank { renderer.optString("playlistId") }
                             if (id.isNotBlank() && title.isNotBlank()) {
                                 val thumbnail = renderer.optJSONObject("thumbnail")
