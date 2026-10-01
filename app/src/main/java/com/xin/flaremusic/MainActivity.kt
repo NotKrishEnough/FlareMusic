@@ -149,8 +149,18 @@ class MainActivity : ComponentActivity() {
             val savedCookies = YouTubeSessionStore.read(this@MainActivity)
             val valid = !savedCookies.isNullOrBlank() && YouTubeSessionVerifier.verify(savedCookies)
             googleStatus = if (valid) "Connected to YouTube Music" else "Not connected"
-            if (!valid) YouTubeSessionStore.clear(this@MainActivity)
-            playlistError = if (valid) "" else "Your YouTube Music session needs to be connected again."
+            if (valid) {
+                try {
+                    youtubePlaylists = YouTubePlaylists.fetchFromMusicSession(savedCookies!!)
+                    playlistError = if (youtubePlaylists.isEmpty()) "No playlists found in your YouTube Music library." else ""
+                } catch (e: Exception) {
+                    playlistError = e.message ?: "Couldn't load YouTube Music playlists."
+                }
+            } else {
+                YouTubeSessionStore.clear(this@MainActivity)
+                youtubePlaylists = emptyList()
+                playlistError = "Your YouTube Music session needs to be connected again."
+            }
             playlistLoading = false
         }
     }
@@ -342,7 +352,7 @@ class MainActivity : ComponentActivity() {
             when(page) {
                 "Home" -> HomeScreen(tracks.size, loading, error, Violet) { selectTab("Library") }
                 "Search" -> SearchScreen(query, { query = it }, tracks.filter { it.title.contains(query, true) || it.artist.contains(query, true) }, ::play, onlineResults, searching, ::searchOnline, ::playOnline, error)
-                "Library" -> LibraryScreen(tracks, loading, ::play, { selectTab("Search") }, { tracks = emptyList(); loading = true })
+                "Library" -> LibraryScreen(tracks, loading, youtubePlaylists, googleStatus, playlistLoading, playlistError, ::play, { selectTab("Search") }, { tracks = emptyList(); loading = true }, ::syncYouTubePlaylists, ::connectGoogle)
                 else -> SettingsScreen(amoled, onAmoledChange, googleStatus, youtubePlaylists, playlistLoading, playlistError, onConnectGoogle, onSyncPlaylists, onDisconnectYouTube)
             }
         }
@@ -560,14 +570,33 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable private fun LibraryScreen(tracks: List<Track>, loading: Boolean, play: (Track) -> Unit, search: () -> Unit, refresh: () -> Unit) {
+@Composable private fun LibraryScreen(tracks: List<Track>, loading: Boolean, youtubePlaylists: List<YouTubePlaylist>, googleStatus: String, playlistLoading: Boolean, playlistError: String, play: (Track) -> Unit, search: () -> Unit, refresh: () -> Unit, refreshPlaylists: () -> Unit, connectYouTube: () -> Unit) {
     Column(Modifier.fillMaxSize().background(Color(0xFF0B0D12)).padding(horizontal = 18.dp)) {
         Row(Modifier.fillMaxWidth().padding(top = 22.dp, bottom = 18.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) { Text("Your library", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp, color = Color.White); Text(tracks.size.toString() + " songs on this device", color = Color(0xFFA6ADBC), fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp)) }
             IconButton(onClick = refresh) { Icon(Icons.Rounded.Refresh, "Refresh", tint = Violet) }
             IconButton(onClick = search) { Icon(Icons.Rounded.Search, "Search", tint = Violet) }
         }
-        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Violet, trackColor = Color(0xFF292E39))
+        Text("YOUTUBE MUSIC PLAYLISTS", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp, modifier = Modifier.padding(top = 8.dp, bottom = 9.dp))
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text(if (googleStatus.startsWith("Connected")) "Your online library" else "Connect your account to see playlists", color = Color(0xFFA6ADBC), fontSize = 12.sp, modifier = Modifier.weight(1f))
+            TextButton(onClick = if (googleStatus.startsWith("Connected")) refreshPlaylists else connectYouTube, enabled = !playlistLoading) {
+                Text(if (playlistLoading) "Loading…" else if (googleStatus.startsWith("Connected")) "Refresh" else "Connect", color = Mint)
+            }
+        }
+        if (playlistError.isNotBlank()) Text(playlistError, color = Color(0xFFFF8A80), fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
+        if (youtubePlaylists.isNotEmpty()) {
+            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 14.dp)) {
+                items(youtubePlaylists, key = { it.id }) { playlist ->
+                    Column(Modifier.width(142.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF171B24)).padding(9.dp)) {
+                        Artwork(playlist.thumbnail, Modifier.fillMaxWidth().height(112.dp).clip(RoundedCornerShape(11.dp)))
+                        Text(playlist.title, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
+                        Text(if (playlist.itemCount > 0) "${playlist.itemCount} tracks" else playlist.description, color = Color(0xFF9298A8), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+            }
+        }
+        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Violet, trackColor = Color(0xFF292D39))
         if (tracks.isEmpty() && !loading) Box(Modifier.fillMaxWidth().height(180.dp), contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Rounded.LibraryMusic, null, tint = Color(0xFF555D6D), modifier = Modifier.size(54.dp)); Text("No local songs yet", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(top = 12.dp)); Text("Add audio to your device, then refresh.", color = Color(0xFF9298A8), fontSize = 13.sp, modifier = Modifier.padding(top = 5.dp)) } }
         LazyColumn(contentPadding = PaddingValues(bottom = 18.dp)) { items(tracks, key = { it.id }) { TrackRow(it, onClick = { play(it) }) } }
     }
