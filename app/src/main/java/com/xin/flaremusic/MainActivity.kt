@@ -100,6 +100,12 @@ class MainActivity : ComponentActivity() {
                     if (valid) {
                         YouTubeSessionStore.save(this@MainActivity, cookieHeader)
                         googleStatus = "Connected to YouTube Music"
+                        try {
+                            youtubePlaylists = YouTubePlaylists.fetchFromMusicSession(cookieHeader)
+                            playlistError = if (youtubePlaylists.isEmpty()) "No playlists found in your YouTube Music library." else ""
+                        } catch (e: Exception) {
+                            playlistError = e.message ?: "Couldn't load YouTube Music playlists."
+                        }
                     } else {
                         googleStatus = "Not connected"
                         playlistError = "Could not verify the YouTube Music session. Try signing in again."
