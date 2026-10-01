@@ -260,12 +260,12 @@ class MainActivity : ComponentActivity() {
     var searching by remember { mutableStateOf(false) }
     var position by remember { mutableLongStateOf(0L) }
     var totalDuration by remember { mutableLongStateOf(0L) }
+    val context = LocalContext.current
     var favouriteIds by remember {
         mutableStateOf(context.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE)
             .getStringSet("favourite_ids", emptySet())?.toSet() ?: emptySet())
     }
     val innerTube = remember { InnerTubeClient() }
-    val context = LocalContext.current
     val scope = rememberCoroutineScope()
     LaunchedEffect(player) { while (true) { position = player.currentPosition.coerceAtLeast(0L); totalDuration = player.duration.takeIf { it > 0 } ?: 0L; delay(500) } }
     LaunchedEffect(Unit) {
