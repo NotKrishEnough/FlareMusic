@@ -35,6 +35,11 @@ jobs:
           distribution: temurin
           java-version: '17'
 
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
       - name: Restore stable debug signing key
         uses: actions/cache@v4
         with:
@@ -53,8 +58,7 @@ jobs:
 
       - name: Build debug APK
         run: |
-          chmod +x ./gradlew
-          ./gradlew --no-daemon assembleDebug
+          gradle --no-daemon assembleDebug
 
       - name: Verify and prepare APK
         env:
