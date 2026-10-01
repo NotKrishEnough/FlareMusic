@@ -60,6 +60,9 @@ import androidx.media3.datasource.DefaultHttpDataSource
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import java.net.URL
 
@@ -323,6 +326,58 @@ class MainActivity : ComponentActivity() {
             } finally { selectedPlaylistLoading = false }
         }
     }
+    fun playYouTubePlaylistQueue(startItem: YouTubePlaylistTrack) {
+        scope.launch {
+            error = ""
+            loading = true
+            try {
+                val semaphore = kotlinx.coroutines.sync.Semaphore(permits = 3)
+                val resolved = kotlinx.coroutines.coroutineScope {
+                    selectedPlaylistTracks.map { item ->
+                        kotlinx.coroutines.async {
+                            semaphore.withPermit {
+                                runCatching { item to innerTube.resolveProgressiveUrl(item.videoId) }.getOrNull()
+                            }
+                        }
+                    }.awaitAll().filterNotNull()
+                }
+                if (resolved.isEmpty()) {
+                    error = "Couldn't prepare any tracks from this playlist."
+                    return@launch
+                }
+                val mediaItems = resolved.map { (item, url) ->
+                    val mediaId = "yt:${item.videoId}"
+                    val metadata = MediaMetadata.Builder()
+                        .setTitle(item.title)
+                        .setArtist(item.artist.ifBlank { "YouTube" })
+                        .setAlbumTitle(selectedPlaylist?.title ?: "YouTube playlist")
+                        .setArtworkUri(Uri.parse(item.thumbnail.ifBlank { "https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg" }))
+                        .build()
+                    MediaItem.Builder().setMediaId(mediaId).setUri(url).setMediaMetadata(metadata).build()
+                }
+                val queue = resolved.associate { (item, _) ->
+                    "yt:${item.videoId}" to Track(
+                        -kotlin.math.abs(item.videoId.hashCode().toLong()).coerceAtLeast(1L),
+                        item.title, item.artist.ifBlank { "YouTube" },
+                        selectedPlaylist?.title ?: "YouTube playlist",
+                        Uri.parse("https://www.youtube.com/watch?v=${item.videoId}"),
+                        0L, item.thumbnail.ifBlank { "https://i.ytimg.com/vi/${item.videoId}/hqdefault.jpg" }
+                    )
+                }
+                val startIndex = resolved.indexOfFirst { it.first.videoId == startItem.videoId }.coerceAtLeast(0)
+                queueTracks = queue
+                current = queue[mediaItems[startIndex].mediaId]
+                player.setMediaItems(mediaItems, startIndex, 0L)
+                player.prepare()
+                player.play()
+            } catch (e: Exception) {
+                error = e.message ?: "Couldn't start playlist playback."
+            } finally {
+                loading = false
+            }
+        }
+    }
+
     fun searchOnline(term: String) {
         scope.launch {
             searching = true; error = ""
@@ -389,7 +444,7 @@ class MainActivity : ComponentActivity() {
             when(page) {
                 "Home" -> HomeScreen(tracks.size, loading, error, Violet) { selectTab("Library") }
                 "Search" -> SearchScreen(query, { query = it }, tracks.filter { it.title.contains(query, true) || it.artist.contains(query, true) }, ::play, onlineResults, searching, ::searchOnline, ::playOnline, error)
-                "Library" -> LibraryScreen(tracks, loading, youtubePlaylists, googleStatus, playlistLoading, playlistError, selectedPlaylist, selectedPlaylistTracks, selectedPlaylistLoading, selectedPlaylistError, ::openYouTubePlaylist, { selectedPlaylist = null; selectedPlaylistTracks = emptyList() }, { item -> playOnline(OnlineTrack(item.videoId, item.title, item.artist, "", item.thumbnail)) }, ::play, { selectTab("Search") }, { tracks = emptyList(); loading = true }, onSyncPlaylists, onConnectGoogle)
+                "Library" -> LibraryScreen(tracks, loading, youtubePlaylists, googleStatus, playlistLoading, playlistError, selectedPlaylist, selectedPlaylistTracks, selectedPlaylistLoading, selectedPlaylistError, ::openYouTubePlaylist, { selectedPlaylist = null; selectedPlaylistTracks = emptyList() }, { item -> playYouTubePlaylistQueue(item) }, ::play, { selectTab("Search") }, { tracks = emptyList(); loading = true }, onSyncPlaylists, onConnectGoogle)
                 else -> SettingsScreen(amoled, onAmoledChange, googleStatus, youtubePlaylists, playlistLoading, playlistError, onConnectGoogle, onSyncPlaylists, onDisconnectYouTube)
             }
         }
