@@ -28,6 +28,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -358,7 +359,7 @@ class MainActivity : ComponentActivity() {
             when(page) {
                 "Home" -> HomeScreen(tracks.size, loading, error, Violet) { selectTab("Library") }
                 "Search" -> SearchScreen(query, { query = it }, tracks.filter { it.title.contains(query, true) || it.artist.contains(query, true) }, ::play, onlineResults, searching, ::searchOnline, ::playOnline, error)
-                "Library" -> LibraryScreen(tracks, loading, youtubePlaylists, googleStatus, playlistLoading, playlistError, ::play, { selectTab("Search") }, { tracks = emptyList(); loading = true }, ::syncYouTubePlaylists, ::connectGoogle)
+                "Library" -> LibraryScreen(tracks, loading, youtubePlaylists, googleStatus, playlistLoading, playlistError, ::play, { selectTab("Search") }, { tracks = emptyList(); loading = true }, onSyncPlaylists, onConnectGoogle)
                 else -> SettingsScreen(amoled, onAmoledChange, googleStatus, youtubePlaylists, playlistLoading, playlistError, onConnectGoogle, onSyncPlaylists, onDisconnectYouTube)
             }
         }
