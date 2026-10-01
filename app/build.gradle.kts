@@ -6,7 +6,15 @@ plugins {
 android {
     namespace = "com.xin.flaremusic"
     compileSdk = 35
-    defaultConfig { applicationId = "com.xin.flaremusic"; minSdk = 26; targetSdk = 35; versionCode = 1; versionName = "0.1.0" }
+    defaultConfig {
+        applicationId = "com.xin.flaremusic"
+        minSdk = 26
+        targetSdk = 35
+        // GitHub Actions run numbers increase on every build, allowing Android to
+        // recognize each downloaded APK as an upgrade over the previous one.
+        versionCode = System.getenv("GITHUB_RUN_NUMBER")?.toIntOrNull() ?: 1
+        versionName = "0.1.${System.getenv("GITHUB_RUN_NUMBER") ?: "local"}"
+    }
     buildFeatures { compose = true }
     compileOptions { isCoreLibraryDesugaringEnabled = true; sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }
