@@ -292,13 +292,15 @@ class MainActivity : ComponentActivity() {
     fun playOnline(track: OnlineTrack) {
         scope.launch {
             error = ""
+            loading = true
             try {
-                loading = true
                 val url = innerTube.resolveProgressiveUrl(track.videoId)
-                if (url == null) { error = "This video has no playable audio stream. Try another result."; loading = false; return@launch }
-                play(Track(-track.videoId.hashCode().toLong().let { kotlin.math.abs(it) }, track.title, track.author, "YouTube", Uri.parse(url), 0L, track.thumbnail))
+                play(Track(-kotlin.math.abs(track.videoId.hashCode().toLong()).coerceAtLeast(1L), track.title, track.author, "YouTube", Uri.parse(url), 0L, track.thumbnail))
+            } catch (e: Exception) {
+                error = e.message ?: "Could not load stream"
+            } finally {
                 loading = false
-            } catch (e: Exception) { error = e.message ?: "Could not load stream" }
+            }
         }
     }
     fun openYouTubePlaylist(playlist: YouTubePlaylist) {
@@ -396,8 +398,26 @@ class MainActivity : ComponentActivity() {
     fun searchOnline(term: String) {
         scope.launch {
             searching = true; error = ""
-            try { onlineResults = innerTube.search(term) } catch (e: Exception) { error = e.message ?: "Online search failed" }
-            searching = false
+            try {
+                onlineResults = innerTube.search(term)
+                // Warm a few likely choices while the user is browsing, so tapping Play
+                // does not have to wait for YouTube stream extraction.
+                val warmup = onlineResults.take(5)
+                scope.launch {
+                    val semaphore = kotlinx.coroutines.sync.Semaphore(permits = 2)
+                    warmup.map { result ->
+                        async {
+                            semaphore.withPermit {
+                                runCatching { innerTube.resolveProgressiveUrl(result.videoId) }
+                            }
+                        }
+                    }.awaitAll()
+                }
+            } catch (e: Exception) {
+                error = e.message ?: "Online search failed"
+            } finally {
+                searching = false
+            }
         }
     }
     BackHandler(enabled = playerExpanded) { playerExpanded = false }
