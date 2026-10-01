@@ -48,6 +48,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.android.gms.auth.api.identity.AuthorizationRequest
 import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.common.api.Scope
@@ -208,7 +209,9 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable private fun FlareApp(player: Player, scan: suspend () -> List<Track>, amoled: Boolean, googleStatus: String, youtubePlaylists: List<YouTubePlaylist>, playlistLoading: Boolean, playlistError: String, onConnectGoogle: () -> Unit, onSyncPlaylists: () -> Unit, onAmoledChange: (Boolean) -> Unit) {
-    var tab by remember { mutableStateOf("Home") }
+    val uiViewModel: FlareUiViewModel = viewModel()
+    val tab = uiViewModel.selectedTab
+    val selectTab: (String) -> Unit = uiViewModel::selectTab
     var tracks by remember { mutableStateOf(emptyList<Track>()) }
     var current by remember { mutableStateOf<Track?>(null) }
     var queueTracks by remember { mutableStateOf(emptyMap<String, Track>()) }
@@ -291,7 +294,7 @@ class MainActivity : ComponentActivity() {
                 Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(28.dp)).background((if (amoled) Color.Black else Panel).copy(alpha = 0.98f)).padding(horizontal = 10.dp, vertical = 7.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                     listOf("Home", "Search", "Library", "Settings").forEach { item ->
                         val selected = tab == item
-                        Row(Modifier.clip(RoundedCornerShape(22.dp)).background(if (selected) Violet.copy(alpha = 0.18f) else Color.Transparent).clickable { tab = item }.padding(horizontal = 15.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(Modifier.clip(RoundedCornerShape(22.dp)).background(if (selected) Violet.copy(alpha = 0.18f) else Color.Transparent).clickable { selectTab(item) }.padding(horizontal = 15.dp, vertical = 10.dp), verticalAlignment = Alignment.CenterVertically) {
                             Icon(when(item) { "Home" -> Icons.Rounded.Home; "Search" -> Icons.Rounded.Search; "Library" -> Icons.Rounded.LibraryMusic; else -> Icons.Rounded.Settings }, null, tint = if (selected) Violet else Color.LightGray)
                             if (selected) { Spacer(Modifier.width(7.dp)); Text(item, color = Violet, fontWeight = FontWeight.SemiBold, fontSize = 12.sp) }
                         }
@@ -312,9 +315,9 @@ class MainActivity : ComponentActivity() {
             }
         ) { page ->
             when(page) {
-                "Home" -> HomeScreen(tracks.size, loading, error) { tab = "Library" }
+                "Home" -> HomeScreen(tracks.size, loading, error) { selectTab("Library") }
                 "Search" -> SearchScreen(query, { query = it }, tracks.filter { it.title.contains(query, true) || it.artist.contains(query, true) }, ::play, onlineResults, searching, ::searchOnline, ::playOnline, error)
-                "Library" -> LibraryScreen(tracks, loading, ::play, { tab = "Search" }, { tracks = emptyList(); loading = true })
+                "Library" -> LibraryScreen(tracks, loading, ::play, { selectTab("Search") }, { tracks = emptyList(); loading = true })
                 else -> SettingsScreen(amoled, onAmoledChange, googleStatus, youtubePlaylists, playlistLoading, playlistError, onConnectGoogle, onSyncPlaylists)
             }
         }
