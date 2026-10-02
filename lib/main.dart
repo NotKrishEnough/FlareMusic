@@ -51,11 +51,11 @@ class MusicHome extends StatefulWidget {
 }
 
 class _MusicHomeState extends State<MusicHome> {
-  final _api = InnerTubeClient();
+  final _cookieAuth = YouTubeCookieAuth();
+  final _api = InnerTubeClient(auth: _cookieAuth);
   final _playback = PlaybackController();
   final _library = PlaylistLibrary();
   final _account = YouTubeAccountService();
-  final _cookieAuth = YouTubeCookieAuth();
   bool _syncing = false;
   List<LocalPlaylist> _playlists = [];
   final _searchController = TextEditingController();
@@ -79,7 +79,7 @@ class _MusicHomeState extends State<MusicHome> {
     _restorePlaybackState();
     _refreshLibrary();
     _restoreAccount();
-    _cookieAuth.restore();
+    _restoreYouTubeMusicSession();
     _playerStateSubscription = _playback.player.playerStateStream.listen((state) {
       if (!mounted) return;
       setState(() => _playing = state.playing);
@@ -112,6 +112,18 @@ class _MusicHomeState extends State<MusicHome> {
 
   Future<void> _restoreAccount() async {
     try { await _account.restoreSession(); } catch (_) { /* User can sign in again from Library. */ }
+  }
+
+  Future<void> _restoreYouTubeMusicSession() async {
+    try {
+      await _cookieAuth.restore();
+      if (_cookieAuth.isLoggedIn) {
+        await _cookieAuth.verifyCurrent();
+      }
+      if (mounted) setState(() {});
+    } catch (e) {
+      debugPrint('YouTube Music session restore failed: $e');
+    }
   }
 
   Future<void> _refreshLibrary() async { final lists = await _library.all(); if (mounted) setState(() => _playlists = lists); }
@@ -165,9 +177,24 @@ class _MusicHomeState extends State<MusicHome> {
   Future<void> _accountSync() async {
     setState(() => _syncing = true);
     try {
-      if (_account.currentUser == null) await _account.signIn();
-      if (_account.currentUser == null) return;
-      final synced = await _account.syncPlaylists();
+      List<LocalPlaylist> synced;
+      if (_account.currentUser != null) {
+        synced = await _account.syncPlaylists();
+      } else if (_cookieAuth.isLoggedIn) {
+        final remote = await _api.fetchHome();
+        synced = [
+          LocalPlaylist(
+            id: 'ytm:home',
+            name: 'YouTube Music Home',
+            sourceId: 'FEmusic_home',
+            tracks: remote,
+          ),
+        ];
+      } else {
+        await _account.signIn();
+        if (_account.currentUser == null) return;
+        synced = await _account.syncPlaylists();
+      }
       await _library.replaceSynced(synced);
       await _refreshLibrary();
       if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Synced ${synced.length} YouTube playlists')));
@@ -299,7 +326,7 @@ class _MusicHomeState extends State<MusicHome> {
   Widget _accountPage() => Positioned.fill(child: SafeArea(child: ListView(padding: const EdgeInsets.fromLTRB(22, 22, 22, 150), children: [
     const Text('Your account', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800)),
     const SizedBox(height: 8),
-    Text('Connect YouTube to sync your playlists.', style: TextStyle(color: Colors.white.withValues(alpha: .6))),
+    Text(_cookieAuth.isLoggedIn ? 'YouTube Music is connected. Personalized requests use your session.' : 'Connect YouTube to sync your playlists.', style: TextStyle(color: Colors.white.withValues(alpha: .6))),
     const SizedBox(height: 28),
     Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: const Color(0xFF20242C), borderRadius: BorderRadius.circular(22)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       CircleAvatar(radius: 30, backgroundColor: const Color(0xFF8BC5FF).withValues(alpha: .18), child: const Icon(Icons.person_rounded, size: 32, color: Color(0xFF8BC5FF))),
@@ -311,7 +338,7 @@ class _MusicHomeState extends State<MusicHome> {
       SizedBox(width: double.infinity, child: FilledButton.icon(
         onPressed: _syncing ? null : _accountSync,
         icon: _syncing ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(_account.currentUser == null ? Icons.login_rounded : Icons.sync_rounded),
-        label: Text(_syncing ? 'Syncing...' : _account.currentUser == null ? 'Sign in with Google' : 'Sync YouTube playlists'),
+        label: Text(_syncing ? 'Syncing...' : _account.currentUser == null && !_cookieAuth.isLoggedIn ? 'Sign in with Google' : 'Sync YouTube playlists'),
       )),
       const SizedBox(height: 10),
       SizedBox(width: double.infinity, child: OutlinedButton.icon(
