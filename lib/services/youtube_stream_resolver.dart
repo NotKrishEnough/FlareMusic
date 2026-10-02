@@ -1,32 +1,45 @@
+import 'dart:io';
+import 'package:flutter/services.dart';
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
-/// Resolves public YouTube audio streams using youtube_explode_dart.
-/// This depends on an unofficial extractor and may stop working if YouTube changes.
+/// Resolves YouTube audio streams. On Android the app first uses the native
+/// NewPipe extractor, which is better suited to current YouTube stream changes.
+/// youtube_explode_dart remains as a cross-platform fallback.
 class YouTubeStreamResolver {
   final YoutubeExplode _youtube = YoutubeExplode();
+  static const _native = MethodChannel('flare_music/native_resolver');
 
   Future<String> resolve(String videoId) async {
-    Object? lastError;
-    // Android VR HTTPS streams are currently subject to YouTube's GVS
-    // PO-token checks, which can make otherwise valid URLs return 403.
-    // Prefer clients that still expose directly playable HTTPS audio.
-    final primaryClients = <YoutubeApiClient>[
-      YoutubeApiClient.ios,
-      YoutubeApiClient.safari,
-      YoutubeApiClient.tv,
-    ];
-    final fallbackClients = <YoutubeApiClient>[
-      YoutubeApiClient.mediaConnect,
-      YoutubeApiClient.androidSdkless,
+    Object? nativeError;
+    if (Platform.isAndroid) {
+      try {
+        final url = await _native
+            .invokeMethod<String>('resolve', <String, dynamic>{'videoId': videoId})
+            .timeout(const Duration(seconds: 30));
+        if (url != null && url.trim().isNotEmpty) {
+          return url;
+        }
+        nativeError = StateError('Native extractor returned an empty stream URL.');
+      } catch (e) {
+        nativeError = e;
+      }
+    }
+
+    Object? lastError = nativeError;
+    final clients = <List<YoutubeApiClient>>[
+      <YoutubeApiClient>[
+        YoutubeApiClient.ios,
+        YoutubeApiClient.safari,
+        YoutubeApiClient.tv,
+      ],
+      <YoutubeApiClient>[YoutubeApiClient.mediaConnect],
+      <YoutubeApiClient>[YoutubeApiClient.androidSdkless],
     ];
 
-    for (final clients in <List<YoutubeApiClient>>[
-      primaryClients,
-      ...fallbackClients.map((client) => <YoutubeApiClient>[client]),
-    ]) {
+    for (final ytClients in clients) {
       try {
         final manifest = await _youtube.videos.streamsClient
-            .getManifest(videoId, ytClients: clients, requireWatchPage: false)
+            .getManifest(videoId, ytClients: ytClients, requireWatchPage: false)
             .timeout(const Duration(seconds: 25));
         final candidates = manifest.audioOnly
             .where((stream) => stream.url.toString().startsWith('https://'))
@@ -43,7 +56,10 @@ class YouTubeStreamResolver {
       }
     }
 
-    throw Exception('Could not resolve a playable YouTube audio stream. ${lastError ?? ''}');
+    throw Exception(
+      'Could not resolve a playable YouTube audio stream. '
+      '${lastError ?? 'Unknown extractor error.'}',
+    );
   }
 
   Future<void> close() async => _youtube.close();
