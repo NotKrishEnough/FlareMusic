@@ -537,7 +537,7 @@ class MainActivity : ComponentActivity() {
                         Column(
                             Modifier.weight(1f)
                                 .clip(RoundedCornerShape(24.dp))
-                                .background(if (selected) Violet.copy(alpha = 0.20f) else Color.Transparent)
+                                .background(if (selected) Violet else Color.Transparent)
                                 .clickable { selectTab(item) }
                                 .padding(vertical = 8.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -546,10 +546,10 @@ class MainActivity : ComponentActivity() {
                             Icon(
                                 when(item) { "Home" -> Icons.Rounded.Home; "Search" -> Icons.Rounded.Search; "Library" -> Icons.Rounded.LibraryMusic; else -> Icons.Rounded.Settings },
                                 contentDescription = item,
-                                tint = if (selected) Violet else MaterialTheme.colorScheme.onSurfaceVariant,
+                                tint = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(21.dp)
                             )
-                            Text(item, color = if (selected) Violet else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp), maxLines = 1)
+                            Text(item, color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp), maxLines = 1)
                         }
                     }
                 }
@@ -922,64 +922,52 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable private fun HomeScreen(count: Int, loading: Boolean, error: String, accent: Color, openLibrary: () -> Unit) {
-    val colors = MaterialTheme.colorScheme
-    val homeSurface = colors.surface
-    val homeCard = colors.surfaceVariant.copy(alpha = 0.72f)
-    Column(Modifier.fillMaxSize().background(colors.background).verticalScroll(rememberScrollState()).padding(horizontal = 22.dp)) {
-        Row(Modifier.fillMaxWidth().padding(top = 22.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("FLAREMUSIC  /  LISTEN YOUR WAY", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp)
-                Text("Good music.\nGood moments.", color = colors.onBackground, fontSize = 34.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp, modifier = Modifier.padding(top = 9.dp))
-            }
-            Box(Modifier.size(48.dp).clip(RoundedCornerShape(17.dp)).background(colors.primaryContainer.copy(alpha = 0.75f)), contentAlignment = Alignment.Center) {
-                Image(painterResource(R.drawable.ic_flare_logo), contentDescription = "FlareMusic", modifier = Modifier.size(34.dp))
-            }
-        }
-        Spacer(Modifier.height(24.dp))
-        Box(Modifier.fillMaxWidth().height(224.dp).clip(RoundedCornerShape(30.dp)).background(Brush.linearGradient(listOf(Color(0xFFFF744F), Color(0xFFB65D82), Color(0xFF6859B8)))).clickable { openLibrary() }) {
-            Box(Modifier.align(Alignment.TopEnd).padding(16.dp).size(140.dp).clip(RoundedCornerShape(70.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = .07f)), contentAlignment = Alignment.Center) {
-                Box(Modifier.size(104.dp).clip(RoundedCornerShape(52.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = .06f)), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.GraphicEq, null, tint = accent.copy(alpha = .72f), modifier = Modifier.size(58.dp)) }
-            }
-            Column(Modifier.align(Alignment.BottomStart).padding(22.dp)) {
-                Text("YOUR NEXT REPEAT", color = MaterialTheme.colorScheme.onSurface.copy(alpha = .78f), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp)
-                Text("Let the music\ntake over.", color = MaterialTheme.colorScheme.onSurface, fontSize = 28.sp, lineHeight = 31.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 7.dp))
-                Row(Modifier.padding(top = 13.dp).clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = .16f)).padding(horizontal = 13.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Explore library", color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                    Spacer(Modifier.width(7.dp)); Icon(Icons.Rounded.ArrowForward, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(15.dp))
-                }
-            }
-        }
-        Spacer(Modifier.height(27.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) {
-                Text("Your library", color = colors.onBackground, fontSize = 23.sp, fontWeight = FontWeight.Bold)
-                Text(if (loading) "Finding your music…" else "$count tracks ready when you are", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
-            }
-            TextButton(onClick = openLibrary) { Text("See all", color = accent, fontWeight = FontWeight.SemiBold) }
-        }
-        Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(11.dp)) {
-            listOf(Triple(Icons.Rounded.MusicNote, "Songs", "All tracks"), Triple(Icons.Rounded.Album, "Albums", "Your collection")).forEach { item ->
-                Column(Modifier.weight(1f).clip(RoundedCornerShape(20.dp)).background(homeCard).clickable { openLibrary() }.padding(16.dp)) {
-                    Icon(item.first, null, tint = colors.primary, modifier = Modifier.size(24.dp))
-                    Text(item.second, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.padding(top = 17.dp))
-                    Text(item.third, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
-                }
-            }
-        }
-        if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(top = 14.dp))
-        Spacer(Modifier.height(18.dp))
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(homeCard).clickable { openLibrary() }.padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(colors.primaryContainer), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.LibraryMusic, null, tint = colors.primary) }
-            Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                Text("Pick up where you left off", color = colors.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                Text("Browse and play something you love", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
-            }
-            Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
-        }
-        Spacer(Modifier.height(12.dp))
-    }
+ val colors=MaterialTheme.colorScheme
+ Column(Modifier.fillMaxSize().background(colors.background).verticalScroll(rememberScrollState()).padding(horizontal=22.dp)) {
+  Row(Modifier.fillMaxWidth().padding(top=25.dp),verticalAlignment=Alignment.CenterVertically) {
+   Column(Modifier.weight(1f)) {
+    Text("GOOD EVENING",color=colors.onSurfaceVariant,fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=2.sp)
+    Text("Feel the\nfrequency.",color=colors.onBackground,fontSize=39.sp,lineHeight=42.sp,fontWeight=FontWeight.ExtraBold,letterSpacing=(-1.8).sp,modifier=Modifier.padding(top=8.dp))
+   }
+   Box(Modifier.size(54.dp).clip(RoundedCornerShape(19.dp)).background(accent.copy(alpha=.13f)),contentAlignment=Alignment.Center) { Image(painterResource(R.drawable.ic_flare_logo),contentDescription="FlareMusic",modifier=Modifier.size(38.dp)) }
+  }
+  Spacer(Modifier.height(25.dp))
+  Box(Modifier.fillMaxWidth().height(238.dp).clip(RoundedCornerShape(30.dp)).background(Brush.linearGradient(listOf(Color(0xFFFF7658),Color(0xFFB65C91),Color(0xFF6157B9)))).clickable{openLibrary()}) {
+   Box(Modifier.align(Alignment.TopEnd).padding(18.dp).size(150.dp).clip(RoundedCornerShape(75.dp)).background(Color.White.copy(alpha=.09f)),contentAlignment=Alignment.Center) { Icon(Icons.Rounded.GraphicEq,null,tint=Color.White.copy(alpha=.9f),modifier=Modifier.size(78.dp)) }
+   Column(Modifier.align(Alignment.BottomStart).padding(22.dp)) {
+    Text("YOUR MUSIC. YOUR MOMENT.",color=Color.White.copy(alpha=.82f),fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=1.7.sp)
+    Text("Press play.\nDisappear.",color=Color.White,fontSize=31.sp,lineHeight=34.sp,fontWeight=FontWeight.ExtraBold,modifier=Modifier.padding(top=8.dp))
+    Row(Modifier.padding(top=13.dp).clip(RoundedCornerShape(30.dp)).background(Color.White.copy(alpha=.18f)).padding(horizontal=14.dp,vertical=9.dp),verticalAlignment=Alignment.CenterVertically) { Text("Open your music",color=Color.White,fontSize=12.sp,fontWeight=FontWeight.Bold); Spacer(Modifier.width(8.dp)); Icon(Icons.Rounded.ArrowOutward,null,tint=Color.White,modifier=Modifier.size(15.dp)) }
+   }
+  }
+  Spacer(Modifier.height(27.dp))
+  Row(verticalAlignment=Alignment.CenterVertically) {
+   Column(Modifier.weight(1f)) { Text("Your space",color=colors.onBackground,fontSize=23.sp,fontWeight=FontWeight.Bold); Text(if(loading)"Scanning your device…" else "A library made for you",color=colors.onSurfaceVariant,fontSize=13.sp,modifier=Modifier.padding(top=3.dp)) }
+   TextButton(onClick=openLibrary){Text("View all ↗",color=accent,fontWeight=FontWeight.Bold)}
+  }
+  Spacer(Modifier.height(12.dp))
+  Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+   Column(Modifier.weight(1f).clip(RoundedCornerShape(22.dp)).background(colors.surfaceVariant).clickable{openLibrary()}.padding(17.dp)) {
+    Box(Modifier.size(40.dp).clip(RoundedCornerShape(14.dp)).background(accent.copy(alpha=.15f)),contentAlignment=Alignment.Center){Icon(Icons.Rounded.MusicNote,null,tint=accent)}
+    Text(count.toString(),color=colors.onSurface,fontSize=27.sp,fontWeight=FontWeight.ExtraBold,modifier=Modifier.padding(top=16.dp))
+    Text("Songs on device",color=colors.onSurfaceVariant,fontSize=12.sp)
+   }
+   Column(Modifier.weight(1f).clip(RoundedCornerShape(22.dp)).background(colors.surfaceVariant).clickable{openLibrary()}.padding(17.dp)) {
+    Box(Modifier.size(40.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFF9D8AF3).copy(alpha=.16f)),contentAlignment=Alignment.Center){Icon(Icons.Rounded.Headphones,null,tint=Color(0xFF9D8AF3))}
+    Text(if(loading)"…" else "Ready",color=colors.onSurface,fontSize=27.sp,fontWeight=FontWeight.ExtraBold,modifier=Modifier.padding(top=16.dp))
+    Text("For your next replay",color=colors.onSurfaceVariant,fontSize=12.sp)
+   }
+  }
+  if(error.isNotBlank()) Text(error,color=colors.error,fontSize=12.sp,modifier=Modifier.padding(top=14.dp))
+  Spacer(Modifier.height(22.dp))
+  Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(colors.surface).clickable{openLibrary()}.padding(16.dp),verticalAlignment=Alignment.CenterVertically) {
+   Box(Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(accent.copy(alpha=.13f)),contentAlignment=Alignment.Center){Icon(Icons.Rounded.Explore,null,tint=accent,modifier=Modifier.size(25.dp))}
+   Column(Modifier.weight(1f).padding(start=13.dp)){Text("Explore your collection",color=colors.onSurface,fontWeight=FontWeight.Bold,fontSize=14.sp);Text("Find a track for right now",color=colors.onSurfaceVariant,fontSize=12.sp,modifier=Modifier.padding(top=3.dp))}
+   Icon(Icons.Rounded.ChevronRight,null,tint=colors.onSurfaceVariant)
+  }
+  Spacer(Modifier.height(18.dp))
+ }
 }
-
 @Composable private fun SearchScreen(query: String, onQuery: (String) -> Unit, results: List<Track>, play: (Track) -> Unit, online: List<OnlineTrack>, searching: Boolean, searchOnline: (String) -> Unit, playOnline: (OnlineTrack) -> Unit, addOnline: (OnlineTrack) -> Unit, error: String) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(horizontal = 18.dp)) {
         Text("Discover", fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 18.dp))
