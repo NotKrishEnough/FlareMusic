@@ -7,6 +7,8 @@ import 'services/inner_tube_client.dart';
 import 'services/playback_controller.dart';
 import 'services/playlist_library.dart';
 import 'services/youtube_account_service.dart';
+import 'services/youtube_cookie_auth.dart';
+import 'services/youtube_login_page.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -53,6 +55,7 @@ class _MusicHomeState extends State<MusicHome> {
   final _playback = PlaybackController();
   final _library = PlaylistLibrary();
   final _account = YouTubeAccountService();
+  final _cookieAuth = YouTubeCookieAuth();
   bool _syncing = false;
   List<LocalPlaylist> _playlists = [];
   final _searchController = TextEditingController();
@@ -76,6 +79,7 @@ class _MusicHomeState extends State<MusicHome> {
     _restorePlaybackState();
     _refreshLibrary();
     _restoreAccount();
+    _cookieAuth.restore();
     _playerStateSubscription = _playback.player.playerStateStream.listen((state) {
       if (!mounted) return;
       setState(() => _playing = state.playing);
@@ -111,6 +115,52 @@ class _MusicHomeState extends State<MusicHome> {
   }
 
   Future<void> _refreshLibrary() async { final lists = await _library.all(); if (mounted) setState(() => _playlists = lists); }
+
+  Future<void> _youtubeMusicWebLogin() async {
+    final ok = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (_) => YouTubeLoginPage(
+          onCookies: (cookies) => _cookieAuth.loginWithCookies(cookies),
+        ),
+      ),
+    );
+    if (ok == true && mounted) setState(() {});
+  }
+
+  Future<void> _pasteYouTubeCookie() async {
+    final controller = TextEditingController();
+    final value = await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Paste YouTube Music cookies'),
+        content: TextField(
+          controller: controller,
+          maxLines: 5,
+          decoration: const InputDecoration(
+            hintText: 'SID=...; SAPISID=...; __Secure-3PSID=...',
+          ),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')),
+          FilledButton(onPressed: () => Navigator.pop(context, controller.text), child: const Text('Connect')),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (value == null || value.trim().isEmpty) return;
+    final ok = await _cookieAuth.loginWithCookies(value);
+    if (!mounted) return;
+    setState(() {});
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(ok ? 'YouTube Music connected' : 'Could not verify those cookies')),
+    );
+  }
+
+  Future<void> _logoutYouTubeMusic() async {
+    await _cookieAuth.logout();
+    if (mounted) setState(() {});
+  }
 
   Future<void> _accountSync() async {
     setState(() => _syncing = true);
@@ -263,9 +313,29 @@ class _MusicHomeState extends State<MusicHome> {
         icon: _syncing ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(_account.currentUser == null ? Icons.login_rounded : Icons.sync_rounded),
         label: Text(_syncing ? 'Syncing...' : _account.currentUser == null ? 'Sign in with Google' : 'Sync YouTube playlists'),
       )),
+      const SizedBox(height: 10),
+      SizedBox(width: double.infinity, child: OutlinedButton.icon(
+        onPressed: _youtubeMusicWebLogin,
+        icon: const Icon(Icons.language_rounded),
+        label: Text(_cookieAuth.isLoggedIn ? 'YouTube Music connected' : 'Sign in with YouTube Music'),
+      )),
+      const SizedBox(height: 8),
+      SizedBox(width: double.infinity, child: TextButton.icon(
+        onPressed: _pasteYouTubeCookie,
+        icon: const Icon(Icons.key_rounded),
+        label: const Text('Use cookie header'),
+      )),
+      if (_cookieAuth.isLoggedIn) ...[
+        const SizedBox(height: 4),
+        SizedBox(width: double.infinity, child: OutlinedButton.icon(
+          onPressed: _logoutYouTubeMusic,
+          icon: const Icon(Icons.logout_rounded),
+          label: const Text('Disconnect YouTube Music'),
+        )),
+      ],
       if (_account.currentUser != null) ...[
         const SizedBox(height: 8),
-        SizedBox(width: double.infinity, child: OutlinedButton.icon(onPressed: () async { await _account.signOut(); if (mounted) setState(() {}); }, icon: const Icon(Icons.logout_rounded), label: const Text('Sign out'))),
+        SizedBox(width: double.infinity, child: OutlinedButton.icon(onPressed: () async { await _account.signOut(); if (mounted) setState(() {}); }, icon: const Icon(Icons.logout_rounded), label: const Text('Sign out Google'))),
       ],
     ])),
     const SizedBox(height: 22),
