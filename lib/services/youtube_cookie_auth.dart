@@ -17,6 +17,13 @@ class YouTubeCookieAuth {
   String? get cookies => _cookies;
   bool get isLoggedIn => _cookies != null && _cookies!.isNotEmpty;
 
+  /// Headers for authenticated YouTube/YouTube Music InnerTube requests.
+  /// Cookie values are never logged or exposed to the UI.
+  Future<Map<String, String>> authHeaders() async {
+    if (!isLoggedIn) return const {};
+    return _authHeaders(_cookies!);
+  }
+
   Future<void> restore() async {
     _cookies = await _storage.read(key: _storageKey);
   }
