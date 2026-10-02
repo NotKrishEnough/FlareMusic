@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:just_audio/just_audio.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -30,12 +31,16 @@ class PlaybackController {
     final ids = prefs.getStringList('flare.queue.ids') ?? const [];
     final titles = prefs.getStringList('flare.queue.titles') ?? const [];
     final artists = prefs.getStringList('flare.queue.artists') ?? const [];
+    final thumbnails = prefs.getStringList('flare.queue.thumbnails') ?? const [];
+    final durations = prefs.getStringList('flare.queue.durations') ?? const [];
     queue
       ..clear()
       ..addAll(List.generate(ids.length, (i) => OnlineTrack(
         videoId: ids[i],
         title: i < titles.length ? titles[i] : 'Unknown title',
         artist: i < artists.length ? artists[i] : 'YouTube',
+        thumbnail: i < thumbnails.length ? thumbnails[i] : '',
+        duration: i < durations.length ? durations[i] : '',
       )));
     index = prefs.getInt('flare.queue.index') ?? -1;
     if (index < 0 || index >= queue.length) index = -1;
@@ -74,6 +79,8 @@ class PlaybackController {
     ));
     await player.play();
     await _persist();
+    if (index + 1 < queue.length) unawaited(resolver.preload(queue[index + 1].videoId));
+    if (index > 0) unawaited(resolver.preload(queue[index - 1].videoId));
   }
 
   Future<void> next(Future<String> Function(String) resolve) async {
@@ -95,6 +102,8 @@ class PlaybackController {
     await prefs.setStringList('flare.queue.ids', queue.map((e) => e.videoId).toList());
     await prefs.setStringList('flare.queue.titles', queue.map((e) => e.title).toList());
     await prefs.setStringList('flare.queue.artists', queue.map((e) => e.artist).toList());
+    await prefs.setStringList('flare.queue.thumbnails', queue.map((e) => e.thumbnail).toList());
+    await prefs.setStringList('flare.queue.durations', queue.map((e) => e.duration).toList());
     await prefs.setInt('flare.queue.index', index);
   }
 
