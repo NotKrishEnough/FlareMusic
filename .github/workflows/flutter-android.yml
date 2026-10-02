@@ -3,6 +3,8 @@ name: Flutter Android CI
 on:
   push:
     branches: [flutter-rewrite]
+    tags:
+      - "v*"
   pull_request:
     branches: [flutter-rewrite]
   workflow_dispatch:
