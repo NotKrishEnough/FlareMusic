@@ -1,0 +1,40 @@
+name: Flutter Android CI
+
+on:
+  push:
+    branches: [flutter-rewrite]
+  pull_request:
+    branches: [flutter-rewrite]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-pub
+
+      - name: Build release APK
+        run: flutter build apk --release
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlareMusic-Flutter-APK
+          path: build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
