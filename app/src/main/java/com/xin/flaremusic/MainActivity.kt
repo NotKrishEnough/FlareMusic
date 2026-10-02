@@ -77,7 +77,7 @@ private val Violet: Color get() = if (FlarePreferences.dynamicColors.value) Flar
 private val Mint: Color get() = Violet.copy(alpha = .82f)
 
 private object FlarePreferences {
-    val glassmorphism = mutableStateOf(false)
+    val glassmorphism = mutableStateOf(true)
     val progressStyle = mutableIntStateOf(0)
     val darkMode = mutableStateOf(true)
     val accentIndex = mutableIntStateOf(0)
@@ -157,7 +157,7 @@ class MainActivity : ComponentActivity() {
         }
         amoledMode = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("amoled", false)
         FlarePreferences.darkMode.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("dark_mode", true)
-        FlarePreferences.glassmorphism.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("glassmorphism", false)
+        FlarePreferences.glassmorphism.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("glassmorphism", true)
         FlarePreferences.progressStyle.intValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getInt("progress_style", 0).coerceIn(0, 2)
         FlarePreferences.accentIndex.intValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getInt("accent_index", 0).coerceIn(0, FlarePreferences.accents.lastIndex)
         FlarePreferences.animations.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("animations", true)
@@ -240,7 +240,8 @@ class MainActivity : ComponentActivity() {
 
 @Composable private fun FlareTheme(amoled: Boolean, dynamicColors: Boolean, darkMode: Boolean, content: @Composable () -> Unit) {
     val context = LocalContext.current
-    val accent = FlarePreferences.accents[FlarePreferences.accentIndex.intValue.coerceIn(0, FlarePreferences.accents.lastIndex)]
+    val systemPalette = if (dynamicColors && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) { if (darkMode) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context) } else null
+    val accent = systemPalette?.primary ?: FlarePreferences.accents[FlarePreferences.accentIndex.intValue.coerceIn(0, FlarePreferences.accents.lastIndex)]
     val darkFallback = darkColorScheme(
         primary = accent, secondary = accent.copy(alpha = .85f), tertiary = Mint,
         background = Color(0xFF101116), surface = Color(0xFF171922), surfaceVariant = Color(0xFF292D39),
@@ -255,9 +256,7 @@ class MainActivity : ComponentActivity() {
         onBackground = Color(0xFF171821), onSurface = Color(0xFF171821), onSurfaceVariant = Color(0xFF555966),
         outlineVariant = Color(0xFFD5D7E0)
     )
-    val wallpaperScheme = if (dynamicColors && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-        if (darkMode) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-    } else if (darkMode) darkFallback else lightFallback
+    val wallpaperScheme = systemPalette ?: if (darkMode) darkFallback else lightFallback
     SideEffect {
         if (dynamicColors && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             FlarePreferences.dynamicAccent.value = wallpaperScheme.primary
@@ -588,8 +587,8 @@ class MainActivity : ComponentActivity() {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 20.dp)) {
         Text("Settings", fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp, color = MaterialTheme.colorScheme.onSurface)
         Text("Make FlareMusic yours.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp, modifier = Modifier.padding(top = 5.dp, bottom = 24.dp))
-        Text("APPEARANCE", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(bottom = 9.dp))
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable {
+        Text("APPEARANCE", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(bottom = 9.dp))
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(if (FlarePreferences.glassmorphism.value) MaterialTheme.colorScheme.surface.copy(alpha = 0.24f) else MaterialTheme.colorScheme.surfaceVariant).clickable {
             FlarePreferences.darkMode.value = !FlarePreferences.darkMode.value
             if (!FlarePreferences.darkMode.value) onAmoledChange(false)
             settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("dark_mode", FlarePreferences.darkMode.value).apply()
@@ -603,13 +602,24 @@ class MainActivity : ComponentActivity() {
             })
         }
         Spacer(Modifier.height(10.dp))
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(if (FlarePreferences.glassmorphism.value) MaterialTheme.colorScheme.surface.copy(alpha = 0.58f) else MaterialTheme.colorScheme.surfaceVariant).clickable { onAmoledChange(!amoled) }.padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(if (FlarePreferences.glassmorphism.value) MaterialTheme.colorScheme.surface.copy(alpha = 0.24f) else MaterialTheme.colorScheme.surfaceVariant).clickable {
+            FlarePreferences.glassmorphism.value = !FlarePreferences.glassmorphism.value
+            settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("glassmorphism", FlarePreferences.glassmorphism.value).apply()
+        }.padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) { Text("Glassmorphism", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold); Text("Translucent surfaces throughout the app", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp)) }
+            Switch(checked = FlarePreferences.glassmorphism.value, onCheckedChange = { enabled ->
+                FlarePreferences.glassmorphism.value = enabled
+                settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("glassmorphism", enabled).apply()
+            })
+        }
+        Spacer(Modifier.height(10.dp))
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(if (FlarePreferences.glassmorphism.value) MaterialTheme.colorScheme.surface.copy(alpha = 0.24f) else MaterialTheme.colorScheme.surfaceVariant).clickable { onAmoledChange(!amoled) }.padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.outlineVariant), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.DarkMode, null, tint = Mint) }
             Column(Modifier.weight(1f).padding(start = 13.dp)) { Text("AMOLED mode", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold); Text("Pure black backgrounds", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp)) }
             Switch(checked = amoled, onCheckedChange = onAmoledChange)
         }
         Text("Material You colours adapt to your wallpaper on supported Android versions.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp, bottom = 14.dp))
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(if (FlarePreferences.glassmorphism.value) MaterialTheme.colorScheme.surface.copy(alpha = 0.58f) else MaterialTheme.colorScheme.surfaceVariant).clickable {
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(if (FlarePreferences.glassmorphism.value) MaterialTheme.colorScheme.surface.copy(alpha = 0.24f) else MaterialTheme.colorScheme.surfaceVariant).clickable {
             FlarePreferences.dynamicColors.value = !FlarePreferences.dynamicColors.value
             settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("dynamic_colors", FlarePreferences.dynamicColors.value).apply()
         }.padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -842,7 +852,7 @@ class MainActivity : ComponentActivity() {
 @Composable private fun HomeScreen(count: Int, loading: Boolean, error: String, accent: Color, openLibrary: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val homeSurface = colors.surface
-    val homeCard = colors.surfaceVariant.copy(alpha = 0.72f)
+    val homeCard = colors.surfaceVariant.copy(alpha = if (FlarePreferences.glassmorphism.value) 0.28f else 0.72f)
     Column(Modifier.fillMaxSize().background(colors.background).verticalScroll(rememberScrollState()).padding(horizontal = 22.dp)) {
         Row(Modifier.fillMaxWidth().padding(top = 22.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
