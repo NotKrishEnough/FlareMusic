@@ -46,15 +46,28 @@ class PlaybackController {
     if (index < 0 || index >= queue.length) index = -1;
   }
 
-  Future<void> playQueue(List<OnlineTrack> tracks, int startIndex, Future<String> Function(String) resolve) async {
+  Future<void> playQueue(
+    List<OnlineTrack> tracks,
+    int startIndex,
+    Future<String> Function(String) resolve,
+  ) async {
     if (!_initialized || tracks.isEmpty || startIndex < 0 || startIndex >= tracks.length) return;
-    queue..clear()..addAll(tracks);
+
+    queue
+      ..clear()
+      ..addAll(tracks);
     index = startIndex;
     await _persist();
-    await _loadQueue(resolve);
-    await player.play();
-  }
 
+    // Load only the selected stream immediately. The Android media session
+    // still receives the logical queue below, while adjacent tracks are
+    // resolved lazily when the user skips.
+    final track = queue[index];
+    final source = await _resolveSource(track, resolve);
+    await player.setAudioSource(source);
+    await player.play();
+    await _persist();
+  }
   Future<void> playSelected(List<OnlineTrack> tracks, int startIndex) => playQueue(tracks, startIndex, resolver.resolve);
 
   Future<void> resume() async {
