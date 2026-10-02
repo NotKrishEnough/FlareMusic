@@ -537,7 +537,7 @@ class _MusicHomeState extends State<MusicHome> {
         setState(() {
           _nowTitle = track.title;
           _nowArtist = track.artist;
-          _playing = true;
+          _playing = _playback.player.playing;
         });
       }
     } finally {
@@ -1447,12 +1447,8 @@ class _MusicHomeState extends State<MusicHome> {
                             ? null
                             : () async {
                                 try {
-                                  if (playing) {
-                                    await _playback.pause();
-                                  } else {
-                                    await _playback.resume();
-                                  }
-                                  if (mounted) setState(() => _playing = !playing);
+                                  await _playback.togglePlayPause();
+                                  if (mounted) setState(() => _playing = _playback.player.playing);
                                 } catch (e) {
                                   _showPlaybackError(e);
                                 }
