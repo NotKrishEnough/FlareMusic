@@ -39,6 +39,7 @@ class _FlareMusicAppState extends State<FlareMusicApp> {
   bool _useDynamicColors = true;
   bool _amoledMode = false;
   double _textScale = 1.0;
+  late final AnimationController _miniArtworkController;
   int _accentIndex = 0;
 
   static const _accents = <Color>[
@@ -50,6 +51,7 @@ class _FlareMusicAppState extends State<FlareMusicApp> {
   @override
   void initState() {
     super.initState();
+    _miniArtworkController = AnimationController(vsync: this, duration: const Duration(seconds: 7));
     _loadAppearance();
   }
 
@@ -170,7 +172,7 @@ class MusicHome extends StatefulWidget {
   State<MusicHome> createState() => _MusicHomeState();
 }
 
-class _MusicHomeState extends State<MusicHome> {
+class _MusicHomeState extends State<MusicHome> with SingleTickerProviderStateMixin {
   final _cookieAuth = YouTubeCookieAuth();
   late final InnerTubeClient _api;
   final _playback = PlaybackController();
@@ -214,6 +216,7 @@ class _MusicHomeState extends State<MusicHome> {
 
   @override
   void dispose() {
+    _miniArtworkController.dispose();
     _playerStateSubscription?.cancel();
     _processingSubscription?.cancel();
     _sequenceSubscription?.cancel();
@@ -238,6 +241,7 @@ class _MusicHomeState extends State<MusicHome> {
       if (!mounted) return;
       await _restorePlaybackState();
       _playerStateSubscription = _playback.player.playerStateStream.listen((state) {
+        if (state.playing) { _miniArtworkController.repeat(); } else { _miniArtworkController.stop(); }
         if (!mounted) return;
         setState(() {
           _playing = state.playing;
@@ -1689,30 +1693,88 @@ class _MusicHomeState extends State<MusicHome> {
           children: [
             Row(
               children: [
-                _playerArtwork(
-                  key: ValueKey(_playback.current?.videoId ?? ''),
-                  size: 42,
-                  radius: 11,
+                AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 420),
+                  switchInCurve: Curves.easeOutBack,
+                  switchOutCurve: Curves.easeIn,
+                  transitionBuilder: (child, animation) => ScaleTransition(
+                    scale: animation,
+                    child: FadeTransition(opacity: animation, child: child),
+                  ),
+                  child: RotationTransition(
+                    key: ValueKey(_playback.current?.videoId ?? ''),
+                    turns: _miniArtworkController,
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.primary.withValues(
+                            alpha: _playing ? .75 : .35,
+                          ),
+                          width: _playing ? 2 : 1,
+                        ),
+                        boxShadow: _playing
+                            ? [
+                                BoxShadow(
+                                  color: Theme.of(context).colorScheme.primary.withValues(alpha: .28),
+                                  blurRadius: 12,
+                                  spreadRadius: 2,
+                                ),
+                              ]
+                            : null,
+                      ),
+                      child: ClipOval(
+                        child: SizedBox(
+                          width: 40,
+                          height: 40,
+                          child: _playerArtwork(
+                            key: ValueKey('art-' + (_playback.current?.videoId ?? '')),
+                            size: 40,
+                            radius: 20,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
                 ),
                 const SizedBox(width: 11),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        _nowTitle,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 300),
+                        transitionBuilder: (child, animation) => SlideTransition(
+                          position: Tween<Offset>(
+                            begin: const Offset(0, .35),
+                            end: Offset.zero,
+                          ).animate(CurvedAnimation(
+                            parent: animation,
+                            curve: Curves.easeOutCubic,
+                          )),
+                          child: FadeTransition(opacity: animation, child: child),
+                        ),
+                        child: Text(
+                          _nowTitle,
+                          key: ValueKey(_nowTitle),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                        ),
                       ),
                       const SizedBox(height: 3),
-                      Text(
-                        _nowArtist,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6),
+                      AnimatedSwitcher(
+                        duration: const Duration(milliseconds: 260),
+                        child: Text(
+                          _nowArtist,
+                          key: ValueKey('artist-' + _nowArtist),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6),
+                          ),
                         ),
                       ),
                     ],
