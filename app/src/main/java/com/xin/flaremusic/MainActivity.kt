@@ -447,7 +447,7 @@ class MainActivity : ComponentActivity() {
     }
     BackHandler(enabled = playerExpanded) { playerExpanded = false }
     Box(Modifier.fillMaxSize()) {
-    Scaffold(containerColor = if (amoled) Color.Black else Ink, bottomBar = {
+    Scaffold(containerColor = Color.Transparent, bottomBar = {
         Column(Modifier.padding(bottom = 12.dp)) {
             if (current != null) {
                 val miniProgress = if (totalDuration > 0) (position.toFloat() / totalDuration.toFloat()).coerceIn(0f, 1f) else 0f
@@ -492,8 +492,8 @@ class MainActivity : ComponentActivity() {
             Box(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
                 Row(
                     Modifier.fillMaxWidth()
-                        .clip(RoundedCornerShape(30.dp))
-                        .background((if (amoled) Color(0xFF111111) else Color(0xFF24212B)).copy(alpha = 0.96f))
+                        .clip(RoundedCornerShape(34.dp))
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = if (amoled) 0.88f else 0.76f))
                         .padding(horizontal = 7.dp, vertical = 7.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
