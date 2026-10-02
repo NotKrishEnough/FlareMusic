@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'services/inner_tube_client.dart';
+import 'services/playback_controller.dart';
 
 void main() => runApp(const FlareMusicApp());
 
@@ -27,6 +28,7 @@ class MusicHome extends StatefulWidget {
 
 class _MusicHomeState extends State<MusicHome> {
   final _api = InnerTubeClient();
+  final _playback = PlaybackController();
   final _searchController = TextEditingController();
   final _searchFocus = FocusNode();
   final List<OnlineTrack> _results = [];
@@ -41,7 +43,14 @@ class _MusicHomeState extends State<MusicHome> {
   static const _tabs = [(Icons.home_rounded, 'Home'), (Icons.explore_rounded, 'Explore'), (Icons.library_music_rounded, 'Library'), (Icons.person_rounded, 'You')];
 
   @override
+  void initState() {
+    super.initState();
+    _playback.restore();
+  }
+
+  @override
   void dispose() {
+    _playback.dispose();
     _api.close();
     _searchController.dispose();
     _searchFocus.dispose();
@@ -62,9 +71,15 @@ class _MusicHomeState extends State<MusicHome> {
     }
   }
 
-  void _selectTrack(OnlineTrack track) {
+  Future<void> _selectTrack(OnlineTrack track) async {
+    final index = _results.indexOf(track);
     setState(() { _nowTitle = track.title; _nowArtist = track.artist; _playing = false; _searching = false; });
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Track added to the player. Stream playback is not connected yet.')));
+    try {
+      await _playback.playSelected(_results, index < 0 ? 0 : index);
+      if (mounted) setState(() => _playing = true);
+    } catch (e) {
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Playback failed: $e')));
+    }
   }
 
   @override
@@ -150,6 +165,6 @@ class _MusicHomeState extends State<MusicHome> {
     Container(width: 42, height: 42, decoration: BoxDecoration(color: const Color(0xFF31516B), borderRadius: BorderRadius.circular(11)), child: const Icon(Icons.music_note_rounded)),
     const SizedBox(width: 11),
     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(_nowTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)), const SizedBox(height: 3), Text(_nowArtist, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Colors.white60))])),
-    IconButton(onPressed: () => setState(() => _playing = !_playing), icon: Icon(_playing ? Icons.pause_rounded : Icons.play_arrow_rounded)),
+    IconButton(onPressed: () async { try { if (_playing) { await _playback.pause(); } else { await _playback.resume(); } if (mounted) setState(() => _playing = !_playing); } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Playback error: $e'))); } }, icon: Icon(_playing ? Icons.pause_rounded : Icons.play_arrow_rounded)),
   ]));
 }
