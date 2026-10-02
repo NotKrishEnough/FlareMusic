@@ -10,6 +10,8 @@ import 'services/youtube_account_service.dart';
 import 'services/youtube_cookie_auth.dart';
 import 'services/youtube_login_page.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:dynamic_color/dynamic_color.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -27,24 +29,116 @@ Future<void> main() async {
   runApp(const FlareMusicApp());
 }
 
-class FlareMusicApp extends StatelessWidget {
+class FlareMusicApp extends StatefulWidget {
   const FlareMusicApp({super.key});
   @override
-  Widget build(BuildContext context) => MaterialApp(
-    title: 'FlareMusic',
-    debugShowCheckedModeBanner: false,
-    theme: ThemeData(
-      brightness: Brightness.dark,
-      scaffoldBackgroundColor: const Color(0xFF101114),
-      colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF8BC5FF), brightness: Brightness.dark, surface: const Color(0xFF191B20)),
+  State<FlareMusicApp> createState() => _FlareMusicAppState();
+}
+
+class _FlareMusicAppState extends State<FlareMusicApp> {
+  ThemeMode _themeMode = ThemeMode.dark;
+  bool _useDynamicColors = true;
+  int _accentIndex = 0;
+
+  static const _accents = <Color>[
+    Color(0xFF8BC5FF), Color(0xFFB39DDB), Color(0xFFFF8A80),
+    Color(0xFF80CBC4), Color(0xFFFFD180), Color(0xFFF48FB1),
+    Color(0xFFA5D6A7),
+  ];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadAppearance();
+  }
+
+  Future<void> _loadAppearance() async {
+    final prefs = await SharedPreferences.getInstance();
+    if (!mounted) return;
+    setState(() {
+      final mode = prefs.getString('flare.appearance.theme') ?? 'dark';
+      _themeMode = mode == 'light' ? ThemeMode.light
+          : mode == 'system' ? ThemeMode.system : ThemeMode.dark;
+      _useDynamicColors = prefs.getBool('flare.appearance.dynamic') ?? true;
+      _accentIndex = (prefs.getInt('flare.appearance.accent') ?? 0)
+          .clamp(0, _accents.length - 1);
+    });
+  }
+
+  Future<void> _setThemeMode(ThemeMode value) async {
+    setState(() => _themeMode = value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString('flare.appearance.theme', value.name);
+  }
+
+  Future<void> _setDynamicColors(bool value) async {
+    setState(() => _useDynamicColors = value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('flare.appearance.dynamic', value);
+  }
+
+  Future<void> _setAccentIndex(int value) async {
+    setState(() => _accentIndex = value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt('flare.appearance.accent', value);
+  }
+
+  ThemeData _makeTheme(Brightness brightness, ColorScheme? dynamicScheme) {
+    final scheme = _useDynamicColors && dynamicScheme != null
+        ? dynamicScheme
+        : ColorScheme.fromSeed(seedColor: _accents[_accentIndex], brightness: brightness);
+    return ThemeData(
+      brightness: brightness,
+      colorScheme: scheme,
+      scaffoldBackgroundColor: scheme.surface,
       useMaterial3: true,
+      appBarTheme: AppBarTheme(backgroundColor: scheme.surface, foregroundColor: scheme.onSurface),
+      snackBarTheme: SnackBarThemeData(
+        backgroundColor: scheme.inverseSurface,
+        contentTextStyle: TextStyle(color: scheme.onInverseSurface),
+      ),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) => DynamicColorBuilder(
+    builder: (context, lightDynamic, darkDynamic) => MaterialApp(
+      title: 'FlareMusic',
+      debugShowCheckedModeBanner: false,
+      theme: _makeTheme(Brightness.light, lightDynamic),
+      darkTheme: _makeTheme(Brightness.dark, darkDynamic),
+      themeMode: _themeMode,
+      home: MusicHome(
+        themeMode: _themeMode,
+        useDynamicColors: _useDynamicColors,
+        accentIndex: _accentIndex,
+        accents: _accents,
+        onThemeModeChanged: _setThemeMode,
+        onDynamicColorsChanged: _setDynamicColors,
+        onAccentChanged: _setAccentIndex,
+      ),
     ),
-    home: const MusicHome(),
   );
 }
 
 class MusicHome extends StatefulWidget {
-  const MusicHome({super.key});
+  const MusicHome({
+    super.key,
+    required this.themeMode,
+    required this.useDynamicColors,
+    required this.accentIndex,
+    required this.accents,
+    required this.onThemeModeChanged,
+    required this.onDynamicColorsChanged,
+    required this.onAccentChanged,
+  });
+  final ThemeMode themeMode;
+  final bool useDynamicColors;
+  final int accentIndex;
+  final List<Color> accents;
+  final ValueChanged<ThemeMode> onThemeModeChanged;
+  final ValueChanged<bool> onDynamicColorsChanged;
+  final ValueChanged<int> onAccentChanged;
   @override
   State<MusicHome> createState() => _MusicHomeState();
 }
@@ -491,6 +585,68 @@ class _MusicHomeState extends State<MusicHome> {
         SizedBox(width: double.infinity, child: OutlinedButton.icon(onPressed: () async { await _account.signOut(); if (mounted) setState(() {}); }, icon: const Icon(Icons.logout_rounded), label: const Text('Sign out Google'))),
       ],
     ])),
+    const SizedBox(height: 26),
+    const Text('Appearance & customization', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+    const SizedBox(height: 8),
+    Text('Make FlareMusic feel like yours.', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .65))),
+    const SizedBox(height: 12),
+    Card(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Theme', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 10),
+          SegmentedButton<ThemeMode>(
+            segments: const [
+              ButtonSegment(value: ThemeMode.system, label: Text('System'), icon: Icon(Icons.brightness_auto_rounded)),
+              ButtonSegment(value: ThemeMode.light, label: Text('Light'), icon: Icon(Icons.light_mode_rounded)),
+              ButtonSegment(value: ThemeMode.dark, label: Text('Dark'), icon: Icon(Icons.dark_mode_rounded)),
+            ],
+            selected: {widget.themeMode},
+            onSelectionChanged: (values) => widget.onThemeModeChanged(values.first),
+            showSelectedIcon: false,
+          ),
+          const SizedBox(height: 18),
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Dynamic wallpaper colors'),
+            subtitle: const Text('Use colors from your Android wallpaper when supported'),
+            value: widget.useDynamicColors,
+            onChanged: widget.onDynamicColorsChanged,
+          ),
+          const SizedBox(height: 8),
+          const Text('Accent color', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: List.generate(widget.accents.length, (i) => InkWell(
+              onTap: () => widget.onAccentChanged(i),
+              borderRadius: BorderRadius.circular(24),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: widget.accents[i],
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: widget.accentIndex == i ? Theme.of(context).colorScheme.onSurface : Colors.transparent,
+                    width: 3,
+                  ),
+                ),
+                child: widget.accentIndex == i
+                    ? const Icon(Icons.check_rounded, color: Colors.black, size: 20)
+                    : null,
+              ),
+            )),
+          ),
+          const SizedBox(height: 8),
+          Text('Your appearance choices are saved on this device.', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .65), fontSize: 12)),
+        ]),
+      ),
+    ),
     const SizedBox(height: 22),
     const Text('Your music stays yours', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
     const SizedBox(height: 8),
