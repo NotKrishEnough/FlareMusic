@@ -148,9 +148,24 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             val savedCookies = YouTubeSessionStore.read(this@MainActivity)
             if (!savedCookies.isNullOrBlank()) {
-                googleStatus = if (YouTubeSessionVerifier.verify(savedCookies)) "Connected to YouTube Music" else {
+                val valid = YouTubeSessionVerifier.verify(savedCookies)
+                if (valid) {
+                    googleStatus = "Connected to YouTube Music"
+                    playlistLoading = true
+                    playlistError = ""
+                    try {
+                        youtubePlaylists = YouTubePlaylists.fetchFromMusicSession(savedCookies)
+                        playlistError = if (youtubePlaylists.isEmpty()) "No playlists found in your YouTube Music library." else ""
+                    } catch (e: Exception) {
+                        playlistError = e.message ?: "Couldn't load YouTube Music playlists."
+                    } finally {
+                        playlistLoading = false
+                    }
+                } else {
                     YouTubeSessionStore.clear(this@MainActivity)
-                    "Not connected"
+                    googleStatus = "Not connected"
+                    youtubePlaylists = emptyList()
+                    playlistError = "Your YouTube Music session needs to be connected again."
                 }
             }
         }
