@@ -46,7 +46,7 @@
     </Window.Resources>
     <Grid Margin="22">
         <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="112"/></Grid.RowDefinitions>
-        <Grid ColumnDefinitions="220,*" Grid.Row="0">
+        <Grid Grid.Row="0"><Grid.ColumnDefinitions><ColumnDefinition Width="220"/><ColumnDefinition Width="*"/></Grid.ColumnDefinitions>
             <Border Grid.Column="0" Background="{StaticResource Panel}" CornerRadius="22" Padding="20" Margin="0,0,18,18">
                 <DockPanel>
                     <StackPanel DockPanel.Dock="Top">
@@ -93,7 +93,7 @@
                         <Button x:Name="PlayButton" Content="▶" Click="PlayPause_Click" Background="{StaticResource Accent}" Foreground="#20283A" Padding="20,6" Margin="4,0"/>
                         <Button Content="⏭" Click="Next_Click" Padding="12,6" Margin="4,0"/>
                     </StackPanel>
-                    <Slider x:Name="SeekSlider" Minimum="0" Maximum="1" Value="0" Margin="4,8,4,0" ValueChanged="SeekSlider_ValueChanged"/>
+                    <Slider x:Name="SeekSlider" Minimum="0" Maximum="1" Value="0" Margin="4,8,4,0" ValueChanged="SeekSlider_ValueChanged" PreviewMouseLeftButtonDown="SeekSlider_PreviewMouseLeftButtonDown" PreviewMouseLeftButtonUp="SeekSlider_PreviewMouseLeftButtonUp"/>
                 </StackPanel>
                 <TextBlock x:Name="TimeLabel" Grid.Column="2" Text="0:00 / 0:00" Foreground="{StaticResource Muted}" VerticalAlignment="Center" HorizontalAlignment="Right"/>
             </Grid>
