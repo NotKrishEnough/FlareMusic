@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'services/inner_tube_client.dart';
 import 'services/playback_controller.dart';
 
-void main() => runApp(const FlareMusicApp());
+Future<void> main() async {\n  WidgetsFlutterBinding.ensureInitialized();\n  await JustAudioBackground.init(\n    androidNotificationChannelId: 'com.flaremusic.playback',\n    androidNotificationChannelName: 'FlareMusic playback',\n    androidNotificationOngoing: true,\n  );\n  runApp(const FlareMusicApp());\n}
 
 class FlareMusicApp extends StatelessWidget {
   const FlareMusicApp({super.key});
