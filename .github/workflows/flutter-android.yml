@@ -39,7 +39,7 @@ jobs:
               <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
               <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
           '''
-          s = s.replace('<application', permissions + '\\n    <application', 1)
+          s = s.replace('<application', permissions + '\n    <application', 1)
           service = '''
                   <service
                       android:name="com.ryanheise.audioservice.AudioService"
@@ -57,7 +57,7 @@ jobs:
                       </intent-filter>
                   </receiver>
           '''
-          s = s.replace('</application>', service + '\\n    </application>', 1)
+          s = s.replace('</application>', service + '\n    </application>', 1)
           p.write_text(s)
           PY
 
