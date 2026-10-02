@@ -27,29 +27,41 @@ jobs:
       - name: Determine release tag
         id: version
         env:
+          GH_TOKEN: ${{ github.token }}
           INPUT_TAG: ${{ inputs.tag }}
           REF_NAME: ${{ github.ref_name }}
+          EVENT_NAME: ${{ github.event_name }}
+          GITHUB_SHA: ${{ github.sha }}
         run: |
           set -euo pipefail
+
           TAG="${INPUT_TAG:-$REF_NAME}"
-          if [[ ! "$TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+          if [[ ! "$TAG" =~ ^v[0-9]+.[0-9]+.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
             echo "Tag must look like v1.2.3 (optional prerelease suffix allowed)." >&2
             exit 1
           fi
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            SHA="$(gh api "repos/$GITHUB_REPOSITORY/commits/$TAG" --jq .sha)"
+          else
+            SHA="$GITHUB_SHA"
+          fi
+
+          test -n "$SHA"
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Releasing $TAG from $SHA"
 
       - name: Wait for Flutter build
         id: build
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG_NAME: ${{ steps.version.outputs.tag }}
           HEAD_SHA: ${{ steps.version.outputs.sha }}
         run: |
           set -euo pipefail
 
-          # A tag push starts both workflows. Wait for the matching Flutter CI
-          # run so the release always contains the exact Flutter APK produced
-          # from this tag.
+          # A tag push starts both workflows. For manual dispatch, resolve the
+          # selected tag to its commit and wait for that exact Flutter build.
           for attempt in {1..60}; do
             RUN_JSON="$(gh run list               --repo "$GITHUB_REPOSITORY"               --workflow flutter-android.yml               --commit "$HEAD_SHA"               --limit 10               --json databaseId,status,conclusion,headSha)"
 
@@ -95,12 +107,13 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG_NAME: ${{ steps.version.outputs.tag }}
+          RELEASE_SHA: ${{ steps.version.outputs.sha }}
         run: |
           set -euo pipefail
 
           if gh release view "$TAG_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$TAG_NAME" release/*               --repo "$GITHUB_REPOSITORY"               --clobber
-            gh release edit "$TAG_NAME"               --repo "$GITHUB_REPOSITORY"               --title "FlareMusic $TAG_NAME"               --generate-notes               --target "${{ steps.version.outputs.sha }}"
+            gh release edit "$TAG_NAME"               --repo "$GITHUB_REPOSITORY"               --title "FlareMusic $TAG_NAME"               --generate-notes               --target "$RELEASE_SHA"
           else
-            gh release create "$TAG_NAME" release/*               --repo "$GITHUB_REPOSITORY"               --title "FlareMusic $TAG_NAME"               --generate-notes               --target "$GITHUB_SHA"
+            gh release create "$TAG_NAME" release/*               --repo "$GITHUB_REPOSITORY"               --title "FlareMusic $TAG_NAME"               --generate-notes               --target "$RELEASE_SHA"
           fi
