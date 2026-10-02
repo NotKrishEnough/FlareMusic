@@ -1436,7 +1436,7 @@ class _MusicHomeState extends State<MusicHome> {
                 children: [
                   IconButton(
                     iconSize: 34,
-                    onPressed: _switchingTrack ? null : _skipPreviousAndSync,
+                    onPressed: _skipPreviousAndSync,
                     icon: const Icon(Icons.skip_previous_rounded),
                   ),
                   const SizedBox(width: 22),
@@ -1446,9 +1446,7 @@ class _MusicHomeState extends State<MusicHome> {
                       final playing = snapshot.data?.playing ?? _playing;
                       return IconButton(
                         iconSize: 38,
-                        onPressed: _switchingTrack
-                            ? null
-                            : () async {
+                        onPressed: () async {
                                 try {
                                   await _playback.togglePlayPause();
                                   if (mounted) setState(() => _playing = _playback.player.playing);
@@ -1466,7 +1464,7 @@ class _MusicHomeState extends State<MusicHome> {
                   const SizedBox(width: 22),
                   IconButton(
                     iconSize: 34,
-                    onPressed: _switchingTrack ? null : _skipNextAndSync,
+                    onPressed: _skipNextAndSync,
                     icon: const Icon(Icons.skip_next_rounded),
                   ),
                 ],
