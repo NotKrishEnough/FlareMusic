@@ -586,17 +586,6 @@ class MainActivity : ComponentActivity() {
         Text("Settings", fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp, color = MaterialTheme.colorScheme.onSurface)
         Text("Make FlareMusic yours.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp, modifier = Modifier.padding(top = 5.dp, bottom = 24.dp))
         Text("APPEARANCE", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(bottom = 9.dp))
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable {
-            false = !false
-            settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("glassmorphism", false).apply()
-        }.padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) { Text("Glassmorphism", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold); Text("Translucent surfaces throughout the app", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp)) }
-            Switch(checked = false, onCheckedChange = { enabled ->
-                false = enabled
-                settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("glassmorphism", enabled).apply()
-            })
-        }
-        Spacer(Modifier.height(10.dp))
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable { onAmoledChange(!amoled) }.padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.outlineVariant), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.DarkMode, null, tint = Mint) }
             Column(Modifier.weight(1f).padding(start = 13.dp)) { Text("AMOLED mode", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold); Text("Pure black backgrounds", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp)) }
