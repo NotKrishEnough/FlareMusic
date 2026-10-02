@@ -14,6 +14,10 @@ class YouTubeAccountService {
   final GoogleSignIn _google;
   GoogleSignInAccount? get currentUser => _google.currentUser;
 
+  /// Restores the Google session cached by the official sign-in SDK.
+  /// No Google passwords, browser cookies, or SAPISID values are read or stored.
+  Future<GoogleSignInAccount?> restoreSession() => _google.signInSilently();
+
   Future<GoogleSignInAccount?> signIn() async {
     final user = await _google.signIn();
     if (user == null) return null;
