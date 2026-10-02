@@ -167,23 +167,92 @@ class InnerTubeClient {
 
   void _collect(String raw, List<OnlineTrack> out) {
     final root = jsonDecode(raw);
+
+    String? textFrom(dynamic value) => _text(value);
+
+    String? thumbnailFrom(Map node) {
+      final direct = node['thumbnail'];
+      if (direct is Map) {
+        final list = direct['thumbnails'];
+        if (list is List && list.isNotEmpty) {
+          final last = list.last;
+          if (last is Map && last['url'] != null) return last['url'].toString();
+        }
+      }
+      return null;
+    }
+
+    String? musicFlexText(Map renderer, int index) {
+      final columns = renderer['flexColumns'];
+      if (columns is! List || index >= columns.length) return null;
+      final column = columns[index];
+      if (column is! Map) return null;
+      final flex = column['musicResponsiveListItemFlexColumnRenderer'];
+      if (flex is! Map) return null;
+      return textFrom(flex['text']);
+    }
+
     void walk(dynamic node) {
       if (node is Map) {
-        final id = node['videoId'];
-        if (id is String && id.isNotEmpty) {
+        final responsive = node['musicResponsiveListItemRenderer'];
+        if (responsive is Map) {
+          final data = responsive['playlistItemData'];
+          final endpoint = responsive['navigationEndpoint'];
+          final watch = endpoint is Map ? endpoint['watchEndpoint'] : null;
+          final videoId = data is Map && data['videoId'] != null
+              ? data['videoId'].toString()
+              : watch is Map && watch['videoId'] != null
+                  ? watch['videoId'].toString()
+                  : null;
+          if (videoId != null && videoId.isNotEmpty) {
+            final title = musicFlexText(responsive, 0) ?? 'Unknown title';
+            final artist = musicFlexText(responsive, 1) ?? 'YouTube Music';
+            final duration = musicFlexText(responsive, 2) ?? '';
+            final thumb = thumbnailFrom(responsive) ?? '';
+            out.add(OnlineTrack(
+              videoId: videoId,
+              title: title,
+              artist: artist,
+              duration: duration,
+              thumbnail: thumb,
+            ));
+          }
+        }
+
+        final twoRow = node['musicTwoRowItemRenderer'];
+        if (twoRow is Map) {
+          final endpoint = twoRow['navigationEndpoint'];
+          final watch = endpoint is Map ? endpoint['watchEndpoint'] : null;
+          final videoId = watch is Map ? watch['videoId']?.toString() : null;
+          if (videoId != null && videoId.isNotEmpty) {
+            out.add(OnlineTrack(
+              videoId: videoId,
+              title: textFrom(twoRow['title']) ?? 'Unknown title',
+              artist: textFrom(twoRow['subtitle']) ?? 'YouTube Music',
+              thumbnail: thumbnailFrom(twoRow) ?? '',
+            ));
+          }
+        }
+
+        final standardId = node['videoId'];
+        if (standardId is String && standardId.isNotEmpty) {
           final thumbList = (node['thumbnail']?['thumbnails'] as List?) ?? const [];
           final thumb = thumbList.isEmpty ? '' : (thumbList.last['url']?.toString() ?? '');
           out.add(OnlineTrack(
-            videoId: id,
-            title: _text(node['title']) ?? 'Unknown title',
-            artist: _text(node['ownerText']) ?? _text(node['shortBylineText']) ?? 'YouTube',
-            duration: _text(node['lengthText']) ?? '',
+            videoId: standardId,
+            title: textFrom(node['title']) ?? 'Unknown title',
+            artist: textFrom(node['ownerText']) ?? textFrom(node['shortBylineText']) ?? 'YouTube',
+            duration: textFrom(node['lengthText']) ?? '',
             thumbnail: thumb,
           ));
         }
+
         node.values.forEach(walk);
-      } else if (node is List) { node.forEach(walk); }
+      } else if (node is List) {
+        node.forEach(walk);
+      }
     }
+
     walk(root);
   }
 
