@@ -164,7 +164,9 @@ class _MusicHomeState extends State<MusicHome> {
   int _tab = 0;
   bool _playing = false;
   bool _playerExpanded = false;
+  bool _switchingTrack = false;
   StreamSubscription<PlayerState>? _playerStateSubscription;
+  StreamSubscription<ProcessingState>? _processingSubscription;
   late Future<void> _audioReady;
 
   static const _tabs = [(Icons.home_rounded, 'Home'), (Icons.explore_rounded, 'Explore'), (Icons.library_music_rounded, 'Library'), (Icons.person_rounded, 'You')];
@@ -183,6 +185,7 @@ class _MusicHomeState extends State<MusicHome> {
   @override
   void dispose() {
     _playerStateSubscription?.cancel();
+    _processingSubscription?.cancel();
     _playback.dispose();
     _api.close();
     _searchController.dispose();
@@ -206,6 +209,14 @@ class _MusicHomeState extends State<MusicHome> {
       _playerStateSubscription = _playback.player.playerStateStream.listen((state) {
         if (!mounted) return;
         setState(() => _playing = state.playing);
+      });
+      _processingSubscription = _playback.player.processingStateStream.listen((state) async {
+        if (state != ProcessingState.completed || _switchingTrack || _playback.queue.isEmpty) return;
+        try {
+          await _skipNextAndSync();
+        } catch (e) {
+          _showPlaybackError(e);
+        }
       });
     } catch (e, st) {
       debugPrint('Audio initialization failed: $e');
@@ -423,21 +434,160 @@ class _MusicHomeState extends State<MusicHome> {
 
   Future<void> _selectTrack(OnlineTrack track, {List<OnlineTrack>? source}) async {
     final tracks = source ?? _results;
-    final index = tracks.indexOf(track);
     if (tracks.isEmpty) return;
+    final foundIndex = tracks.indexOf(track);
+    final index = foundIndex < 0 ? 0 : foundIndex;
     try {
       await _audioReady;
     } catch (e) {
       if (mounted) _showPlaybackError(e);
       return;
     }
-    setState(() { _nowTitle = track.title; _nowArtist = track.artist; _playing = false; _searching = false; });
-    try {
-      await _playback.playSelected(tracks, index < 0 ? 0 : index);
-      if (mounted) setState(() => _playing = true);
-    } catch (e) {
-      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Playback failed: $e')));
+
+    // Tapping the currently loaded song toggles immediately instead of
+    // resolving the same YouTube stream again.
+    if (_playback.current?.videoId == track.videoId) {
+      try {
+        if (_playing) {
+          await _playback.pause();
+        } else {
+          await _playback.resume();
+        }
+        if (mounted) setState(() => _playing = !_playing);
+      } catch (e) {
+        _showPlaybackError(e);
+      }
+      return;
     }
+
+    if (mounted) {
+      setState(() {
+        _nowTitle = track.title;
+        _nowArtist = track.artist;
+        _playing = false;
+        _searching = false;
+        _switchingTrack = true;
+      });
+    }
+    try {
+      await _playback.playSelected(tracks, index);
+      if (mounted) {
+        setState(() {
+          _nowTitle = _playback.current?.title ?? track.title;
+          _nowArtist = _playback.current?.artist ?? track.artist;
+          _playing = true;
+          _switchingTrack = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _switchingTrack = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Playback failed: $e')),
+        );
+      }
+    }
+  }
+
+  Future<void> _skipNextAndSync() async {
+    if (_switchingTrack || _playback.queue.isEmpty) return;
+    if (mounted) setState(() => _switchingTrack = true);
+    try {
+      await _playback.skipNext();
+      final track = _playback.current;
+      if (mounted && track != null) {
+        setState(() {
+          _nowTitle = track.title;
+          _nowArtist = track.artist;
+          _playing = true;
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _switchingTrack = false);
+    }
+  }
+
+  Future<void> _skipPreviousAndSync() async {
+    if (_switchingTrack || _playback.queue.isEmpty) return;
+    if (mounted) setState(() => _switchingTrack = true);
+    try {
+      await _playback.skipPrevious();
+      final track = _playback.current;
+      if (mounted && track != null) {
+        setState(() {
+          _nowTitle = track.title;
+          _nowArtist = track.artist;
+          _playing = true;
+        });
+      }
+    } finally {
+      if (mounted) setState(() => _switchingTrack = false);
+    }
+  }
+
+  void _selectTab(int index) {
+    setState(() {
+      _tab = index;
+      _openPlaylist = null;
+      _searching = false;
+    });
+  }
+
+  Future<void> _showLyrics() async {
+    final track = _playback.current;
+    if (track == null) return;
+    await showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => FractionallySizedBox(
+        heightFactor: .82,
+        child: FutureBuilder<String?>(
+          future: _api.fetchLyrics(track.videoId),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError || (snapshot.data ?? '').trim().isEmpty) {
+              return const Center(
+                child: Padding(
+                  padding: EdgeInsets.all(28),
+                  child: Text(
+                    'Lyrics aren’t available for this song.',
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              );
+            }
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(28, 8, 28, 36),
+              children: [
+                Text(
+                  track.title,
+                  style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  track.artist,
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6),
+                  ),
+                ),
+                const SizedBox(height: 26),
+                Text(
+                  snapshot.data!,
+                  style: const TextStyle(
+                    fontSize: 17,
+                    height: 1.65,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            );
+          },
+        ),
+      ),
+    );
   }
 
   @override
@@ -644,7 +794,7 @@ class _MusicHomeState extends State<MusicHome> {
                       final selected = _tab == i;
                       return InkWell(
                         borderRadius: BorderRadius.circular(25),
-                        onTap: () => setState(() => _tab = i),
+                        onTap: () => _selectTab(i),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 220),
                           padding: EdgeInsets.symmetric(
