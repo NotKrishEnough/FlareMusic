@@ -275,7 +275,12 @@ class _MusicHomeState extends State<MusicHome> {
         _homeLoading = false;
       });
     } catch (e) {
-      if (mounted) setState(() => _homeLoading = false);
+      if (mounted) {
+        setState(() {
+          _homeLoading = false;
+          _error = 'YouTube Music Home could not be loaded. Tap Refresh to retry.';
+        });
+      }
       debugPrint('Personalized YouTube Music load failed: $e');
     }
   }
@@ -500,9 +505,49 @@ class _MusicHomeState extends State<MusicHome> {
             )),
             const SizedBox(height: 18),
           ],
-          _sectionTitle('Quick picks', 'Search music', onAction: () => setState(() => _searching = true)),
+          _sectionTitle(
+            _homeTracks.isNotEmpty ? 'Quick picks from YouTube Music' : 'Quick picks',
+            'Search music',
+            onAction: () => setState(() => _searching = true),
+          ),
           const SizedBox(height: 12),
-          ...List.generate(4, (i) => _trackRow(i)),
+          if (_homeTracks.isNotEmpty)
+            ..._homeTracks.skip(_homeTracks.length > 8 ? 4 : 0).take(6).map((track) => ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: track.thumbnail.isEmpty
+                    ? Container(width: 54, height: 54, color: Theme.of(context).colorScheme.surfaceContainerHighest, child: const Icon(Icons.music_note_rounded))
+                    : Image.network(
+                        track.thumbnail,
+                        width: 54,
+                        height: 54,
+                        fit: BoxFit.cover,
+                        errorBuilder: (_, __, ___) => Container(
+                          width: 54,
+                          height: 54,
+                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
+                          child: const Icon(Icons.music_note_rounded),
+                        ),
+                      ),
+              ),
+              title: Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+              subtitle: Text(track.artist, maxLines: 1, overflow: TextOverflow.ellipsis),
+              trailing: IconButton(icon: const Icon(Icons.play_arrow_rounded), onPressed: () => _selectTrack(track, source: _homeTracks)),
+              onTap: () => _selectTrack(track, source: _homeTracks),
+            ))
+          else if (_homeLoading)
+            const Center(child: Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()))
+          else
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 18),
+              child: Text(
+                _cookieAuth.isLoggedIn
+                    ? 'Couldn’t load your YouTube Music recommendations. Tap Refresh to try again.'
+                    : 'Connect YouTube Music to see your recommendations here.',
+                style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6)),
+              ),
+            ),
         ]))),
       ]),
       if (_searching) _searchPanel(),
