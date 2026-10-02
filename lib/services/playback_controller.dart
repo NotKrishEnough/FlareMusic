@@ -13,22 +13,11 @@ class PlaybackController {
   }
   late final AudioPlayer player;
   bool _initialized = false;
-  StreamSubscription<int?>? _sequenceIndexSubscription;
 
   Future<void> initialize() async {
     if (_initialized) return;
     player = AudioPlayer(userAgent: 'FlareMusic/1.0 (Android)');
     _initialized = true;
-    _sequenceIndexSubscription = player.currentIndexStream.listen((sequenceIndex) {
-      if (sequenceIndex == null || sequenceIndex < 0 || sequenceIndex >= player.sequence.length) return;
-      final tag = player.sequence[sequenceIndex].tag;
-      if (tag is! MediaItem) return;
-      final queueIndex = queue.indexWhere((track) => track.videoId == tag.id);
-      if (queueIndex >= 0 && queueIndex != index) {
-        index = queueIndex;
-        unawaited(_persist());
-      }
-    });
   }
   final YouTubeStreamResolver resolver = YouTubeStreamResolver();
   final List<OnlineTrack> queue = [];
@@ -57,177 +46,59 @@ class PlaybackController {
     if (index < 0 || index >= queue.length) index = -1;
   }
 
-  Future<void> playQueue(
-    List<OnlineTrack> tracks,
-    int startIndex,
-    Future<String> Function(String) resolve,
-  ) async {
+  Future<void> playQueue(List<OnlineTrack> tracks, int startIndex, Future<String> Function(String) resolve) async {
     if (!_initialized || tracks.isEmpty || startIndex < 0 || startIndex >= tracks.length) return;
-
-    queue
-      ..clear()
-      ..addAll(tracks);
+    queue..clear()..addAll(tracks);
     index = startIndex;
     await _persist();
-
-    // Load only the selected stream immediately. The Android media session
-    // still receives the logical queue below, while adjacent tracks are
-    // resolved lazily when the user skips.
-    final track = queue[index];
-    final source = await _resolveSource(track, resolve);
-
-    // Give Android a small real queue (current + neighbors) so lock-screen,
-    // Bluetooth and Android Auto controls have actual next/previous items,
-    // without requiring every queued YouTube stream to resolve up front.
-    final sources = <UriAudioSource>[];
-    final sourceIndexes = <int>[];
-    for (final candidateIndex in <int>[
-      if (index > 0) index - 1,
-      index,
-      if (index + 1 < queue.length) index + 1,
-    ]) {
-      if (candidateIndex == index) {
-        sources.add(source);
-        sourceIndexes.add(candidateIndex);
-        continue;
-      }
-      try {
-        sources.add(await _resolveSource(queue[candidateIndex], resolve));
-        sourceIndexes.add(candidateIndex);
-      } catch (_) {
-        // An unavailable neighbor must not prevent the current song playing.
-      }
-    }
-
-    final currentPosition = sourceIndexes.indexOf(index);
-    await player.setAudioSource(
-      ConcatenatingAudioSource(
-        useLazyPreparation: true,
-        children: sources,
-      ),
-      initialIndex: currentPosition < 0 ? 0 : currentPosition,
-      initialPosition: Duration.zero,
-    );
-    await player.play();
-    await _persist();
+    await playCurrent(resolve);
   }
+
   Future<void> playSelected(List<OnlineTrack> tracks, int startIndex) => playQueue(tracks, startIndex, resolver.resolve);
 
-  Future<void> resume() async {
-    if (!_initialized) await initialize();
-    await player.play();
-  }
-
-  Future<void> pause() async {
-    if (!_initialized) await initialize();
-    await player.pause();
-  }
-
-  Future<void> togglePlayPause() async {
-    if (!_initialized) await initialize();
-    if (player.playing) {
-      await player.pause();
-    } else {
-      await player.play();
-    }
-  }
-
-  Future<void> skipNext() async {
-    if (!_initialized) await initialize();
-    await next(resolver.resolve);
-  }
-
-  Future<void> skipPrevious() async {
-    if (!_initialized) await initialize();
-    await previous(resolver.resolve);
-  }
-
-  MediaItem _mediaItem(OnlineTrack track) {
-    return MediaItem(
-      id: track.videoId,
-      title: track.title,
-      artist: track.artist,
-      album: 'FlareMusic',
-      displayTitle: track.title,
-      displaySubtitle: track.artist,
-      artUri: track.thumbnail.isNotEmpty ? Uri.tryParse(track.thumbnail) : null,
-    );
-  }
-
-  Future<UriAudioSource> _resolveSource(
-    OnlineTrack track,
-    Future<String> Function(String) resolve,
-  ) async {
-    final url = await resolve(track.videoId);
-    if (url.trim().isEmpty) {
-      throw StateError('YouTube returned an empty audio stream.');
-    }
-    return AudioSource.uri(Uri.parse(url), tag: _mediaItem(track));
-  }
+  Future<void> resume() => _initialized ? player.play() : Future.value();
+  Future<void> pause() => _initialized ? player.pause() : Future.value();
+  Future<void> skipNext() => _initialized ? next(resolver.resolve) : Future.value();
+  Future<void> skipPrevious() => _initialized ? previous(resolver.resolve) : Future.value();
 
   Future<void> playCurrent(Future<String> Function(String) resolve) async {
     if (!_initialized) return;
     final track = current;
     if (track == null) return;
-
-    // When a queue is loaded into just_audio, Android's media session can
-    // expose that queue to the lock screen, notification, Bluetooth controls,
-    // Android Auto, etc. Selecting a source directly would discard that queue.
-    if (player.sequence.length == queue.length &&
-        index >= 0 &&
-        index < player.sequence.length) {
-      await player.seek(Duration.zero, index: index);
-      await player.play();
-      await _persist();
-      return;
-    }
-
-    final source = await _resolveSource(track, resolve);
-    await player.setAudioSource(source);
+    final url = await resolve(track.videoId);
+    if (url.trim().isEmpty) throw StateError('YouTube returned an empty audio stream.');
+    await player.setAudioSource(AudioSource.uri(
+      Uri.parse(url),
+      tag: MediaItem(
+        id: track.videoId,
+        title: track.title,
+        artist: track.artist,
+        album: 'FlareMusic',
+        displayTitle: track.title,
+        displaySubtitle: track.artist,
+        artUri: track.thumbnail.isNotEmpty ? Uri.tryParse(track.thumbnail) : null,
+      ),
+    ));
     await player.play();
     await _persist();
-  }
-
-  Future<void> _loadQueue(
-    Future<String> Function(String) resolve,
-  ) async {
-    final sources = <UriAudioSource>[];
-    for (final track in queue) {
-      sources.add(await _resolveSource(track, resolve));
-    }
-    await player.setAudioSource(
-      ConcatenatingAudioSource(
-        useLazyPreparation: true,
-        children: sources,
-      ),
-      initialIndex: index,
-      initialPosition: Duration.zero,
-    );
+    if (index + 1 < queue.length) unawaited(resolver.preload(queue[index + 1].videoId));
+    if (index > 0) unawaited(resolver.preload(queue[index - 1].videoId));
   }
 
   Future<void> next(Future<String> Function(String) resolve) async {
     if (queue.isEmpty) return;
     index = (index + 1) % queue.length;
     await _persist();
-    if (player.sequence.length == queue.length) {
-      await player.seek(Duration.zero, index: index);
-      await player.play();
-    } else {
-      await playCurrent(resolve);
-    }
+    await playCurrent(resolve);
   }
 
   Future<void> previous(Future<String> Function(String) resolve) async {
     if (queue.isEmpty) return;
     index = index <= 0 ? queue.length - 1 : index - 1;
     await _persist();
-    if (player.sequence.length == queue.length) {
-      await player.seek(Duration.zero, index: index);
-      await player.play();
-    } else {
-      await playCurrent(resolve);
-    }
+    await playCurrent(resolve);
   }
+
   Future<void> _persist() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList('flare.queue.ids', queue.map((e) => e.videoId).toList());
@@ -238,9 +109,5 @@ class PlaybackController {
     await prefs.setInt('flare.queue.index', index);
   }
 
-  Future<void> dispose() async {
-    await _sequenceIndexSubscription?.cancel();
-    await resolver.close();
-    if (_initialized) await player.dispose();
-  }
+  Future<void> dispose() async { await resolver.close(); if (_initialized) await player.dispose(); }
 }
