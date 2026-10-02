@@ -1010,18 +1010,6 @@ class _MusicHomeState extends State<MusicHome> {
 
   Widget _sectionTitle(String title, String action, {VoidCallback? onAction}) => Row(children: [Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)), const Spacer(), TextButton(onPressed: onAction ?? () => setState(() => _searching = true), child: Text(action))]);
 
-  Widget _trackRow(int index) {
-    const titles = ['Midnight City', 'Golden Hour', 'Afterglow', 'Blue Skies'];
-    const artists = ['M83', 'JVKE', 'Ed Sheeran', 'Khai Dreams'];
-    const colors = [Color(0xFF31516B), Color(0xFF9A704D), Color(0xFF614B72), Color(0xFF3C6C69)];
-    return Padding(padding: const EdgeInsets.only(bottom: 13), child: Row(children: [
-      Container(width: 54, height: 54, decoration: BoxDecoration(color: colors[index], borderRadius: BorderRadius.circular(13)), child: const Icon(Icons.music_note_rounded, color: Colors.white70)),
-      const SizedBox(width: 13),
-      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(titles[index], style: const TextStyle(fontWeight: FontWeight.w700)), const SizedBox(height: 4), Text(artists[index], style: TextStyle(color: Colors.white.withValues(alpha: .55), fontSize: 12))])),
-      IconButton(onPressed: () { _searchController.text = titles[index]; setState(() => _searching = true); _search(titles[index]); }, icon: const Icon(Icons.search_rounded)),
-    ]));
-  }
-
   Widget _fullPlayer() => Positioned.fill(child: Material(
     color: Theme.of(context).scaffoldBackgroundColor,
     child: SafeArea(child: Column(children: [
