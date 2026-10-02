@@ -830,15 +830,24 @@ class _MusicHomeState extends State<MusicHome> {
                     child: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 7),
                       decoration: BoxDecoration(
-                        color: Theme.of(context).colorScheme.surface.withValues(alpha: .58),
+                        // Transparent liquid-glass shell: the content underneath
+                        // remains visible through the blur instead of sitting on
+                        // an opaque/translucent surface.
+                        color: Colors.transparent,
                         borderRadius: BorderRadius.circular(30),
                         border: Border.all(
-                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .12),
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .20),
+                          width: 1.1,
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Theme.of(context).colorScheme.primary.withValues(alpha: .12),
-                            blurRadius: 28,
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .08),
+                            blurRadius: 24,
+                            spreadRadius: 1,
+                          ),
+                          BoxShadow(
+                            color: Theme.of(context).colorScheme.primary.withValues(alpha: .10),
+                            blurRadius: 32,
                             spreadRadius: 1,
                           ),
                         ],
