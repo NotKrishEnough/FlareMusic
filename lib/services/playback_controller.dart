@@ -24,7 +24,8 @@ class PlaybackController {
 
   OnlineTrack? get current => index >= 0 && index < queue.length ? queue[index] : null;
 
-  Future<void> restore() async {\n    if (!_initialized) return;
+  Future<void> restore() async {
+    if (!_initialized) return;
     final prefs = await SharedPreferences.getInstance();
     final ids = prefs.getStringList('flare.queue.ids') ?? const [];
     final titles = prefs.getStringList('flare.queue.titles') ?? const [];
@@ -56,7 +57,8 @@ class PlaybackController {
   Future<void> skipPrevious() => _initialized ? previous(resolver.resolve) : Future.value();
 
   Future<void> playCurrent(Future<String> Function(String) resolve) async {
-    if (!_initialized) return;\n    final track = current;
+    if (!_initialized) return;
+    final track = current;
     if (track == null) return;
     final url = await resolve(track.videoId);
     await player.setAudioSource(AudioSource.uri(
