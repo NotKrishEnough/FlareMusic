@@ -402,7 +402,7 @@ class _MusicHomeState extends State<MusicHome> {
       ]),
       if (_searching) _searchPanel(),
       if (_playerExpanded) _fullPlayer(),
-      if (!_playerExpanded) Align(alignment: Alignment.bottomCenter, child: Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 12), child: Column(mainAxisSize: MainAxisSize.min, children: [
+      if (!_playerExpanded && _playback.current != null) Align(alignment: Alignment.bottomCenter, child: Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 12), child: Column(mainAxisSize: MainAxisSize.min, children: [
         _miniPlayer(),
         const SizedBox(height: 12),
         Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9), decoration: BoxDecoration(color: const Color(0xFF22252B).withValues(alpha: .96), borderRadius: BorderRadius.circular(32), border: Border.all(color: Colors.white.withValues(alpha: .07))), child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: List.generate(_tabs.length, (i) {
