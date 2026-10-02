@@ -419,7 +419,7 @@ class _MusicHomeState extends State<MusicHome> {
       if (_openPlaylist != null) _playlistDetailPage(_openPlaylist!) else if (_tab == 2) _libraryPage() else if (_tab == 1) _explorePage() else if (_tab == 3) _accountPage() else CustomScrollView(slivers: [
         SliverPadding(padding: const EdgeInsets.fromLTRB(22, 18, 22, 150), sliver: SliverList(delegate: SliverChildListDelegate([
           Row(children: [
-            Container(width: 42, height: 42, decoration: BoxDecoration(color: const Color(0xFF8BC5FF).withValues(alpha: .16), borderRadius: BorderRadius.circular(15)), child: const Icon(Icons.graphic_eq_rounded, color: Color(0xFF8BC5FF))),
+            Container(width: 42, height: 42, decoration: BoxDecoration(color: Theme.of(context).colorScheme.primary.withValues(alpha: .16), borderRadius: BorderRadius.circular(15)), child: Icon(Icons.graphic_eq_rounded, color: Theme.of(context).colorScheme.primary)),
             const SizedBox(width: 12),
             const Text('FlareMusic', style: TextStyle(fontSize: 23, fontWeight: FontWeight.w800)),
             const Spacer(),
@@ -549,7 +549,7 @@ class _MusicHomeState extends State<MusicHome> {
     Text(_cookieAuth.isLoggedIn ? 'YouTube Music is connected. Personalized requests use your session.' : 'Connect YouTube to sync your playlists.', style: TextStyle(color: Colors.white.withValues(alpha: .6))),
     const SizedBox(height: 28),
     Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(22)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-      CircleAvatar(radius: 30, backgroundColor: const Color(0xFF8BC5FF).withValues(alpha: .18), child: const Icon(Icons.person_rounded, size: 32, color: Color(0xFF8BC5FF))),
+      CircleAvatar(radius: 30, backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: .18), child: Icon(Icons.person_rounded, size: 32, color: Theme.of(context).colorScheme.primary)),
       const SizedBox(height: 16),
       Text(_account.currentUser?.displayName ?? 'Not signed in', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
       const SizedBox(height: 5),
@@ -909,7 +909,7 @@ class _MusicHomeState extends State<MusicHome> {
   }
 
   Widget _fullPlayer() => Positioned.fill(child: Material(
-    color: const Color(0xFF101114),
+    color: Theme.of(context).scaffoldBackgroundColor,
     child: SafeArea(child: Column(children: [
       Padding(padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8), child: Row(children: [
         IconButton(onPressed: () => setState(() => _playerExpanded = false), icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 30)),
@@ -940,7 +940,7 @@ class _MusicHomeState extends State<MusicHome> {
             Slider(value: position.inMilliseconds.clamp(0, maxMs.toInt()).toDouble(), max: maxMs, onChanged: _playback.player.duration != null && duration > Duration.zero ? (v) => _playback.player.seek(Duration(milliseconds: v.round())) : null),
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               Text(_formatDuration(position), style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6), fontSize: 11)),
-              Text(_formatDuration(duration), style: const TextStyle(color: Colors.white60, fontSize: 11)),
+              Text(_formatDuration(duration), style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6), fontSize: 11)),
             ]),
           ]);
         },
@@ -1029,7 +1029,7 @@ class _MusicHomeState extends State<MusicHome> {
       child: Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: Colors.white.withValues(alpha: .08))), child: Row(children: [
         _playerArtwork(size: 42, radius: 11),
         const SizedBox(width: 11),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(_nowTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)), const SizedBox(height: 3), Text(_nowArtist, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Colors.white60))])),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(_nowTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)), const SizedBox(height: 3), Text(_nowArtist, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6)))])),
         IconButton(onPressed: () async { try { if (_playing) { await _playback.pause(); } else { await _playback.resume(); } if (mounted) setState(() => _playing = !_playing); } catch (e) { _showPlaybackError(e); } }, icon: Icon(_playing ? Icons.pause_rounded : Icons.play_arrow_rounded)),
       ])),
     ),
