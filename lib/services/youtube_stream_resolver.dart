@@ -7,12 +7,12 @@ class YouTubeStreamResolver {
 
   Future<String> resolve(String videoId) async {
     Object? lastError;
-    const primaryClients = <YoutubeApiClient>[
+    final primaryClients = <YoutubeApiClient>[
       YoutubeApiClient.androidVr,
       YoutubeApiClient.androidSdkless,
       YoutubeApiClient.ios,
     ];
-    const fallbackClients = <YoutubeApiClient>[
+    final fallbackClients = <YoutubeApiClient>[
       YoutubeApiClient.tv,
       YoutubeApiClient.mediaConnect,
       YoutubeApiClient.safari,
