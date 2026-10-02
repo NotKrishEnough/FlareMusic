@@ -22,6 +22,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -78,6 +80,8 @@ private object FlarePreferences {
     val animations = mutableStateOf(true)
     val compact = mutableStateOf(false)
     val dynamicColors = mutableStateOf(true)
+    val swipeToMinimize = mutableStateOf(true)
+    val swipeToChangeTracks = mutableStateOf(true)
     val accents = listOf(
         Color(0xFFFF694F), Color(0xFF9B8CFF), Color(0xFF35C9A5), Color(0xFFFFB84D),
         Color(0xFF64B5F6), Color(0xFFE879B9), Color(0xFFB0C46A), Color(0xFFB39DDB)
@@ -140,6 +144,8 @@ class MainActivity : ComponentActivity() {
         FlarePreferences.animations.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("animations", true)
         FlarePreferences.compact.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("compact", false)
         FlarePreferences.dynamicColors.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("dynamic_colors", true)
+        FlarePreferences.swipeToMinimize.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("gesture_minimize", true)
+        FlarePreferences.swipeToChangeTracks.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("gesture_tracks", true)
         val token = SessionToken(this, android.content.ComponentName(this, FlarePlaybackService::class.java))
         controllerFuture = MediaController.Builder(this, token).buildAsync()
         controllerFuture?.addListener({
@@ -513,7 +519,9 @@ class MainActivity : ComponentActivity() {
                 onPlayQueueItem = { index -> player.seekTo(index, 0L); player.play() },
                 onRemoveQueueItem = { if (it in 0 until player.mediaItemCount) player.removeMediaItem(it) },
                 onClearQueue = { if (player.mediaItemCount > 0) player.clearMediaItems() },
-                onStartSleepTimer = { minutes -> scope.launch { delay(minutes * 60_000L); player.pause() } }
+                onStartSleepTimer = { minutes -> scope.launch { delay(minutes * 60_000L); player.pause() } },
+                swipeToMinimize = FlarePreferences.swipeToMinimize.value,
+                swipeToChangeTracks = FlarePreferences.swipeToChangeTracks.value
             )
         }
     }
@@ -577,6 +585,24 @@ class MainActivity : ComponentActivity() {
                 })
             }
         }
+        Text("PLAYER GESTURES", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(top = 20.dp, bottom = 9.dp))
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color(0xFF171B24)).padding(17.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) { Text("Swipe down to minimize", color = Color.White, fontWeight = FontWeight.SemiBold); Text("Pull down anywhere in the full player", color = Color(0xFFA6ADBC), fontSize = 12.sp) }
+                Switch(checked = FlarePreferences.swipeToMinimize.value, onCheckedChange = {
+                    FlarePreferences.swipeToMinimize.value = it
+                    settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("gesture_minimize", it).apply()
+                })
+            }
+            HorizontalDivider(Modifier.padding(vertical = 14.dp), color = Color(0xFF303542))
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) { Text("Swipe left/right to change tracks", color = Color.White, fontWeight = FontWeight.SemiBold); Text("Swipe left for next, right for previous", color = Color(0xFFA6ADBC), fontSize = 12.sp) }
+                Switch(checked = FlarePreferences.swipeToChangeTracks.value, onCheckedChange = {
+                    FlarePreferences.swipeToChangeTracks.value = it
+                    settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("gesture_tracks", it).apply()
+                })
+            }
+        }
         Text("YOUTUBE MUSIC", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(bottom = 9.dp))
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color(0xFF171B24)).padding(17.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -615,11 +641,20 @@ class MainActivity : ComponentActivity() {
     else Box(modifier.background(Color(0xFF100D18)), contentAlignment = Alignment.Center) { Image(painterResource(R.drawable.ic_flare_logo), contentDescription = "FlareMusic logo", modifier = Modifier.fillMaxSize().padding(5.dp), contentScale = androidx.compose.ui.layout.ContentScale.Fit) }
 }
 
-@Composable private fun FullPlayer(track: Track, playing: Boolean, position: Long, duration: Long, isFavourite: Boolean, queue: List<Track>, onClose: () -> Unit, onPlayPause: () -> Unit, onSeek: (Long) -> Unit, onPrevious: () -> Unit, onNext: () -> Unit, onToggleFavourite: () -> Unit, onPlayQueueItem: (Int) -> Unit, onRemoveQueueItem: (Int) -> Unit, onClearQueue: () -> Unit, onStartSleepTimer: (Int) -> Unit) {
+@Composable private fun FullPlayer(track: Track, playing: Boolean, position: Long, duration: Long, isFavourite: Boolean, queue: List<Track>, onClose: () -> Unit, onPlayPause: () -> Unit, onSeek: (Long) -> Unit, onPrevious: () -> Unit, onNext: () -> Unit, onToggleFavourite: () -> Unit, onPlayQueueItem: (Int) -> Unit, onRemoveQueueItem: (Int) -> Unit, onClearQueue: () -> Unit, onStartSleepTimer: (Int) -> Unit, swipeToMinimize: Boolean, swipeToChangeTracks: Boolean) {
     var showQueue by remember { mutableStateOf(false) }
     var showSleepTimer by remember { mutableStateOf(false) }
     var sleepTimerMinutes by remember { mutableIntStateOf(0) }
-    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF25151F), Color(0xFF100D14), Color(0xFF09070F))))) {
+    Box(Modifier.fillMaxSize().pointerInput(swipeToMinimize, swipeToChangeTracks) {
+        var dragX = 0f
+        var dragY = 0f
+        detectDragGestures(onDragEnd = {
+            val horizontal = dragX; val vertical = dragY
+            if (kotlin.math.abs(vertical) > kotlin.math.abs(horizontal) && vertical > 85f && swipeToMinimize) onClose()
+            else if (kotlin.math.abs(horizontal) > 85f && swipeToChangeTracks) { if (horizontal < 0f) onNext() else onPrevious() }
+            dragX = 0f; dragY = 0f
+        }, onDragCancel = { dragX = 0f; dragY = 0f }) { _, amount -> dragX += amount.x; dragY += amount.y }
+    }.background(Brush.verticalGradient(listOf(Color(0xFF25151F), Color(0xFF100D14), Color(0xFF09070F))))) {
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().displayCutoutPadding().padding(horizontal = 24.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onClose) { Icon(Icons.Rounded.KeyboardArrowDown, "Collapse player", tint = Color.White, modifier = Modifier.size(30.dp)) }
