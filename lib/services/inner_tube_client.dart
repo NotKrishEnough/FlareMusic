@@ -37,8 +37,9 @@ class InnerTubeClient {
     return headers;
   }
   static const _webVersion = '2.20250626.01.00';
-  static const _musicVersion = '1.20250626.01.00';
+  static const _musicVersion = '1.20260304.03.00';
   static const _ua = 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/125.0.0.0 Mobile Safari/537.36';
+  static const _musicApiKey = 'AIzaSyC9XL3ZjWddXya6X74dJoCTL-WEYFDNX30';
 
   Future<List<OnlineTrack>> search(String query) async {
     if (query.trim().isEmpty) throw ArgumentError('Enter a search term');
@@ -79,7 +80,7 @@ class InnerTubeClient {
       throw StateError('Sign in with YouTube Music first.');
     }
     final response = await _http.post(
-      Uri.parse('https://music.youtube.com/youtubei/v1/browse?prettyPrint=false'),
+      Uri.parse('https://music.youtube.com/youtubei/v1/browse?key=$_musicApiKey&prettyPrint=false'),
       headers: await _headers(music: true),
       body: jsonEncode({
         'context': {
