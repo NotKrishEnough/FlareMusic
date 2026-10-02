@@ -452,31 +452,41 @@ class MainActivity : ComponentActivity() {
             if (current != null) {
                 val miniProgress = if (totalDuration > 0) (position.toFloat() / totalDuration.toFloat()).coerceIn(0f, 1f) else 0f
                 val miniColors = MaterialTheme.colorScheme
+                val miniShape = RoundedCornerShape(24.dp)
                 Column(
                     Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)
-                        .clip(RoundedCornerShape(20.dp))
-                        .background(miniColors.surfaceVariant.copy(alpha = if (amoled) 0.96f else 0.88f))
+                        .clip(miniShape)
+                        .background(Brush.linearGradient(listOf(
+                            miniColors.surfaceVariant.copy(alpha = if (amoled) 0.98f else 0.96f),
+                            miniColors.primaryContainer.copy(alpha = if (amoled) 0.34f else 0.48f)
+                        )))
                         .clickable { playerExpanded = true }
                 ) {
                     Row(
-                        Modifier.fillMaxWidth().padding(start = 9.dp, end = 7.dp, top = 8.dp, bottom = 7.dp),
+                        Modifier.fillMaxWidth().padding(start = 10.dp, end = 8.dp, top = 9.dp, bottom = 8.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Artwork(current!!.artwork, Modifier.size(50.dp).clip(RoundedCornerShape(14.dp)))
-                        Column(Modifier.weight(1f).padding(start = 11.dp, end = 5.dp)) {
-                            Text(current!!.title, color = miniColors.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(current!!.artist, color = miniColors.onSurfaceVariant, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
+                        Box {
+                            Artwork(current!!.artwork, Modifier.size(54.dp).clip(RoundedCornerShape(17.dp)))
+                            Box(Modifier.align(Alignment.BottomEnd).padding(3.dp).size(9.dp).clip(RoundedCornerShape(5.dp)).background(miniColors.primary))
                         }
-                        IconButton(onClick = { if (playing) player.pause() else player.play() }) {
-                            Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = miniColors.primary, modifier = Modifier.size(27.dp))
+                        Column(Modifier.weight(1f).padding(start = 12.dp, end = 4.dp)) {
+                            Text("NOW PLAYING", color = miniColors.primary, fontWeight = FontWeight.Bold, fontSize = 9.sp, letterSpacing = 1.25.sp, maxLines = 1)
+                            Text(current!!.title, color = miniColors.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp))
+                            Text(current!!.artist, color = miniColors.onSurfaceVariant, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
                         }
-                        IconButton(onClick = { player.seekToNextMediaItem() }) {
+                        IconButton(onClick = { if (playing) player.pause() else player.play() }, modifier = Modifier.size(42.dp).clip(RoundedCornerShape(15.dp)).background(miniColors.primary)) {
+                            Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = miniColors.onPrimary, modifier = Modifier.size(25.dp))
+                        }
+                        Spacer(Modifier.width(2.dp))
+                        IconButton(onClick = { player.seekToNextMediaItem() }, modifier = Modifier.size(38.dp)) {
                             Icon(Icons.Rounded.SkipNext, null, tint = miniColors.onSurface, modifier = Modifier.size(25.dp))
                         }
                     }
-                    Box(Modifier.fillMaxWidth().height(3.dp).background(miniColors.onSurface.copy(alpha = 0.10f))) {
-                        Box(Modifier.fillMaxWidth(miniProgress).fillMaxHeight().background(miniColors.primary))
+                    Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp).height(3.dp).clip(RoundedCornerShape(2.dp)).background(miniColors.onSurface.copy(alpha = 0.10f))) {
+                        Box(Modifier.fillMaxWidth(miniProgress).fillMaxHeight().clip(RoundedCornerShape(2.dp)).background(miniColors.primary))
                     }
+                    Spacer(Modifier.height(7.dp))
                 }
             }
             Box(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
