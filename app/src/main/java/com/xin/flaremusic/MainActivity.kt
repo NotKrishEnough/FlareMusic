@@ -53,6 +53,7 @@ import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.core.content.ContextCompat
+import androidx.core.view.WindowCompat
 import androidx.media3.common.MediaItem
 import androidx.media3.common.Player
 import androidx.media3.session.MediaController
@@ -105,6 +106,17 @@ class MainActivity : ComponentActivity() {
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        WindowCompat.setDecorFitsSystemWindows(window, false)
+        window.statusBarColor = android.graphics.Color.TRANSPARENT
+        window.navigationBarColor = android.graphics.Color.TRANSPARENT
+        WindowCompat.getInsetsController(window, window.decorView).apply {
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = false
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+            window.isStatusBarContrastEnforced = false
+            window.isNavigationBarContrastEnforced = false
+        }
         youtubeLoginLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
             val cookieHeader = result.data?.getStringExtra(YouTubeCookieLoginActivity.EXTRA_COOKIE_HEADER)
             if (result.resultCode == RESULT_OK && !cookieHeader.isNullOrBlank()) {
@@ -446,7 +458,7 @@ class MainActivity : ComponentActivity() {
         }
     }
     BackHandler(enabled = playerExpanded) { playerExpanded = false }
-    Box(Modifier.fillMaxSize()) {
+    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
     Scaffold(containerColor = Color.Transparent, bottomBar = {
         Column(Modifier.padding(bottom = 12.dp)) {
             if (current != null) {
