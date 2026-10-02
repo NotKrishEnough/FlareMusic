@@ -56,10 +56,34 @@ class PlaybackController {
 
   Future<void> playSelected(List<OnlineTrack> tracks, int startIndex) => playQueue(tracks, startIndex, resolver.resolve);
 
-  Future<void> resume() => _initialized ? player.play() : Future.value();
-  Future<void> pause() => _initialized ? player.pause() : Future.value();
-  Future<void> skipNext() => _initialized ? next(resolver.resolve) : Future.value();
-  Future<void> skipPrevious() => _initialized ? previous(resolver.resolve) : Future.value();
+  Future<void> resume() async {
+    if (!_initialized) await initialize();
+    await player.play();
+  }
+
+  Future<void> pause() async {
+    if (!_initialized) await initialize();
+    await player.pause();
+  }
+
+  Future<void> togglePlayPause() async {
+    if (!_initialized) await initialize();
+    if (player.playing) {
+      await player.pause();
+    } else {
+      await player.play();
+    }
+  }
+
+  Future<void> skipNext() async {
+    if (!_initialized) await initialize();
+    await next(resolver.resolve);
+  }
+
+  Future<void> skipPrevious() async {
+    if (!_initialized) await initialize();
+    await previous(resolver.resolve);
+  }
 
   Future<void> playCurrent(Future<String> Function(String) resolve) async {
     if (!_initialized) return;
