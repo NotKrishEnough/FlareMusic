@@ -42,7 +42,14 @@ jobs:
           fi
 
           if [[ "$EVENT_NAME" == "workflow_dispatch" ]]; then
-            SHA="$(gh api "repos/$GITHUB_REPOSITORY/commits/$TAG" --jq .sha)"
+            # If the tag already exists, release that exact commit. Otherwise
+            # allow a manual release to create the requested tag from the
+            # current workflow commit.
+            SHA="$(gh api "repos/$GITHUB_REPOSITORY/commits/$TAG" --jq .sha 2>/dev/null || true)"
+            if [[ -z "$SHA" ]]; then
+              SHA="$GITHUB_SHA"
+              echo "Tag $TAG does not exist yet; using current commit $SHA."
+            fi
           else
             SHA="$GITHUB_SHA"
           fi
