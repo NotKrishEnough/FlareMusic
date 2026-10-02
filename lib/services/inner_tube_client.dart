@@ -75,7 +75,7 @@ class InnerTubeClient {
   }
 
   Future<http.Response> _musicBrowse(String browseId) async {
-    if (_auth == null || !_auth!.isLoggedIn) {
+    if (_auth == null || !_auth.isLoggedIn) {
       throw StateError('Sign in with YouTube Music first.');
     }
     final response = await _http.post(
