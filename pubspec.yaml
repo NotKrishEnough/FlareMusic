@@ -16,6 +16,7 @@ dependencies:
   audio_service: ^0.18.15
   youtube_explode_dart: ^2.3.10
   shared_preferences: ^2.3.5
+  google_sign_in: ^6.2.2
 
 dev_dependencies:
   flutter_test:
