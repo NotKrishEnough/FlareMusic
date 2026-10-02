@@ -1739,7 +1739,7 @@ class _MusicHomeState extends State<MusicHome> with SingleTickerProviderStateMix
                           width: 40,
                           height: 40,
                           child: _playerArtwork(
-                            key: ValueKey('art-' + (_playback.current?.videoId ?? '')),
+                            key: ValueKey('art-${_playback.current?.videoId ?? ''}'),
                             size: 40,
                             radius: 20,
                           ),
@@ -1778,7 +1778,7 @@ class _MusicHomeState extends State<MusicHome> with SingleTickerProviderStateMix
                         duration: const Duration(milliseconds: 260),
                         child: Text(
                           _nowArtist,
-                          key: ValueKey('artist-' + _nowArtist),
+                          key: ValueKey('artist-$_nowArtist'),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
