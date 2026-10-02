@@ -43,10 +43,14 @@ jobs:
           p.write_text(s)
           p = Path('android/app/build.gradle.kts')
           s = p.read_text()
-          if 'isCoreLibraryDesugaringEnabled' not in s:
+          if 'isCoreLibraryDesugaringEnabled = true' not in s:
               s = s.replace('compileOptions {', 'compileOptions {\n        isCoreLibraryDesugaringEnabled = true', 1)
-          if 'desugar_jdk_libs' not in s:
-              s = s.replace('dependencies {', 'dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")', 1)
+          if 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")' not in s:
+              marker = 'dependencies {'
+              if marker in s:
+                  s = s.replace(marker, marker + '\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")', 1)
+              else:
+                  s += '\n\ndependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")\n}\n'
           p.write_text(s)
           PY
 
