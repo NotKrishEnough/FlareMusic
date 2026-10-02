@@ -895,12 +895,6 @@ class _MusicHomeState extends State<MusicHome> {
       const SizedBox(height: 5),
       Text(_account.currentUser?.email ?? 'Sign in with Google to connect your YouTube account.', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6))),
       const SizedBox(height: 20),
-      SizedBox(width: double.infinity, child: FilledButton.icon(
-        onPressed: _syncing ? null : _accountSync,
-        icon: _syncing ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(_account.currentUser == null ? Icons.login_rounded : Icons.sync_rounded),
-        label: Text(_syncing ? 'Syncing...' : _account.currentUser == null && !_cookieAuth.isLoggedIn ? 'Sign in with Google' : 'Sync YouTube playlists'),
-      )),
-      const SizedBox(height: 10),
       SizedBox(width: double.infinity, child: OutlinedButton.icon(
         onPressed: _youtubeMusicWebLogin,
         icon: const Icon(Icons.language_rounded),
@@ -925,68 +919,6 @@ class _MusicHomeState extends State<MusicHome> {
         SizedBox(width: double.infinity, child: OutlinedButton.icon(onPressed: () async { await _account.signOut(); if (mounted) setState(() {}); }, icon: const Icon(Icons.logout_rounded), label: const Text('Sign out Google'))),
       ],
     ])),
-    const SizedBox(height: 26),
-    const Text('Appearance & customization', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
-    const SizedBox(height: 8),
-    Text('Make FlareMusic feel like yours.', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .65))),
-    const SizedBox(height: 12),
-    Card(
-      color: Theme.of(context).colorScheme.surfaceContainerHighest,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          const Text('Theme', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 10),
-          SegmentedButton<ThemeMode>(
-            segments: const [
-              ButtonSegment(value: ThemeMode.system, label: Text('System'), icon: Icon(Icons.brightness_auto_rounded)),
-              ButtonSegment(value: ThemeMode.light, label: Text('Light'), icon: Icon(Icons.light_mode_rounded)),
-              ButtonSegment(value: ThemeMode.dark, label: Text('Dark'), icon: Icon(Icons.dark_mode_rounded)),
-            ],
-            selected: {widget.themeMode},
-            onSelectionChanged: (values) => widget.onThemeModeChanged(values.first),
-            showSelectedIcon: false,
-          ),
-          const SizedBox(height: 18),
-          SwitchListTile.adaptive(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Dynamic wallpaper colors'),
-            subtitle: const Text('Use colors from your Android wallpaper when supported'),
-            value: widget.useDynamicColors,
-            onChanged: widget.onDynamicColorsChanged,
-          ),
-          const SizedBox(height: 8),
-          const Text('Accent color', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: List.generate(widget.accents.length, (i) => InkWell(
-              onTap: () => widget.onAccentChanged(i),
-              borderRadius: BorderRadius.circular(24),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                width: 38,
-                height: 38,
-                decoration: BoxDecoration(
-                  color: widget.accents[i],
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: widget.accentIndex == i ? Theme.of(context).colorScheme.onSurface : Colors.transparent,
-                    width: 3,
-                  ),
-                ),
-                child: widget.accentIndex == i
-                    ? const Icon(Icons.check_rounded, color: Colors.black, size: 20)
-                    : null,
-              ),
-            )),
-          ),
-          const SizedBox(height: 8),
-          Text('Your appearance choices are saved on this device.', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .65), fontSize: 12)),
-        ]),
-      ),
-    ),
     const SizedBox(height: 22),
     const Text('Your music stays yours', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
     const SizedBox(height: 8),
