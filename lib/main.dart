@@ -61,7 +61,7 @@ class _FlareMusicAppState extends State<FlareMusicApp> {
           : mode == 'system' ? ThemeMode.system : ThemeMode.dark;
       _useDynamicColors = prefs.getBool('flare.appearance.dynamic') ?? true;
       _accentIndex = (prefs.getInt('flare.appearance.accent') ?? 0)
-          .clamp(0, _accents.length - 1);
+          .clamp(0, _accents.length - 1).toInt();
     });
   }
 
