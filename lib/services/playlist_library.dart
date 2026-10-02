@@ -60,6 +60,12 @@ class PlaylistLibrary {
     return playlist;
   }
 
+  Future<void> replaceSynced(List<LocalPlaylist> synced) async {
+    final current = await all();
+    final local = current.where((p) => !p.id.startsWith('yt:')).toList();
+    await _save([...synced, ...local]);
+  }
+
   Future<void> addTrack(String playlistId, OnlineTrack track) async {
     final lists = await all();
     final index = lists.indexWhere((p) => p.id == playlistId);
