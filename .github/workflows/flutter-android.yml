@@ -28,6 +28,33 @@ jobs:
       - name: Generate Android host
         run: flutter create --platforms=android --project-name flare_music .
 
+      - name: Preserve Android app identity and update version
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('android/app/build.gradle.kts')
+          s = p.read_text()
+          # Keep the same application identity as the existing Kotlin app so
+          # Android recognizes Flutter builds as updates to the installed app.
+          s = s.replace('namespace = "com.example.flare_music"', 'namespace = "com.xin.flaremusic"')
+          s = s.replace('applicationId = "com.example.flare_music"', 'applicationId = "com.xin.flaremusic"')
+          # The old Kotlin app used a timestamp versionCode. Keep using a
+          # monotonically increasing timestamp so every release can update it.
+          import re
+          s = re.sub(
+              r'versionCode\s*=\s*flutter\.versionCode\s*\?\:\s*1',
+              'versionCode = (System.getenv("BUILD_VERSION_CODE") ?: (System.currentTimeMillis() / 1000L).toString()).toInt()',
+              s,
+          )
+          s = re.sub(
+              r'versionName\s*=\s*flutter\.versionName\s*\?\:\s*"1\.0\.0"',
+              'versionName = "1.0." + (System.getenv("BUILD_VERSION_CODE") ?: (System.currentTimeMillis() / 1000L).toString())',
+              s,
+          )
+          p.write_text(s)
+          PY
+          echo "BUILD_VERSION_CODE=$(date +%s)" >> "$GITHUB_ENV"
+
       - name: Configure Flare Music branding
         run: |
           sudo apt-get update -qq
