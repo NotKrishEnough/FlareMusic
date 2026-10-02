@@ -1598,7 +1598,7 @@ class _MusicHomeState extends State<MusicHome> {
               ),
             ),
             IconButton(
-              onPressed: _switchingTrack ? null : _skipPreviousAndSync,
+              onPressed: _skipPreviousAndSync,
               icon: const Icon(Icons.skip_previous_rounded, size: 20),
               tooltip: 'Previous',
             ),
@@ -1616,7 +1616,7 @@ class _MusicHomeState extends State<MusicHome> {
               icon: Icon(_playing ? Icons.pause_rounded : Icons.play_arrow_rounded),
             ),
             IconButton(
-              onPressed: _switchingTrack ? null : _skipNextAndSync,
+              onPressed: _skipNextAndSync,
               icon: const Icon(Icons.skip_next_rounded, size: 20),
               tooltip: 'Next',
             ),
