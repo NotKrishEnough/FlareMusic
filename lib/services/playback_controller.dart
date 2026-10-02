@@ -64,7 +64,39 @@ class PlaybackController {
     // resolved lazily when the user skips.
     final track = queue[index];
     final source = await _resolveSource(track, resolve);
-    await player.setAudioSource(source);
+
+    // Give Android a small real queue (current + neighbors) so lock-screen,
+    // Bluetooth and Android Auto controls have actual next/previous items,
+    // without requiring every queued YouTube stream to resolve up front.
+    final sources = <UriAudioSource>[];
+    final sourceIndexes = <int>[];
+    for (final candidateIndex in <int>[
+      if (index > 0) index - 1,
+      index,
+      if (index + 1 < queue.length) index + 1,
+    ]) {
+      if (candidateIndex == index) {
+        sources.add(source);
+        sourceIndexes.add(candidateIndex);
+        continue;
+      }
+      try {
+        sources.add(await _resolveSource(queue[candidateIndex], resolve));
+        sourceIndexes.add(candidateIndex);
+      } catch (_) {
+        // An unavailable neighbor must not prevent the current song playing.
+      }
+    }
+
+    final currentPosition = sourceIndexes.indexOf(index);
+    await player.setAudioSource(
+      ConcatenatingAudioSource(
+        useLazyPreparation: true,
+        children: sources,
+      ),
+      initialIndex: currentPosition < 0 ? 0 : currentPosition,
+      initialPosition: Duration.zero,
+    );
     await player.play();
     await _persist();
   }
