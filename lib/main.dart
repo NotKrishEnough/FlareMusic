@@ -70,7 +70,25 @@ class _MusicHomeState extends State<MusicHome> {
     super.dispose();
   }
 
-  Future<void> _refreshLibrary() async { final lists = await _library.all(); if (mounted) setState(() => _playlists = lists); }\n\n  Future<void> _createPlaylist() async {\n    final name = TextEditingController();\n    final result = await showDialog<String>(context: context, builder: (context) => AlertDialog(title: const Text('New playlist'), content: TextField(controller: name, autofocus: true, decoration: const InputDecoration(hintText: 'Playlist name')), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(context, name.text), child: const Text('Create'))]));\n    name.dispose();\n    if (result == null || result.trim().isEmpty) return;\n    await _library.create(result); await _refreshLibrary();\n  }\n\n  Future<void> _importPlaylist() async {\n    final id = TextEditingController();\n    final result = await showDialog<String>(context: context, builder: (context) => AlertDialog(title: const Text('Import public YouTube playlist'), content: TextField(controller: id, decoration: const InputDecoration(hintText: 'Playlist ID or URL')), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(context, id.text), child: const Text('Import'))]));\n    id.dispose();\n    if (result == null || result.trim().isEmpty) return;\n    try { final uri = Uri.tryParse(result.trim()); final playlistId = uri?.queryParameters['list'] ?? result.trim(); await _library.importYouTube(playlistId, _api); await _refreshLibrary(); } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Import failed: $e'))); }\n  }\n\n  Future<void> _search([String? value]) async {
+  Future<void> _refreshLibrary() async { final lists = await _library.all(); if (mounted) setState(() => _playlists = lists); }
+
+  Future<void> _createPlaylist() async {
+    final name = TextEditingController();
+    final result = await showDialog<String>(context: context, builder: (context) => AlertDialog(title: const Text('New playlist'), content: TextField(controller: name, autofocus: true, decoration: const InputDecoration(hintText: 'Playlist name')), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(context, name.text), child: const Text('Create'))]));
+    name.dispose();
+    if (result == null || result.trim().isEmpty) return;
+    await _library.create(result); await _refreshLibrary();
+  }
+
+  Future<void> _importPlaylist() async {
+    final id = TextEditingController();
+    final result = await showDialog<String>(context: context, builder: (context) => AlertDialog(title: const Text('Import public YouTube playlist'), content: TextField(controller: id, decoration: const InputDecoration(hintText: 'Playlist ID or URL')), actions: [TextButton(onPressed: () => Navigator.pop(context), child: const Text('Cancel')), FilledButton(onPressed: () => Navigator.pop(context, id.text), child: const Text('Import'))]));
+    id.dispose();
+    if (result == null || result.trim().isEmpty) return;
+    try { final uri = Uri.tryParse(result.trim()); final playlistId = uri?.queryParameters['list'] ?? result.trim(); await _library.importYouTube(playlistId, _api); await _refreshLibrary(); } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Import failed: $e'))); }
+  }
+
+  Future<void> _search([String? value]) async {
     final query = (value ?? _searchController.text).trim();
     if (query.isEmpty) return;
     setState(() { _searching = true; _loading = true; _error = null; _results.clear(); });
@@ -140,7 +158,14 @@ class _MusicHomeState extends State<MusicHome> {
     ])),
   );
 
-  Widget _libraryPage() => Positioned.fill(child: Container(color: const Color(0xFF101114), child: SafeArea(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [\n    Padding(padding: const EdgeInsets.fromLTRB(22, 22, 16, 12), child: Row(children: [const Expanded(child: Text('Your Library', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800))), IconButton(onPressed: _createPlaylist, icon: const Icon(Icons.add_rounded)), IconButton(onPressed: _importPlaylist, icon: const Icon(Icons.download_rounded))])),\n    Padding(padding: const EdgeInsets.symmetric(horizontal: 22), child: Text('Playlists saved on this device', style: TextStyle(color: Colors.white.withValues(alpha: .6)))),\n    const SizedBox(height: 12),\n    Expanded(child: _playlists.isEmpty ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.library_music_outlined, size: 48, color: Colors.white38), const SizedBox(height: 12), const Text('Your library is empty'), const SizedBox(height: 8), Wrap(spacing: 8, children: [OutlinedButton(onPressed: _createPlaylist, child: const Text('Create playlist')), OutlinedButton(onPressed: _importPlaylist, child: const Text('Import YouTube'))])])) : ListView.builder(itemCount: _playlists.length, itemBuilder: (context, i) { final p = _playlists[i]; return ListTile(leading: Container(width: 48, height: 48, decoration: BoxDecoration(color: const Color(0xFF31516B), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.queue_music_rounded)), title: Text(p.name), subtitle: Text('${p.tracks.length} tracks'), trailing: IconButton(icon: const Icon(Icons.delete_outline), onPressed: () async { await _library.remove(p.id); await _refreshLibrary(); }), onTap: () { if (p.tracks.isNotEmpty) _selectTrack(p.tracks.first); }})),\n  ]))));\n\n  Widget _searchPanel() => Positioned.fill(child: Material(color: const Color(0xFF101114).withValues(alpha: .98), child: Column(children: [
+  Widget _libraryPage() => Positioned.fill(child: Container(color: const Color(0xFF101114), child: SafeArea(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    Padding(padding: const EdgeInsets.fromLTRB(22, 22, 16, 12), child: Row(children: [const Expanded(child: Text('Your Library', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800))), IconButton(onPressed: _createPlaylist, icon: const Icon(Icons.add_rounded)), IconButton(onPressed: _importPlaylist, icon: const Icon(Icons.download_rounded))])),
+    Padding(padding: const EdgeInsets.symmetric(horizontal: 22), child: Text('Playlists saved on this device', style: TextStyle(color: Colors.white.withValues(alpha: .6)))),
+    const SizedBox(height: 12),
+    Expanded(child: _playlists.isEmpty ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.library_music_outlined, size: 48, color: Colors.white38), const SizedBox(height: 12), const Text('Your library is empty'), const SizedBox(height: 8), Wrap(spacing: 8, children: [OutlinedButton(onPressed: _createPlaylist, child: const Text('Create playlist')), OutlinedButton(onPressed: _importPlaylist, child: const Text('Import YouTube'))])])) : ListView.builder(itemCount: _playlists.length, itemBuilder: (context, i) { final p = _playlists[i]; return ListTile(leading: Container(width: 48, height: 48, decoration: BoxDecoration(color: const Color(0xFF31516B), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.queue_music_rounded)), title: Text(p.name), subtitle: Text('${p.tracks.length} tracks'), trailing: IconButton(icon: const Icon(Icons.delete_outline), onPressed: () async { await _library.remove(p.id); await _refreshLibrary(); }), onTap: () { if (p.tracks.isNotEmpty) _selectTrack(p.tracks.first); }})),
+  ]))));
+
+  Widget _searchPanel() => Positioned.fill(child: Material(color: const Color(0xFF101114).withValues(alpha: .98), child: Column(children: [
     Padding(padding: const EdgeInsets.fromLTRB(16, 10, 16, 12), child: Row(children: [
       IconButton(onPressed: () => setState(() => _searching = false), icon: const Icon(Icons.arrow_back_rounded)),
       Expanded(child: TextField(controller: _searchController, focusNode: _searchFocus, textInputAction: TextInputAction.search, onSubmitted: _search, decoration: InputDecoration(hintText: 'Search songs, artists...', filled: true, fillColor: const Color(0xFF22252B), border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)))),
