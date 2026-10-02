@@ -250,10 +250,7 @@ class MainActivity : ComponentActivity() {
             FlarePreferences.dynamicAccent.value = wallpaperScheme.primary
         }
     }
-    val expressiveScheme = wallpaperScheme.copy(
-        background = Color(0xFF101116),
-        onBackground = Color.White
-    )
+    val expressiveScheme = wallpaperScheme
     MaterialTheme(
         colorScheme = if (amoled) expressiveScheme.copy(background = Color.Black, surface = Color.Black, surfaceContainer = Color(0xFF080808)) else expressiveScheme,
         content = content
@@ -524,10 +521,10 @@ class MainActivity : ComponentActivity() {
                             Icon(
                                 when(item) { "Home" -> Icons.Rounded.Home; "Search" -> Icons.Rounded.Search; "Library" -> Icons.Rounded.LibraryMusic; else -> Icons.Rounded.Settings },
                                 contentDescription = item,
-                                tint = if (selected) Violet else Color(0xFFAAA6B2),
+                                tint = if (selected) Violet else MaterialTheme.colorScheme.onSurfaceVariant,
                                 modifier = Modifier.size(21.dp)
                             )
-                            Text(item, color = if (selected) Violet else Color(0xFFAAA6B2), fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp), maxLines = 1)
+                            Text(item, color = if (selected) Violet else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp), maxLines = 1)
                         }
                     }
                 }
@@ -576,55 +573,55 @@ class MainActivity : ComponentActivity() {
 
 @Composable private fun SettingsScreen(amoled: Boolean, onAmoledChange: (Boolean) -> Unit, googleStatus: String, playlists: List<YouTubePlaylist>, loading: Boolean, error: String, onConnect: () -> Unit, onSync: () -> Unit, onDisconnectYouTube: () -> Unit) {
     val settingsContext = LocalContext.current
-    Column(Modifier.fillMaxSize().background(Color(0xFF0B0D12)).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 20.dp)) {
-        Text("Settings", fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp, color = Color.White)
-        Text("Make FlareMusic yours.", color = Color(0xFFA6ADBC), fontSize = 14.sp, modifier = Modifier.padding(top = 5.dp, bottom = 24.dp))
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 20.dp)) {
+        Text("Settings", fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp, color = MaterialTheme.colorScheme.onSurface)
+        Text("Make FlareMusic yours.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp, modifier = Modifier.padding(top = 5.dp, bottom = 24.dp))
         Text("APPEARANCE", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(bottom = 9.dp))
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color(0xFF171B24)).clickable { onAmoledChange(!amoled) }.padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFF292E39)), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.DarkMode, null, tint = Mint) }
-            Column(Modifier.weight(1f).padding(start = 13.dp)) { Text("AMOLED mode", color = Color.White, fontWeight = FontWeight.SemiBold); Text("Pure black backgrounds", color = Color(0xFF9298A8), fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp)) }
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable { onAmoledChange(!amoled) }.padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.outlineVariant), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.DarkMode, null, tint = Mint) }
+            Column(Modifier.weight(1f).padding(start = 13.dp)) { Text("AMOLED mode", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold); Text("Pure black backgrounds", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp)) }
             Switch(checked = amoled, onCheckedChange = onAmoledChange)
         }
-        Text("Material You colours adapt to your wallpaper on supported Android versions.", color = Color(0xFF9298A8), fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp, bottom = 14.dp))
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color(0xFF171B24)).clickable {
+        Text("Material You colours adapt to your wallpaper on supported Android versions.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp, bottom = 14.dp))
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable {
             FlarePreferences.dynamicColors.value = !FlarePreferences.dynamicColors.value
             settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("dynamic_colors", FlarePreferences.dynamicColors.value).apply()
         }.padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Material You dynamic colours", color = Color.White, fontWeight = FontWeight.SemiBold)
-                Text("Use colours from your wallpaper", color = Color(0xFFA6ADBC), fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp))
+                Text("Material You dynamic colours", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+                Text("Use colours from your wallpaper", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp))
             }
             Switch(checked = FlarePreferences.dynamicColors.value, onCheckedChange = {
                 FlarePreferences.dynamicColors.value = it
                 settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("dynamic_colors", it).apply()
             })
         }
-        Text("Choose a preset or let Android generate a palette from your wallpaper.", color = Color(0xFF9298A8), fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp, bottom = 20.dp))
+        Text("Choose a preset or let Android generate a palette from your wallpaper.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp, bottom = 20.dp))
         Text("PERSONALIZATION", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(bottom = 9.dp))
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color(0xFF171B24)).padding(17.dp)) {
-            Text("Accent colour", color = Color.White, fontWeight = FontWeight.SemiBold)
-            Text("Choose the colour used for highlights and controls.", color = Color(0xFFA6ADBC), fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp, bottom = 13.dp))
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surfaceVariant).padding(17.dp)) {
+            Text("Accent colour", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+            Text("Choose the colour used for highlights and controls.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp, bottom = 13.dp))
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(13.dp)) {
                 FlarePreferences.accents.forEachIndexed { index, color ->
                     Box(Modifier.size(42.dp).clip(RoundedCornerShape(15.dp)).background(color).clickable {
                         FlarePreferences.accentIndex.intValue = index
                         settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putInt("accent_index", index).apply()
                     }, contentAlignment = Alignment.Center) {
-                        if (FlarePreferences.accentIndex.intValue == index) Icon(Icons.Rounded.Check, null, tint = Color.White)
+                        if (FlarePreferences.accentIndex.intValue == index) Icon(Icons.Rounded.Check, null, tint = MaterialTheme.colorScheme.onSurface)
                     }
                 }
             }
-            HorizontalDivider(Modifier.padding(vertical = 14.dp), color = Color(0xFF303542))
+            HorizontalDivider(Modifier.padding(vertical = 14.dp), color = MaterialTheme.colorScheme.outlineVariant)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) { Text("Smooth animations", color = Color.White, fontWeight = FontWeight.SemiBold); Text("Spring transitions between screens", color = Color(0xFFA6ADBC), fontSize = 12.sp) }
+                Column(Modifier.weight(1f)) { Text("Smooth animations", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold); Text("Spring transitions between screens", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp) }
                 Switch(checked = FlarePreferences.animations.value, onCheckedChange = {
                     FlarePreferences.animations.value = it
                     settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("animations", it).apply()
                 })
             }
-            HorizontalDivider(Modifier.padding(vertical = 14.dp), color = Color(0xFF303542))
+            HorizontalDivider(Modifier.padding(vertical = 14.dp), color = MaterialTheme.colorScheme.outlineVariant)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) { Text("Compact layout", color = Color.White, fontWeight = FontWeight.SemiBold); Text("Reduce spacing in lists", color = Color(0xFFA6ADBC), fontSize = 12.sp) }
+                Column(Modifier.weight(1f)) { Text("Compact layout", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold); Text("Reduce spacing in lists", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp) }
                 Switch(checked = FlarePreferences.compact.value, onCheckedChange = {
                     FlarePreferences.compact.value = it
                     settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("compact", it).apply()
@@ -632,17 +629,17 @@ class MainActivity : ComponentActivity() {
             }
         }
         Text("PLAYER GESTURES", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(top = 20.dp, bottom = 9.dp))
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color(0xFF171B24)).padding(17.dp)) {
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surfaceVariant).padding(17.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) { Text("Swipe down to minimize", color = Color.White, fontWeight = FontWeight.SemiBold); Text("Pull down anywhere in the full player", color = Color(0xFFA6ADBC), fontSize = 12.sp) }
+                Column(Modifier.weight(1f)) { Text("Swipe down to minimize", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold); Text("Pull down anywhere in the full player", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp) }
                 Switch(checked = FlarePreferences.swipeToMinimize.value, onCheckedChange = {
                     FlarePreferences.swipeToMinimize.value = it
                     settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("gesture_minimize", it).apply()
                 })
             }
-            HorizontalDivider(Modifier.padding(vertical = 14.dp), color = Color(0xFF303542))
+            HorizontalDivider(Modifier.padding(vertical = 14.dp), color = MaterialTheme.colorScheme.outlineVariant)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) { Text("Swipe left/right to change tracks", color = Color.White, fontWeight = FontWeight.SemiBold); Text("Swipe left for next, right for previous", color = Color(0xFFA6ADBC), fontSize = 12.sp) }
+                Column(Modifier.weight(1f)) { Text("Swipe left/right to change tracks", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold); Text("Swipe left for next, right for previous", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp) }
                 Switch(checked = FlarePreferences.swipeToChangeTracks.value, onCheckedChange = {
                     FlarePreferences.swipeToChangeTracks.value = it
                     settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("gesture_tracks", it).apply()
@@ -650,16 +647,16 @@ class MainActivity : ComponentActivity() {
             }
         }
         Text("YOUTUBE MUSIC", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(bottom = 9.dp))
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(Color(0xFF171B24)).padding(17.dp)) {
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surfaceVariant).padding(17.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.MusicNote, null, tint = Mint, modifier = Modifier.size(25.dp))
                 Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                    Text("YouTube Music account", color = Color.White, fontWeight = FontWeight.SemiBold)
-                    Text(googleStatus, color = if (googleStatus.startsWith("Connected")) Mint else Color(0xFFA6ADBC), fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp))
+                    Text("YouTube Music account", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+                    Text(googleStatus, color = if (googleStatus.startsWith("Connected")) Mint else MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp))
                 }
                 if (loading) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = Mint)
             }
-            Text("Sign in through Google's page. Your session is encrypted on this device.", color = Color(0xFFA6ADBC), fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp, bottom = 14.dp))
+            Text("Sign in through Google's page. Your session is encrypted on this device.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp, bottom = 14.dp))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onConnect, modifier = Modifier.weight(1f), enabled = !loading) {
                     Text(if (googleStatus.startsWith("Connected")) "Reconnect" else "Connect")
@@ -668,10 +665,10 @@ class MainActivity : ComponentActivity() {
                     OutlinedButton(onClick = onDisconnectYouTube, enabled = !loading) { Text("Disconnect") }
                 }
             }
-            if (error.isNotBlank()) Text(error, color = Color(0xFFFF8A80), fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp))
+            if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp))
         }
         Spacer(Modifier.height(20.dp))
-        Text("FLAREMUSIC  •  MADE FOR YOUR MUSIC", color = Color(0xFF626A79), fontSize = 9.sp, letterSpacing = 1.2.sp, modifier = Modifier.align(Alignment.CenterHorizontally).padding(vertical = 14.dp))
+        Text("FLAREMUSIC  •  MADE FOR YOUR MUSIC", color = MaterialTheme.colorScheme.outline, fontSize = 9.sp, letterSpacing = 1.2.sp, modifier = Modifier.align(Alignment.CenterHorizontally).padding(vertical = 14.dp))
     }
 }
 
@@ -699,7 +696,7 @@ class MainActivity : ComponentActivity() {
         }
     }
     if (bitmap != null) Image(bitmap = bitmap!!.asImageBitmap(), contentDescription = "Album art", modifier = modifier, contentScale = if (fitArtwork) androidx.compose.ui.layout.ContentScale.Fit else androidx.compose.ui.layout.ContentScale.Crop)
-    else Box(modifier.background(Color(0xFF100D18)), contentAlignment = Alignment.Center) { Image(painterResource(R.drawable.ic_flare_logo), contentDescription = "FlareMusic logo", modifier = Modifier.fillMaxSize().padding(5.dp), contentScale = androidx.compose.ui.layout.ContentScale.Fit) }
+    else Box(modifier.background(MaterialTheme.colorScheme.surface), contentAlignment = Alignment.Center) { Image(painterResource(R.drawable.ic_flare_logo), contentDescription = "FlareMusic logo", modifier = Modifier.fillMaxSize().padding(5.dp), contentScale = androidx.compose.ui.layout.ContentScale.Fit) }
 }
 
 @Composable private fun FullPlayer(track: Track, playing: Boolean, position: Long, duration: Long, isFavourite: Boolean, queue: List<Track>, onClose: () -> Unit, onPlayPause: () -> Unit, onSeek: (Long) -> Unit, onPrevious: () -> Unit, onNext: () -> Unit, onToggleFavourite: () -> Unit, onPlayQueueItem: (Int) -> Unit, onRemoveQueueItem: (Int) -> Unit, onClearQueue: () -> Unit, onStartSleepTimer: (Int) -> Unit, swipeToMinimize: Boolean, swipeToChangeTracks: Boolean) {
@@ -715,50 +712,50 @@ class MainActivity : ComponentActivity() {
             else if (kotlin.math.abs(horizontal) > 85f && swipeToChangeTracks) { if (horizontal < 0f) onNext() else onPrevious() }
             dragX = 0f; dragY = 0f
         }, onDragCancel = { dragX = 0f; dragY = 0f }) { _, amount -> dragX += amount.x; dragY += amount.y }
-    }.background(Brush.verticalGradient(listOf(Color(0xFF25151F), Color(0xFF100D14), Color(0xFF09070F))))) {
+    }.background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface)))) {
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().displayCutoutPadding().padding(horizontal = 24.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onClose) { Icon(Icons.Rounded.KeyboardArrowDown, "Collapse player", tint = Color.White, modifier = Modifier.size(30.dp)) }
+                IconButton(onClick = onClose) { Icon(Icons.Rounded.KeyboardArrowDown, "Collapse player", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(30.dp)) }
                 Spacer(Modifier.weight(1f))
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Text("NOW PLAYING", color = Color(0xFFFF9A79), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.2.sp)
-                    Text("FlareMusic", color = Color(0xFFB8AEB7), fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
+                    Text("NOW PLAYING", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.2.sp)
+                    Text("FlareMusic", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
                 }
                 Spacer(Modifier.weight(1f))
-                IconButton(onClick = { showQueue = true }) { Icon(Icons.Rounded.QueueMusic, "Queue", tint = Color.White) }
+                IconButton(onClick = { showQueue = true }) { Icon(Icons.Rounded.QueueMusic, "Queue", tint = MaterialTheme.colorScheme.onSurface) }
             }
             Spacer(Modifier.weight(.65f))
-            Box(Modifier.fillMaxWidth().aspectRatio(1f).padding(horizontal = 8.dp).clip(RoundedCornerShape(30.dp)).background(Brush.linearGradient(listOf(Color(0xFF3A202F), Color(0xFF1A1726)))).padding(10.dp)) {
+            Box(Modifier.fillMaxWidth().aspectRatio(1f).padding(horizontal = 8.dp).clip(RoundedCornerShape(30.dp)).background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.surface))).padding(10.dp)) {
                 Artwork(track.artwork, Modifier.fillMaxSize().clip(RoundedCornerShape(23.dp)), fitArtwork = true)
             }
             Spacer(Modifier.weight(.65f))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(track.title, color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(track.artist, color = Color(0xFFBDB5C0), fontSize = 15.sp, modifier = Modifier.padding(top = 5.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(track.title, color = MaterialTheme.colorScheme.onSurface, fontSize = 23.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(track.artist, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 15.sp, modifier = Modifier.padding(top = 5.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
                 }
-                IconButton(onClick = onToggleFavourite) { Icon(if (isFavourite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, "Favourite", tint = Color(0xFFFF8B78), modifier = Modifier.size(25.dp)) }
+                IconButton(onClick = onToggleFavourite) { Icon(if (isFavourite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, "Favourite", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(25.dp)) }
             }
             Spacer(Modifier.height(22.dp))
-            Slider(value = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f, onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) }, colors = SliderDefaults.colors(thumbColor = Color.White, activeTrackColor = Color(0xFFFF755B), inactiveTrackColor = Color(0xFF51434E)))
+            Slider(value = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f, onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) }, colors = SliderDefaults.colors(thumbColor = MaterialTheme.colorScheme.onSurface, activeTrackColor = MaterialTheme.colorScheme.primary, inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(formatTime(position), color = Color(0xFFBDB5C0), fontSize = 11.sp)
-                Text(formatTime(duration), color = Color(0xFFBDB5C0), fontSize = 11.sp)
+                Text(formatTime(position), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
+                Text(formatTime(duration), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
             }
             Spacer(Modifier.height(14.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onPrevious, modifier = Modifier.size(52.dp)) { Icon(Icons.Rounded.SkipPrevious, "Previous", tint = Color.White, modifier = Modifier.size(31.dp)) }
-                FilledIconButton(onClick = onPlayPause, modifier = Modifier.size(76.dp), shape = RoundedCornerShape(26.dp), colors = IconButtonDefaults.filledIconButtonColors(containerColor = Color(0xFFFF654F), contentColor = Color.White)) {
+                IconButton(onClick = onPrevious, modifier = Modifier.size(52.dp)) { Icon(Icons.Rounded.SkipPrevious, "Previous", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(31.dp)) }
+                FilledIconButton(onClick = onPlayPause, modifier = Modifier.size(76.dp), shape = RoundedCornerShape(26.dp), colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onSurface)) {
                     Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (playing) "Pause" else "Play", modifier = Modifier.size(38.dp))
                 }
-                IconButton(onClick = onNext, modifier = Modifier.size(52.dp)) { Icon(Icons.Rounded.SkipNext, "Next", tint = Color.White, modifier = Modifier.size(31.dp)) }
+                IconButton(onClick = onNext, modifier = Modifier.size(52.dp)) { Icon(Icons.Rounded.SkipNext, "Next", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(31.dp)) }
             }
             Spacer(Modifier.height(8.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                 TextButton(onClick = { showSleepTimer = true }) {
-                    Icon(Icons.Rounded.Bedtime, null, tint = Color(0xFFFF9A79), modifier = Modifier.size(18.dp))
+                    Icon(Icons.Rounded.Bedtime, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(7.dp))
-                    Text(if (sleepTimerMinutes > 0) "Sleep timer: " + sleepTimerMinutes + " min" else "Sleep timer", color = Color(0xFFFF9A79))
+                    Text(if (sleepTimerMinutes > 0) "Sleep timer: " + sleepTimerMinutes + " min" else "Sleep timer", color = MaterialTheme.colorScheme.primary)
                 }
             }
             Spacer(Modifier.weight(.35f))
@@ -805,15 +802,15 @@ class MainActivity : ComponentActivity() {
         }
         Spacer(Modifier.height(24.dp))
         Box(Modifier.fillMaxWidth().height(224.dp).clip(RoundedCornerShape(28.dp)).background(Brush.linearGradient(listOf(colors.primary.copy(alpha = 0.88f), colors.secondary.copy(alpha = 0.78f), colors.tertiary.copy(alpha = 0.68f)))).clickable { openLibrary() }) {
-            Box(Modifier.align(Alignment.TopEnd).padding(16.dp).size(140.dp).clip(RoundedCornerShape(70.dp)).background(Color.White.copy(alpha = .07f)), contentAlignment = Alignment.Center) {
-                Box(Modifier.size(104.dp).clip(RoundedCornerShape(52.dp)).background(Color.White.copy(alpha = .06f)), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.GraphicEq, null, tint = accent.copy(alpha = .72f), modifier = Modifier.size(58.dp)) }
+            Box(Modifier.align(Alignment.TopEnd).padding(16.dp).size(140.dp).clip(RoundedCornerShape(70.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = .07f)), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(104.dp).clip(RoundedCornerShape(52.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = .06f)), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.GraphicEq, null, tint = accent.copy(alpha = .72f), modifier = Modifier.size(58.dp)) }
             }
             Column(Modifier.align(Alignment.BottomStart).padding(22.dp)) {
                 Text("MADE FOR THE MOMENT", color = accent.copy(alpha = .82f), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp)
-                Text("Let the music\ntake over.", color = Color.White, fontSize = 28.sp, lineHeight = 31.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 7.dp))
-                Row(Modifier.padding(top = 13.dp).clip(RoundedCornerShape(18.dp)).background(Color.White.copy(alpha = .16f)).padding(horizontal = 13.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    Text("Explore library", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                    Spacer(Modifier.width(7.dp)); Icon(Icons.Rounded.ArrowForward, null, tint = Color.White, modifier = Modifier.size(15.dp))
+                Text("Let the music\ntake over.", color = MaterialTheme.colorScheme.onSurface, fontSize = 28.sp, lineHeight = 31.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 7.dp))
+                Row(Modifier.padding(top = 13.dp).clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = .16f)).padding(horizontal = 13.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text("Explore library", color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Spacer(Modifier.width(7.dp)); Icon(Icons.Rounded.ArrowForward, null, tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(15.dp))
                 }
             }
         }
@@ -821,7 +818,7 @@ class MainActivity : ComponentActivity() {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("Your library", color = colors.onBackground, fontSize = 23.sp, fontWeight = FontWeight.Bold)
-                Text(if (loading) "Finding your music…" else "$count tracks ready when you are", color = Color(0xFF9B94A1), fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
+                Text(if (loading) "Finding your music…" else "$count tracks ready when you are", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
             }
             TextButton(onClick = openLibrary) { Text("See all", color = accent, fontWeight = FontWeight.SemiBold) }
         }
@@ -829,45 +826,45 @@ class MainActivity : ComponentActivity() {
             listOf(Triple(Icons.Rounded.MusicNote, "Songs", "All tracks"), Triple(Icons.Rounded.Album, "Albums", "Your collection")).forEach { item ->
                 Column(Modifier.weight(1f).clip(RoundedCornerShape(20.dp)).background(homeCard).clickable { openLibrary() }.padding(16.dp)) {
                     Icon(item.first, null, tint = colors.primary, modifier = Modifier.size(24.dp))
-                    Text(item.second, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.padding(top = 17.dp))
-                    Text(item.third, color = Color(0xFF9B94A1), fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
+                    Text(item.second, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.padding(top = 17.dp))
+                    Text(item.third, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
                 }
             }
         }
-        if (error.isNotBlank()) Text(error, color = Color(0xFFFFA0A0), fontSize = 12.sp, modifier = Modifier.padding(top = 14.dp))
+        if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(top = 14.dp))
         Spacer(Modifier.height(18.dp))
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(homeCard).clickable { openLibrary() }.padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(colors.primaryContainer), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.LibraryMusic, null, tint = colors.primary) }
             Column(Modifier.weight(1f).padding(start = 12.dp)) {
                 Text("Pick up where you left off", color = colors.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
-                Text("Browse and play something you love", color = Color(0xFF9B94A1), fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
+                Text("Browse and play something you love", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
             }
-            Icon(Icons.Rounded.ChevronRight, null, tint = Color(0xFF9B94A1))
+            Icon(Icons.Rounded.ChevronRight, null, tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Spacer(Modifier.height(12.dp))
     }
 }
 
 @Composable private fun SearchScreen(query: String, onQuery: (String) -> Unit, results: List<Track>, play: (Track) -> Unit, online: List<OnlineTrack>, searching: Boolean, searchOnline: (String) -> Unit, playOnline: (OnlineTrack) -> Unit, error: String) {
-    Column(Modifier.fillMaxSize().background(Color(0xFF0B0D12)).padding(horizontal = 18.dp)) {
-        Text("Discover", fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp, color = Color.White, modifier = Modifier.padding(top = 18.dp))
-        Text("Find something for the moment.", color = Color(0xFFA6ADBC), fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp, bottom = 18.dp))
-        OutlinedTextField(value = query, onValueChange = onQuery, modifier = Modifier.fillMaxWidth(), placeholder = { Text("Track, artist or album") }, leadingIcon = { Icon(Icons.Rounded.Search, null) }, shape = RoundedCornerShape(18.dp), singleLine = true, colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Violet, unfocusedBorderColor = Color(0xFF303542), focusedTextColor = Color.White, unfocusedTextColor = Color.White, focusedLeadingIconColor = Violet))
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(horizontal = 18.dp)) {
+        Text("Discover", fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 18.dp))
+        Text("Find something for the moment.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp, bottom = 18.dp))
+        OutlinedTextField(value = query, onValueChange = onQuery, modifier = Modifier.fillMaxWidth(), placeholder = { Text("Track, artist or album") }, leadingIcon = { Icon(Icons.Rounded.Search, null) }, shape = RoundedCornerShape(18.dp), singleLine = true, colors = OutlinedTextFieldDefaults.colors(focusedBorderColor = Violet, unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant, focusedTextColor = MaterialTheme.colorScheme.onSurface, unfocusedTextColor = MaterialTheme.colorScheme.onSurface, focusedLeadingIconColor = Violet))
         Spacer(Modifier.height(10.dp))
         Button(onClick = { searchOnline(query) }, enabled = query.isNotBlank() && !searching, modifier = Modifier.fillMaxWidth().height(52.dp), shape = RoundedCornerShape(17.dp), colors = ButtonDefaults.buttonColors(containerColor = Violet, contentColor = Color(0xFF171014))) {
             if (searching) CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = Color(0xFF171014)) else Icon(Icons.Rounded.Public, null)
             Spacer(Modifier.width(9.dp)); Text(if (searching) "Searching…" else "Search online", fontWeight = FontWeight.Bold)
         }
-        if (error.isNotBlank()) Text(error, color = Color(0xFFFFA0A0), fontSize = 12.sp, modifier = Modifier.fillMaxWidth().padding(top = 10.dp).clip(RoundedCornerShape(12.dp)).background(Color(0xFF301D24)).padding(12.dp))
+        if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.fillMaxWidth().padding(top = 10.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.errorContainer).padding(12.dp))
         LazyColumn(Modifier.weight(1f), contentPadding = PaddingValues(top = 18.dp, bottom = 16.dp)) {
             item { Text("ON THIS DEVICE", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(bottom = 8.dp)) }
-            if (results.isEmpty()) item { Text(if (query.isBlank()) "Search your downloaded music" else "No matching tracks in your library", color = Color(0xFF8E95A5), fontSize = 13.sp, modifier = Modifier.padding(vertical = 10.dp)) }
+            if (results.isEmpty()) item { Text(if (query.isBlank()) "Search your downloaded music" else "No matching tracks in your library", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, modifier = Modifier.padding(vertical = 10.dp)) }
             items(results, key = { it.id }) { TrackRow(it, onClick = { play(it) }) }
-            item { Row(Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) { Text("ONLINE", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp); Spacer(Modifier.width(8.dp)); Box(Modifier.weight(1f).height(1.dp).background(Color(0xFF292E39))) } }
-            if (online.isEmpty() && !searching) item { Text("Search online to discover more music", color = Color(0xFF8E95A5), fontSize = 13.sp, modifier = Modifier.padding(vertical = 10.dp)) }
+            item { Row(Modifier.fillMaxWidth().padding(top = 20.dp, bottom = 10.dp), verticalAlignment = Alignment.CenterVertically) { Text("ONLINE", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp); Spacer(Modifier.width(8.dp)); Box(Modifier.weight(1f).height(1.dp).background(MaterialTheme.colorScheme.outlineVariant)) } }
+            if (online.isEmpty() && !searching) item { Text("Search online to discover more music", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, modifier = Modifier.padding(vertical = 10.dp)) }
             items(online, key = { it.videoId }) { result -> Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable { playOnline(result) }.padding(vertical = 9.dp, horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Artwork(result.thumbnail, Modifier.size(54.dp).clip(RoundedCornerShape(13.dp)))
-                Column(Modifier.weight(1f).padding(horizontal = 12.dp)) { Text(result.title, color = Color.White, maxLines = 2, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold, fontSize = 14.sp); Text(result.author + " • " + result.duration, color = Color(0xFF9298A8), fontSize = 11.sp, maxLines = 1) }
+                Column(Modifier.weight(1f).padding(horizontal = 12.dp)) { Text(result.title, color = MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold, fontSize = 14.sp); Text(result.author + " • " + result.duration, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 1) }
                 Icon(Icons.Rounded.PlayCircleFilled, null, tint = Violet, modifier = Modifier.size(30.dp))
             } }
         }
@@ -876,9 +873,9 @@ class MainActivity : ComponentActivity() {
 
 @Composable private fun LibraryScreen(tracks: List<Track>, loading: Boolean, favouriteTracks: List<Track>, youtubePlaylists: List<YouTubePlaylist>, googleStatus: String, playlistLoading: Boolean, playlistError: String, selectedPlaylist: YouTubePlaylist?, selectedPlaylistTracks: List<YouTubePlaylistTrack>, selectedPlaylistLoading: Boolean, selectedPlaylistError: String, openPlaylist: (YouTubePlaylist) -> Unit, closePlaylist: () -> Unit, playPlaylistTrack: (YouTubePlaylistTrack) -> Unit, play: (Track) -> Unit, search: () -> Unit, refresh: () -> Unit, refreshPlaylists: () -> Unit, connectYouTube: () -> Unit) {
     val libraryContext = LocalContext.current
-    Column(Modifier.fillMaxSize().background(Color(0xFF0B0D12)).padding(horizontal = 18.dp)) {
+    Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(horizontal = 18.dp)) {
         Row(Modifier.fillMaxWidth().padding(top = 22.dp, bottom = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) { Text("Your library", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp, color = Color.White); Text(tracks.size.toString() + " songs on this device", color = Color(0xFFA6ADBC), fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp)) }
+            Column(Modifier.weight(1f)) { Text("Your library", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp, color = MaterialTheme.colorScheme.onSurface); Text(tracks.size.toString() + " songs on this device", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp)) }
             IconButton(onClick = refresh) { Icon(Icons.Rounded.Refresh, "Refresh", tint = Violet) }
             IconButton(onClick = search) { Icon(Icons.Rounded.Search, "Search", tint = Violet) }
         }
@@ -886,20 +883,20 @@ class MainActivity : ComponentActivity() {
             Row(Modifier.fillMaxWidth().padding(top = 8.dp, bottom = 14.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = closePlaylist) { Icon(Icons.Rounded.ArrowBack, "Back", tint = Violet) }
                 Column(Modifier.weight(1f)) {
-                    Text(selectedPlaylist.title, color = Color.White, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text("YouTube Music playlist", color = Color(0xFFA6ADBC), fontSize = 12.sp)
+                    Text(selectedPlaylist.title, color = MaterialTheme.colorScheme.onSurface, fontSize = 20.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text("YouTube Music playlist", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                 }
                 IconButton(onClick = { openPlaylist(selectedPlaylist) }, enabled = !selectedPlaylistLoading) { Icon(Icons.Rounded.Refresh, "Reload playlist", tint = Violet) }
             }
-            if (selectedPlaylistLoading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Violet, trackColor = Color(0xFF292D39))
-            if (selectedPlaylistError.isNotBlank()) Text(selectedPlaylistError, color = Color(0xFFFF8A80), fontSize = 13.sp, modifier = Modifier.padding(vertical = 12.dp))
+            if (selectedPlaylistLoading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Violet, trackColor = MaterialTheme.colorScheme.outlineVariant)
+            if (selectedPlaylistError.isNotBlank()) Text(selectedPlaylistError, color = MaterialTheme.colorScheme.error, fontSize = 13.sp, modifier = Modifier.padding(vertical = 12.dp))
             LazyColumn(contentPadding = PaddingValues(bottom = 18.dp)) {
                 items(selectedPlaylistTracks, key = { it.videoId }) { item ->
                     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { playPlaylistTrack(item) }.padding(vertical = 8.dp, horizontal = 5.dp), verticalAlignment = Alignment.CenterVertically) {
                         Artwork(item.thumbnail, Modifier.size(52.dp).clip(RoundedCornerShape(12.dp)))
                         Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                            Text(item.title, color = Color.White, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(item.artist.ifBlank { "YouTube Music" }, color = Color(0xFF9298A8), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp))
+                            Text(item.title, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(item.artist.ifBlank { "YouTube Music" }, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp))
                         }
                         Icon(Icons.Rounded.PlayCircleFilled, null, tint = Violet, modifier = Modifier.size(27.dp))
                     }
@@ -914,25 +911,25 @@ class MainActivity : ComponentActivity() {
         }
         Text("YOUTUBE MUSIC PLAYLISTS", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp, modifier = Modifier.padding(top = 8.dp, bottom = 9.dp))
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(if (googleStatus.startsWith("Connected")) "Your online library" else "Connect your account to see playlists", color = Color(0xFFA6ADBC), fontSize = 12.sp, modifier = Modifier.weight(1f))
+            Text(if (googleStatus.startsWith("Connected")) "Your online library" else "Connect your account to see playlists", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.weight(1f))
             TextButton(onClick = if (googleStatus.startsWith("Connected")) refreshPlaylists else connectYouTube, enabled = !playlistLoading) {
                 Text(if (playlistLoading) "Loading…" else if (googleStatus.startsWith("Connected")) "Refresh" else "Connect", color = Mint)
             }
         }
-        if (playlistError.isNotBlank()) Text(playlistError, color = Color(0xFFFF8A80), fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
+        if (playlistError.isNotBlank()) Text(playlistError, color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
         if (youtubePlaylists.isNotEmpty()) {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 14.dp)) {
                 items(youtubePlaylists, key = { it.id }) { playlist ->
-                    Column(Modifier.width(142.dp).clip(RoundedCornerShape(16.dp)).background(Color(0xFF171B24)).clickable { openPlaylist(playlist) }.padding(9.dp)) {
+                    Column(Modifier.width(142.dp).clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable { openPlaylist(playlist) }.padding(9.dp)) {
                         Artwork(playlist.thumbnail, Modifier.fillMaxWidth().height(112.dp).clip(RoundedCornerShape(11.dp)))
-                        Text(playlist.title, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
-                        Text(if (playlist.itemCount > 0) "${playlist.itemCount} tracks" else playlist.description, color = Color(0xFF9298A8), fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(playlist.title, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
+                        Text(if (playlist.itemCount > 0) "${playlist.itemCount} tracks" else playlist.description, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }
         }
-        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Violet, trackColor = Color(0xFF292D39))
-        if (tracks.isEmpty() && !loading) Box(Modifier.fillMaxWidth().height(180.dp), contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Rounded.LibraryMusic, null, tint = Color(0xFF555D6D), modifier = Modifier.size(54.dp)); Text("No local songs yet", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(top = 12.dp)); Text("Add audio to your device, then refresh.", color = Color(0xFF9298A8), fontSize = 13.sp, modifier = Modifier.padding(top = 5.dp)) } }
+        if (loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Violet, trackColor = MaterialTheme.colorScheme.outlineVariant)
+        if (tracks.isEmpty() && !loading) Box(Modifier.fillMaxWidth().height(180.dp), contentAlignment = Alignment.Center) { Column(horizontalAlignment = Alignment.CenterHorizontally) { Icon(Icons.Rounded.LibraryMusic, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(54.dp)); Text("No local songs yet", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(top = 12.dp)); Text("Add audio to your device, then refresh.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, modifier = Modifier.padding(top = 5.dp)) } }
         LazyColumn(contentPadding = PaddingValues(bottom = 18.dp)) { items(tracks, key = { it.id }) { TrackRow(it, onClick = { play(it) }) } }
         }
     }
@@ -942,8 +939,8 @@ class MainActivity : ComponentActivity() {
     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(15.dp)).clickable(onClick = onClick).padding(horizontal = 7.dp, vertical = if (FlarePreferences.compact.value) 4.dp else 9.dp), verticalAlignment = Alignment.CenterVertically) {
         Artwork(track.artwork, Modifier.size(50.dp).clip(RoundedCornerShape(13.dp)))
         Column(Modifier.weight(1f).padding(start = 12.dp)) {
-            Text(track.title, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-            Text(track.artist, color = Color(0xFF9298A8), fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp))
+            Text(track.title, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            Text(track.artist, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp))
         }
         Icon(Icons.Rounded.PlayCircleFilled, null, tint = Violet, modifier = Modifier.size(27.dp))
     }
