@@ -460,7 +460,7 @@ class _MusicHomeState extends State<MusicHome> {
                         ),
                         const SizedBox(height: 7),
                         Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
-                        Text(track.artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Colors.white60)),
+                        Text(track.artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6))),
                       ]),
                       ),
                     ),
@@ -499,11 +499,11 @@ class _MusicHomeState extends State<MusicHome> {
       if (!_playerExpanded && _playback.current != null) Align(alignment: Alignment.bottomCenter, child: Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 12), child: Column(mainAxisSize: MainAxisSize.min, children: [
         _miniPlayer(),
         const SizedBox(height: 12),
-        Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9), decoration: BoxDecoration(color: const Color(0xFF22252B).withValues(alpha: .96), borderRadius: BorderRadius.circular(32), border: Border.all(color: Colors.white.withValues(alpha: .07))), child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: List.generate(_tabs.length, (i) {
+        Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9), decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: .96), borderRadius: BorderRadius.circular(32), border: Border.all(color: Colors.white.withValues(alpha: .07))), child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: List.generate(_tabs.length, (i) {
           final selected = _tab == i;
-          return InkWell(borderRadius: BorderRadius.circular(25), onTap: () => setState(() => _tab = i), child: AnimatedContainer(duration: const Duration(milliseconds: 220), padding: EdgeInsets.symmetric(horizontal: selected ? 17 : 14, vertical: 10), decoration: BoxDecoration(color: selected ? const Color(0xFF8BC5FF).withValues(alpha: .16) : Colors.transparent, borderRadius: BorderRadius.circular(24)), child: Row(children: [
-            Icon(_tabs[i].$1, size: 20, color: selected ? const Color(0xFF8BC5FF) : Colors.white70),
-            if (selected) ...[const SizedBox(width: 7), Text(_tabs[i].$2, style: const TextStyle(color: Color(0xFF8BC5FF), fontWeight: FontWeight.w700, fontSize: 12))],
+          return InkWell(borderRadius: BorderRadius.circular(25), onTap: () => setState(() => _tab = i), child: AnimatedContainer(duration: const Duration(milliseconds: 220), padding: EdgeInsets.symmetric(horizontal: selected ? 17 : 14, vertical: 10), decoration: BoxDecoration(color: selected ? Theme.of(context).colorScheme.primary.withValues(alpha: .16) : Colors.transparent, borderRadius: BorderRadius.circular(24)), child: Row(children: [
+            Icon(_tabs[i].$1, size: 20, color: selected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: .7)),
+            if (selected) ...[const SizedBox(width: 7), Text(_tabs[i].$2, style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w700, fontSize: 12))],
           ])));
         }))),
       ]))),
@@ -515,7 +515,7 @@ class _MusicHomeState extends State<MusicHome> {
     const SizedBox(height: 8),
     Text('Find something for every mood.', style: TextStyle(color: Colors.white.withValues(alpha: .6))),
     const SizedBox(height: 22),
-    InkWell(onTap: () { setState(() { _searching = true; _error = null; }); }, borderRadius: BorderRadius.circular(18), child: Container(padding: const EdgeInsets.all(17), decoration: BoxDecoration(color: const Color(0xFF22252B), borderRadius: BorderRadius.circular(18)), child: const Row(children: [Icon(Icons.search_rounded), SizedBox(width: 12), Text('Search songs, artists, albums...'), Spacer(), Icon(Icons.arrow_forward_rounded)]))),
+    InkWell(onTap: () { setState(() { _searching = true; _error = null; }); }, borderRadius: BorderRadius.circular(18), child: Container(padding: const EdgeInsets.all(17), decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(18)), child: const Row(children: [Icon(Icons.search_rounded), SizedBox(width: 12), Text('Search songs, artists, albums...'), Spacer(), Icon(Icons.arrow_forward_rounded)]))),
     const SizedBox(height: 28),
     const Text('Browse by mood', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
     const SizedBox(height: 14),
@@ -548,7 +548,7 @@ class _MusicHomeState extends State<MusicHome> {
     const SizedBox(height: 8),
     Text(_cookieAuth.isLoggedIn ? 'YouTube Music is connected. Personalized requests use your session.' : 'Connect YouTube to sync your playlists.', style: TextStyle(color: Colors.white.withValues(alpha: .6))),
     const SizedBox(height: 28),
-    Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: const Color(0xFF20242C), borderRadius: BorderRadius.circular(22)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+    Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(22)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       CircleAvatar(radius: 30, backgroundColor: const Color(0xFF8BC5FF).withValues(alpha: .18), child: const Icon(Icons.person_rounded, size: 32, color: Color(0xFF8BC5FF))),
       const SizedBox(height: 16),
       Text(_account.currentUser?.displayName ?? 'Not signed in', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
@@ -653,7 +653,7 @@ class _MusicHomeState extends State<MusicHome> {
     Text('Local playlists remain on this device. Google sync uses the read-only YouTube permission; YouTube Music login uses a securely stored session cookie.', style: TextStyle(color: Colors.white.withValues(alpha: .6), height: 1.5)),
   ])));
 
-  Widget _libraryPage() => Positioned.fill(child: Container(color: const Color(0xFF101114), child: SafeArea(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+  Widget _libraryPage() => Positioned.fill(child: Container(color: Theme.of(context).scaffoldBackgroundColor, child: SafeArea(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     Padding(padding: const EdgeInsets.fromLTRB(22, 22, 16, 12), child: Row(children: [const Expanded(child: Text('Your Library', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800))), IconButton(onPressed: _syncing ? null : _accountSync, icon: _syncing ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.sync_rounded), tooltip: 'Sign in and sync YouTube'), IconButton(onPressed: _createPlaylist, icon: const Icon(Icons.add_rounded)), IconButton(onPressed: _importPlaylist, icon: const Icon(Icons.download_rounded))])),
     Padding(padding: const EdgeInsets.symmetric(horizontal: 22), child: Text('Playlists saved on this device', style: TextStyle(color: Colors.white.withValues(alpha: .6)))),
     const SizedBox(height: 12),
@@ -685,7 +685,7 @@ class _MusicHomeState extends State<MusicHome> {
 
   Widget _playlistDetailPage(LocalPlaylist playlist) => Positioned.fill(
     child: Container(
-      color: const Color(0xFF101114),
+      color: Theme.of(context).scaffoldBackgroundColor,
       child: SafeArea(
         child: CustomScrollView(
           slivers: [
@@ -752,7 +752,7 @@ class _MusicHomeState extends State<MusicHome> {
                           const SizedBox(height: 8),
                           Text(
                             '${playlist.tracks.length} tracks',
-                            style: const TextStyle(color: Colors.white60),
+                            style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6)),
                           ),
                         ],
                       ),
@@ -874,14 +874,14 @@ class _MusicHomeState extends State<MusicHome> {
     child: const Icon(Icons.music_note_rounded),
   );
 
-  Widget _searchPanel() => Positioned.fill(child: Material(color: const Color(0xFF101114).withValues(alpha: .98), child: Column(children: [
+  Widget _searchPanel() => Positioned.fill(child: Material(color: Theme.of(context).scaffoldBackgroundColor.withValues(alpha: .98), child: Column(children: [
     Padding(padding: const EdgeInsets.fromLTRB(16, 10, 16, 12), child: Row(children: [
       IconButton(onPressed: () => setState(() => _searching = false), icon: const Icon(Icons.arrow_back_rounded)),
-      Expanded(child: TextField(controller: _searchController, focusNode: _searchFocus, textInputAction: TextInputAction.search, onSubmitted: _search, decoration: InputDecoration(hintText: 'Search songs, artists...', filled: true, fillColor: const Color(0xFF22252B), border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)))),
+      Expanded(child: TextField(controller: _searchController, focusNode: _searchFocus, textInputAction: TextInputAction.search, onSubmitted: _search, decoration: InputDecoration(hintText: 'Search songs, artists...', filled: true, fillColor: Theme.of(context).colorScheme.surfaceContainerHighest, border: OutlineInputBorder(borderRadius: BorderRadius.circular(18), borderSide: BorderSide.none), contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12)))),
       IconButton(onPressed: _searching && _searchController.text.trim().isNotEmpty ? _search : null, icon: const Icon(Icons.search_rounded)),
     ])),
     if (_loading) const Padding(padding: EdgeInsets.all(24), child: CircularProgressIndicator()),
-    if (_error != null) Padding(padding: const EdgeInsets.all(24), child: Text(_error!, textAlign: TextAlign.center, style: const TextStyle(color: Colors.white70))),
+    if (_error != null) Padding(padding: const EdgeInsets.all(24), child: Text(_error!, textAlign: TextAlign.center, style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .7)))),
     Expanded(child: ListView.builder(itemCount: _results.length, itemBuilder: (context, i) {
       final track = _results[i];
       return ListTile(
@@ -939,7 +939,7 @@ class _MusicHomeState extends State<MusicHome> {
           return Column(children: [
             Slider(value: position.inMilliseconds.clamp(0, maxMs.toInt()).toDouble(), max: maxMs, onChanged: _playback.player.duration != null && duration > Duration.zero ? (v) => _playback.player.seek(Duration(milliseconds: v.round())) : null),
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text(_formatDuration(position), style: const TextStyle(color: Colors.white60, fontSize: 11)),
+              Text(_formatDuration(position), style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6), fontSize: 11)),
               Text(_formatDuration(duration), style: const TextStyle(color: Colors.white60, fontSize: 11)),
             ]),
           ]);
