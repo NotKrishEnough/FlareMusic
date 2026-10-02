@@ -210,7 +210,10 @@ class _MusicHomeState extends State<MusicHome> {
     } catch (e, st) {
       debugPrint('Audio initialization failed: $e');
       debugPrintStack(stackTrace: st);
-      if (mounted) setState(() => _error = 'Audio engine could not start. Restart FlareMusic to try again.');
+      if (mounted) {
+        setState(() => _error = 'Audio engine could not start: $e');
+      }
+      rethrow;
     }
   }
 
