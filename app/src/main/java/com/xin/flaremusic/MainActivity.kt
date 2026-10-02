@@ -582,6 +582,10 @@ class MainActivity : ComponentActivity() {
 
 @Composable private fun SettingsScreen(amoled: Boolean, onAmoledChange: (Boolean) -> Unit, googleStatus: String, playlists: List<YouTubePlaylist>, loading: Boolean, error: String, onConnect: () -> Unit, onSync: () -> Unit, onDisconnectYouTube: () -> Unit) {
     val settingsContext = LocalContext.current
+    val updateScope = rememberCoroutineScope()
+    var checkingUpdates by remember { mutableStateOf(false) }
+    var updateMessage by remember { mutableStateOf<String?>(null) }
+    var latestRelease by remember { mutableStateOf<FlareRelease?>(null) }
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).verticalScroll(rememberScrollState()).padding(horizontal = 20.dp, vertical = 20.dp)) {
         Text("Settings", fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp, color = MaterialTheme.colorScheme.onSurface)
         Text("Make FlareMusic yours.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp, modifier = Modifier.padding(top = 5.dp, bottom = 24.dp))
@@ -675,6 +679,42 @@ class MainActivity : ComponentActivity() {
                 }
             }
             if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp))
+        }
+        Text("UPDATES", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(top = 20.dp, bottom = 9.dp))
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable(enabled = !checkingUpdates) {
+            checkingUpdates = true
+            updateScope.launch {
+                try {
+                    latestRelease = withContext(Dispatchers.IO) { FlareUpdater.latestRelease() }
+                    updateMessage = null
+                } catch (e: Exception) {
+                    updateMessage = e.message ?: "Couldn't check for updates."
+                } finally {
+                    checkingUpdates = false
+                }
+            }
+        }.padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Check for updates", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+                Text("Check GitHub for the latest FlareMusic release", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp))
+            }
+            if (checkingUpdates) CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            else Icon(Icons.Rounded.SystemUpdate, null, tint = MaterialTheme.colorScheme.primary)
+        }
+        if (updateMessage != null) Text(updateMessage!!, color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(top = 8.dp))
+        latestRelease?.let { release ->
+            AlertDialog(
+                onDismissRequest = { latestRelease = null },
+                title = { Text("FlareMusic ${release.tag}") },
+                text = { Text(release.notes.take(3500)) },
+                confirmButton = {
+                    TextButton(onClick = {
+                        settingsContext.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(release.url)))
+                        latestRelease = null
+                    }) { Text("View release / download APK") }
+                },
+                dismissButton = { TextButton(onClick = { latestRelease = null }) { Text("Later") } }
+            )
         }
         Spacer(Modifier.height(20.dp))
         Text("FLAREMUSIC  •  MADE FOR YOUR MUSIC", color = MaterialTheme.colorScheme.outline, fontSize = 9.sp, letterSpacing = 1.2.sp, modifier = Modifier.align(Alignment.CenterHorizontally).padding(vertical = 14.dp))
