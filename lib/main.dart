@@ -39,7 +39,6 @@ class _FlareMusicAppState extends State<FlareMusicApp> {
   bool _useDynamicColors = true;
   bool _amoledMode = false;
   double _textScale = 1.0;
-  late final AnimationController _miniArtworkController;
   int _accentIndex = 0;
 
   static const _accents = <Color>[
@@ -51,7 +50,6 @@ class _FlareMusicAppState extends State<FlareMusicApp> {
   @override
   void initState() {
     super.initState();
-    _miniArtworkController = AnimationController(vsync: this, duration: const Duration(seconds: 7));
     _loadAppearance();
   }
 
@@ -199,6 +197,7 @@ class _MusicHomeState extends State<MusicHome> with SingleTickerProviderStateMix
   StreamSubscription<PlayerState>? _playerStateSubscription;
   StreamSubscription<ProcessingState>? _processingSubscription;
   StreamSubscription<SequenceState?>? _sequenceSubscription;
+  late final AnimationController _miniArtworkController;
   late Future<void> _audioReady;
 
   static const _tabs = [(Icons.home_rounded, 'Home'), (Icons.explore_rounded, 'Explore'), (Icons.library_music_rounded, 'Library'), (Icons.person_rounded, 'You')];
@@ -206,6 +205,10 @@ class _MusicHomeState extends State<MusicHome> with SingleTickerProviderStateMix
   @override
   void initState() {
     super.initState();
+    _miniArtworkController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 7),
+    );
     _api = InnerTubeClient(auth: _cookieAuth);
     _requestMediaNotificationPermission();
     _refreshLibrary();
