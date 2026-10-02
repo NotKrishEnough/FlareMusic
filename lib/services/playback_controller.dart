@@ -74,6 +74,8 @@ class PlaybackController {
         title: track.title,
         artist: track.artist,
         album: 'FlareMusic',
+        displayTitle: track.title,
+        displaySubtitle: track.artist,
         artUri: track.thumbnail.isNotEmpty ? Uri.tryParse(track.thumbnail) : null,
       ),
     ));
