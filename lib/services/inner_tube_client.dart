@@ -28,7 +28,7 @@ class InnerTubeClient {
       'content-type': 'application/json',
       'user-agent': _ua,
     };
-    if (_auth != null) headers.addAll(await _auth!.authHeaders());
+    if (_auth != null) headers.addAll(await _auth.authHeaders());
     if (music) {
       headers['x-youtube-client-name'] = '67';
       headers['x-youtube-client-version'] = _musicVersion;
@@ -45,8 +45,8 @@ class InnerTubeClient {
     final results = <OnlineTrack>[];
     final errors = <Object>[];
     for (final source in [
-      ('https://www.youtube.com/youtubei/v1', 'WEB', _webVersion),
-      ('https://music.youtube.com/youtubei/v1', 'WEB_REMIX', _musicVersion),
+      ('https://www.youtube.com/youtubei/v1', 'WEB', _webVersion, false),
+      ('https://music.youtube.com/youtubei/v1', 'WEB_REMIX', _musicVersion, true),
     ]) {
       try {
         final response = await _http.post(
