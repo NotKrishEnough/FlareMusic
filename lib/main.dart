@@ -61,6 +61,9 @@ class _MusicHomeState extends State<MusicHome> {
   final _searchController = TextEditingController();
   final _searchFocus = FocusNode();
   final List<OnlineTrack> _results = [];
+  final List<OnlineTrack> _homeTracks = [];
+  final List<OnlineTrack> _likedTracks = [];
+  bool _homeLoading = false;
   bool _searching = false;
   bool _loading = false;
   String? _error;
@@ -118,11 +121,34 @@ class _MusicHomeState extends State<MusicHome> {
     try {
       await _cookieAuth.restore();
       if (_cookieAuth.isLoggedIn) {
-        await _cookieAuth.verifyCurrent();
+        final valid = await _cookieAuth.verifyCurrent();
+        if (valid) await _loadPersonalizedMusic();
       }
       if (mounted) setState(() {});
     } catch (e) {
       debugPrint('YouTube Music session restore failed: $e');
+    }
+  }
+
+  Future<void> _loadPersonalizedMusic() async {
+    if (!_cookieAuth.isLoggedIn) return;
+    if (mounted) setState(() => _homeLoading = true);
+    try {
+      final home = await _api.fetchHome();
+      final liked = await _api.fetchLikedSongs();
+      if (!mounted) return;
+      setState(() {
+        _homeTracks
+          ..clear()
+          ..addAll(home);
+        _likedTracks
+          ..clear()
+          ..addAll(liked);
+        _homeLoading = false;
+      });
+    } catch (e) {
+      if (mounted) setState(() => _homeLoading = false);
+      debugPrint('Personalized YouTube Music load failed: $e');
     }
   }
 
@@ -137,7 +163,10 @@ class _MusicHomeState extends State<MusicHome> {
         ),
       ),
     );
-    if (ok == true && mounted) setState(() {});
+    if (ok == true && mounted) {
+      await _loadPersonalizedMusic();
+      setState(() {});
+    }
   }
 
   Future<void> _pasteYouTubeCookie() async {
@@ -181,14 +210,22 @@ class _MusicHomeState extends State<MusicHome> {
       if (_account.currentUser != null) {
         synced = await _account.syncPlaylists();
       } else if (_cookieAuth.isLoggedIn) {
-        final remote = await _api.fetchHome();
+        await _loadPersonalizedMusic();
+        final remote = _homeTracks;
         synced = [
           LocalPlaylist(
             id: 'ytm:home',
             name: 'YouTube Music Home',
             sourceId: 'FEmusic_home',
-            tracks: remote,
+            tracks: List<OnlineTrack>.from(remote),
           ),
+          if (_likedTracks.isNotEmpty)
+            LocalPlaylist(
+              id: 'ytm:liked',
+              name: 'Liked Music',
+              sourceId: 'FEmusic_liked_videos',
+              tracks: List<OnlineTrack>.from(_likedTracks),
+            ),
         ];
       } else {
         await _account.signIn();
@@ -261,14 +298,59 @@ class _MusicHomeState extends State<MusicHome> {
           const SizedBox(height: 8),
           const Text('Your music, your mood.', style: TextStyle(fontSize: 34, height: 1.12, fontWeight: FontWeight.w800)),
           const SizedBox(height: 25),
-          _sectionTitle('Made for you', 'Refresh'),
+          _sectionTitle('Made for you', _cookieAuth.isLoggedIn ? 'Refresh' : 'Search music'),
           const SizedBox(height: 14),
+          if (_homeTracks.isNotEmpty)
+            SizedBox(
+              height: 176,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                itemCount: _homeTracks.take(8).length,
+                separatorBuilder: (_, __) => const SizedBox(width: 12),
+                itemBuilder: (context, i) {
+                  final track = _homeTracks[i];
+                  return SizedBox(
+                    width: 150,
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () => _selectTrack(track, source: _homeTracks),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(18),
+                          child: track.thumbnail.isEmpty
+                              ? Container(width: 150, height: 125, color: const Color(0xFF31516B), child: const Icon(Icons.music_note_rounded, size: 34))
+                              : Image.network(track.thumbnail, width: 150, height: 125, fit: BoxFit.cover),
+                        ),
+                        const SizedBox(height: 7),
+                        Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
+                        Text(track.artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Colors.white60)),
+                      ]),
+                    ),
+                  );
+                },
+              ),
+            )
+          else if (_homeLoading)
+            const SizedBox(height: 176, child: Center(child: CircularProgressIndicator()))
+          else
           Container(height: 176, padding: const EdgeInsets.all(20), decoration: BoxDecoration(gradient: const LinearGradient(colors: [Color(0xFF244D78), Color(0xFF222B42), Color(0xFF30223F)]), borderRadius: BorderRadius.circular(25)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             const Spacer(), const Text('YOUR DAILY MIX', style: TextStyle(fontSize: 10, letterSpacing: 2, fontWeight: FontWeight.bold)), const SizedBox(height: 6),
             const Text('A little bit of everything', style: TextStyle(fontSize: 21, fontWeight: FontWeight.w800)), const Spacer(),
             const Row(children: [Text('PERSONALIZED PLAYLIST', style: TextStyle(fontSize: 10, letterSpacing: 1.2)), Spacer(), Icon(Icons.arrow_forward_rounded)]),
           ])),
           const SizedBox(height: 28),
+          if (_likedTracks.isNotEmpty) ...[
+            _sectionTitle('Liked from YouTube Music', 'Play all'),
+            const SizedBox(height: 12),
+            ..._likedTracks.take(4).map((track) => ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: ClipRRect(borderRadius: BorderRadius.circular(10), child: track.thumbnail.isEmpty ? Container(width: 52, height: 52, color: const Color(0xFF31516B), child: const Icon(Icons.music_note_rounded)) : Image.network(track.thumbnail, width: 52, height: 52, fit: BoxFit.cover)),
+              title: Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+              subtitle: Text(track.artist, maxLines: 1, overflow: TextOverflow.ellipsis),
+              onTap: () => _selectTrack(track, source: _likedTracks),
+            )),
+            const SizedBox(height: 18),
+          ],
           _sectionTitle('Quick picks', 'Search music'),
           const SizedBox(height: 12),
           ...List.generate(4, (i) => _trackRow(i)),
@@ -368,7 +450,7 @@ class _MusicHomeState extends State<MusicHome> {
     const SizedBox(height: 22),
     const Text('Your music stays yours', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
     const SizedBox(height: 8),
-    Text('Local playlists remain on this device. YouTube sync uses Google sign-in and the read-only YouTube permission.', style: TextStyle(color: Colors.white.withValues(alpha: .6), height: 1.5)),
+    Text('Local playlists remain on this device. Google sync uses the read-only YouTube permission; YouTube Music login uses a securely stored session cookie.', style: TextStyle(color: Colors.white.withValues(alpha: .6), height: 1.5)),
   ])));
 
   Widget _libraryPage() => Positioned.fill(child: Container(color: const Color(0xFF101114), child: SafeArea(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
