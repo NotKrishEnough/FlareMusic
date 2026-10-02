@@ -1518,8 +1518,7 @@ class _MusicHomeState extends State<MusicHome> {
             Expanded(
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 180),
-                alignment: Alignment.centerLeft,
-                child: Column(
+                                child: Column(
                   key: ValueKey(_playback.current?.videoId ?? _nowTitle),
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
