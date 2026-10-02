@@ -238,7 +238,13 @@ class _MusicHomeState extends State<MusicHome> {
       await _restorePlaybackState();
       _playerStateSubscription = _playback.player.playerStateStream.listen((state) {
         if (!mounted) return;
-        setState(() => _playing = state.playing);
+        setState(() {
+          _playing = state.playing;
+          // Once audio is actually playing, transport controls must never
+          // remain disabled because a previous track switch is still marked
+          // as in progress.
+          if (state.playing) _switchingTrack = false;
+        });
       });
       _sequenceSubscription = _playback.player.sequenceStateStream.listen((state) {
         final tag = state?.currentSource?.tag;
