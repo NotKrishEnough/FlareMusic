@@ -486,12 +486,14 @@ class _MusicHomeState extends State<MusicHome> {
     // resolving the same YouTube stream again.
     if (_playback.current?.videoId == track.videoId) {
       try {
-        if (_playing) {
-          await _playback.pause();
-        } else {
-          await _playback.resume();
+        await _playback.togglePlayPause();
+        if (mounted) {
+          setState(() {
+            _playing = _playback.player.playing;
+            _searching = false;
+            _playerExpanded = true;
+          });
         }
-        if (mounted) setState(() => _playing = !_playing);
       } catch (e) {
         _showPlaybackError(e);
       }
@@ -503,7 +505,6 @@ class _MusicHomeState extends State<MusicHome> {
         _nowTitle = track.title;
         _nowArtist = track.artist;
         _playing = false;
-        _searching = false;
         _switchingTrack = true;
       });
     }
@@ -513,8 +514,10 @@ class _MusicHomeState extends State<MusicHome> {
         setState(() {
           _nowTitle = _playback.current?.title ?? track.title;
           _nowArtist = _playback.current?.artist ?? track.artist;
-          _playing = true;
+          _playing = _playback.player.playing;
           _switchingTrack = false;
+          _searching = false;
+          _playerExpanded = true;
         });
       }
     } catch (e) {
