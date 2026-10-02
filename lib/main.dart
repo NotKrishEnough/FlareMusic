@@ -3,6 +3,7 @@ import 'package:just_audio_background/just_audio_background.dart';
 import 'services/inner_tube_client.dart';
 import 'services/playback_controller.dart';
 import 'services/playlist_library.dart';
+import 'services/youtube_account_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -40,6 +41,8 @@ class _MusicHomeState extends State<MusicHome> {
   final _api = InnerTubeClient();
   final _playback = PlaybackController();
   final _library = PlaylistLibrary();
+  final _account = YouTubeAccountService();
+  bool _syncing = false;
   List<LocalPlaylist> _playlists = [];
   final _searchController = TextEditingController();
   final _searchFocus = FocusNode();
@@ -71,6 +74,19 @@ class _MusicHomeState extends State<MusicHome> {
   }
 
   Future<void> _refreshLibrary() async { final lists = await _library.all(); if (mounted) setState(() => _playlists = lists); }
+
+  Future<void> _accountSync() async {
+    setState(() => _syncing = true);
+    try {
+      if (_account.currentUser == null) await _account.signIn();
+      if (_account.currentUser == null) return;
+      final synced = await _account.syncPlaylists();
+      await _library.replaceSynced(synced);
+      await _refreshLibrary();
+      if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Synced ${synced.length} YouTube playlists')));
+    } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Account sync failed: $e'))); }
+    finally { if (mounted) setState(() => _syncing = false); }
+  }
 
   Future<void> _createPlaylist() async {
     final name = TextEditingController();
@@ -128,7 +144,8 @@ class _MusicHomeState extends State<MusicHome> {
           const SizedBox(height: 30),
           Text('GOOD EVENING', style: TextStyle(fontSize: 11, letterSpacing: 2, color: Colors.white.withValues(alpha: .55), fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
-          const Text('Your music,\\nyour mood.', style: TextStyle(fontSize: 34, height: 1.12, fontWeight: FontWeight.w800)),
+          const Text('Your music,\
+your mood.', style: TextStyle(fontSize: 34, height: 1.12, fontWeight: FontWeight.w800)),
           const SizedBox(height: 25),
           _sectionTitle('Made for you', 'Refresh'),
           const SizedBox(height: 14),
@@ -159,7 +176,7 @@ class _MusicHomeState extends State<MusicHome> {
   );
 
   Widget _libraryPage() => Positioned.fill(child: Container(color: const Color(0xFF101114), child: SafeArea(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-    Padding(padding: const EdgeInsets.fromLTRB(22, 22, 16, 12), child: Row(children: [const Expanded(child: Text('Your Library', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800))), IconButton(onPressed: _createPlaylist, icon: const Icon(Icons.add_rounded)), IconButton(onPressed: _importPlaylist, icon: const Icon(Icons.download_rounded))])),
+    Padding(padding: const EdgeInsets.fromLTRB(22, 22, 16, 12), child: Row(children: [const Expanded(child: Text('Your Library', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800))), IconButton(onPressed: _syncing ? null : _accountSync, icon: _syncing ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.sync_rounded), tooltip: 'Sign in and sync YouTube'), IconButton(onPressed: _createPlaylist, icon: const Icon(Icons.add_rounded)), IconButton(onPressed: _importPlaylist, icon: const Icon(Icons.download_rounded))])),
     Padding(padding: const EdgeInsets.symmetric(horizontal: 22), child: Text('Playlists saved on this device', style: TextStyle(color: Colors.white.withValues(alpha: .6)))),
     const SizedBox(height: 12),
     Expanded(child: _playlists.isEmpty ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [const Icon(Icons.library_music_outlined, size: 48, color: Colors.white38), const SizedBox(height: 12), const Text('Your library is empty'), const SizedBox(height: 8), Wrap(spacing: 8, children: [OutlinedButton(onPressed: _createPlaylist, child: const Text('Create playlist')), OutlinedButton(onPressed: _importPlaylist, child: const Text('Import YouTube'))])])) : ListView.builder(itemCount: _playlists.length, itemBuilder: (context, i) { final p = _playlists[i]; return ListTile(leading: Container(width: 48, height: 48, decoration: BoxDecoration(color: const Color(0xFF31516B), borderRadius: BorderRadius.circular(12)), child: const Icon(Icons.queue_music_rounded)), title: Text(p.name), subtitle: Text('${p.tracks.length} tracks'), trailing: IconButton(icon: const Icon(Icons.delete_outline), onPressed: () async { await _library.remove(p.id); await _refreshLibrary(); }), onTap: () { if (p.tracks.isNotEmpty) _selectTrack(p.tracks.first); }})),
