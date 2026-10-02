@@ -130,6 +130,10 @@ class _FlareMusicAppState extends State<FlareMusicApp> {
         onThemeModeChanged: _setThemeMode,
         onDynamicColorsChanged: _setDynamicColors,
         onAccentChanged: _setAccentIndex,
+        amoledMode: _amoledMode,
+        textScale: _textScale,
+        onAmoledModeChanged: _setAmoledMode,
+        onTextScaleChanged: _setTextScale,
       ),
     ),
   );
@@ -145,6 +149,10 @@ class MusicHome extends StatefulWidget {
     required this.onThemeModeChanged,
     required this.onDynamicColorsChanged,
     required this.onAccentChanged,
+    required this.amoledMode,
+    required this.textScale,
+    required this.onAmoledModeChanged,
+    required this.onTextScaleChanged,
   });
   final ThemeMode themeMode;
   final bool useDynamicColors;
