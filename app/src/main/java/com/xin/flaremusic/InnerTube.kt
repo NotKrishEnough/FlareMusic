@@ -26,17 +26,31 @@ class InnerTubeClient {
 
     suspend fun search(query: String): List<OnlineTrack> = withContext(Dispatchers.IO) {
         require(query.isNotBlank()) { "Enter a search term" }
-        val body = JSONObject().put("context", JSONObject().put("client", client)).put("query", query).toString()
-        val request = Request.Builder().url("$endpoint/search?prettyPrint=false").post(body.toRequestBody(jsonType)).header("User-Agent", "com.google.android.youtube/19.09.37 (Linux; U; Android 14)").build()
-        http.newCall(request).execute().use { response ->
-            if (!response.isSuccessful) throw IllegalStateException("InnerTube search failed: HTTP ${response.code} - ${response.body?.string()?.take(300)}")
-            val root = JSONObject(response.body?.string() ?: "{}")
-            val found = mutableListOf<OnlineTrack>()
-            collectVideos(root, found)
-            found.distinctBy { it.videoId }.take(30)
+        // Search both catalogs independently; keep whichever source succeeds.
+        val sources = listOf(
+            endpoint to JSONObject().put("clientName", "WEB").put("clientVersion", "2.20250626.01.00").put("hl", "en").put("gl", "US"),
+            "https://music.youtube.com/youtubei/v1" to JSONObject().put("clientName", "WEB_REMIX").put("clientVersion", "1.20250626.01.00").put("hl", "en").put("gl", "US")
+        )
+        val combined = mutableListOf<OnlineTrack>()
+        val failures = mutableListOf<String>()
+        for ((base, clientInfo) in sources) {
+            try {
+                val body = JSONObject().put("context", JSONObject().put("client", clientInfo)).put("query", query).toString()
+                val request = Request.Builder().url("$base/search?prettyPrint=false").post(body.toRequestBody(jsonType))
+                    .header("User-Agent", "com.google.android.youtube/19.09.37 (Linux; U; Android 14)").build()
+                http.newCall(request).execute().use { response ->
+                    if (!response.isSuccessful) throw IllegalStateException("HTTP ${response.code}")
+                    val root = JSONObject(response.body?.string() ?: "{}")
+                    val sourceResults = mutableListOf<OnlineTrack>()
+                    collectVideos(root, sourceResults)
+                    combined.addAll(sourceResults)
+                }
+            } catch (e: Exception) { failures += e.message ?: "Search source unavailable" }
         }
+        val results = combined.distinctBy { it.videoId }.take(50)
+        if (results.isEmpty() && failures.isNotEmpty()) throw IllegalStateException("YouTube search unavailable: ${failures.joinToString()}")
+        results
     }
-
     private fun collectVideos(value: Any?, out: MutableList<OnlineTrack>) {
         when (value) {
             is JSONObject -> {
