@@ -635,8 +635,23 @@ class MainActivity : ComponentActivity() {
     var bitmap by remember(source) { mutableStateOf<android.graphics.Bitmap?>(null) }
     LaunchedEffect(source) {
         bitmap = withContext(Dispatchers.IO) {
-            try { if (source.isNullOrBlank()) null else URL(source).openConnection().apply { connectTimeout = 8000; readTimeout = 8000 }.getInputStream().use { BitmapFactory.decodeStream(it) } }
-            catch (_: Exception) { null }
+            try {
+                if (source.isNullOrBlank()) null else {
+                    val decoded = URL(source).openConnection().apply { connectTimeout = 8000; readTimeout = 8000 }.getInputStream().use { BitmapFactory.decodeStream(it) }
+                    if (decoded == null) null else {
+                        // YouTube thumbnails often place square cover art inside a 16:9 canvas.
+                        // Extract the centered square before rendering it in the full-player frame.
+                        val side = minOf(decoded.width, decoded.height)
+                        if (side > 0 && decoded.width.toFloat() / decoded.height.toFloat() > 1.15f) {
+                            val left = (decoded.width - side) / 2
+                            android.graphics.Bitmap.createBitmap(decoded, left, 0, side, side)
+                        } else if (side > 0 && decoded.height.toFloat() / decoded.width.toFloat() > 1.15f) {
+                            val top = (decoded.height - side) / 2
+                            android.graphics.Bitmap.createBitmap(decoded, 0, top, side, side)
+                        } else decoded
+                    }
+                }
+            } catch (_: Exception) { null }
         }
     }
     if (bitmap != null) Image(bitmap = bitmap!!.asImageBitmap(), contentDescription = "Album art", modifier = modifier, contentScale = if (fitArtwork) androidx.compose.ui.layout.ContentScale.Fit else androidx.compose.ui.layout.ContentScale.Crop)
