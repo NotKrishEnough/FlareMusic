@@ -52,50 +52,78 @@ class PlaybackController {
     if (index < 0 || index >= queue.length) index = -1;
   }
 
-  Future<void> playQueue(List<OnlineTrack> tracks, int startIndex, Future<String> Function(String) resolve) async {
-    if (!_initialized || tracks.isEmpty || startIndex < 0 || startIndex >= tracks.length) return;
+  Future<AudioSource> _sourceFor(
+    OnlineTrack track,
+    Future<String> Function(String) resolve,
+  ) async {
+    final url = await resolve(track.videoId);
+    if (url.trim().isEmpty) {
+      throw StateError('Empty audio stream URL for ${track.title}.');
+    }
+    return AudioSource.uri(
+      Uri.parse(url),
+      tag: MediaItem(
+        id: track.videoId,
+        title: track.title,
+        artist: track.artist,
+        album: 'FlareMusic',
+        displayTitle: track.title,
+        displaySubtitle: track.artist,
+        artUri: track.thumbnail.isNotEmpty ? Uri.tryParse(track.thumbnail) : null,
+      ),
+    );
+  }
 
-    final sources = <AudioSource>[];
-    final playable = <OnlineTrack>[];
-    for (final track in tracks) {
-      try {
-        final url = await resolve(track.videoId);
-        if (url.trim().isEmpty) continue;
-        sources.add(AudioSource.uri(
-          Uri.parse(url),
-          tag: MediaItem(
-            id: track.videoId,
-            title: track.title,
-            artist: track.artist,
-            album: 'FlareMusic',
-            displayTitle: track.title,
-            displaySubtitle: track.artist,
-            artUri: track.thumbnail.isNotEmpty ? Uri.tryParse(track.thumbnail) : null,
-          ),
-        ));
-        playable.add(track);
-      } catch (_) {
-        // Skip tracks that cannot currently be resolved; keep the rest of the queue usable.
-      }
+  Future<void> playQueue(
+    List<OnlineTrack> tracks,
+    int startIndex,
+    Future<String> Function(String) resolve,
+  ) async {
+    if (!_initialized || tracks.isEmpty || startIndex < 0 || startIndex >= tracks.length) {
+      return;
     }
 
-    if (sources.isEmpty) throw StateError('No playable audio streams were returned.');
+    // Resolve the tapped song first so playback starts as soon as possible.
+    final selected = tracks[startIndex];
+    final firstSource = await _sourceFor(selected, resolve);
+    final concat = ConcatenatingAudioSource(children: [firstSource]);
 
     queue
       ..clear()
-      ..addAll(playable);
-    final requestedId = tracks[startIndex].videoId;
-    final safeInitialIndex = playable.indexWhere((t) => t.videoId == requestedId);
-    final initialIndex = safeInitialIndex < 0 ? 0 : safeInitialIndex;
-    index = initialIndex;
+      ..add(selected);
+    index = 0;
 
-    await player.setAudioSource(
-      ConcatenatingAudioSource(children: sources),
-      initialIndex: initialIndex,
-    );
+    await player.setAudioSource(concat, initialIndex: 0);
     await player.setLoopMode(LoopMode.all);
     await _persist();
     await player.play();
+
+    // Build the rest of the queue after playback has already started.
+    final remaining = <OnlineTrack>[
+      ...tracks.sublist(startIndex + 1),
+      ...tracks.sublist(0, startIndex),
+    ];
+
+    unawaited(() async {
+      final resolved = await Future.wait(
+        remaining.map((track) async {
+          try {
+            final source = await _sourceFor(track, resolve);
+            return (track, source);
+          } catch (_) {
+            return null;
+          }
+        }),
+      );
+
+      for (final item in resolved) {
+        if (item == null) continue;
+        final (track, source) = item;
+        await concat.add(source);
+        queue.add(track);
+      }
+      await _persist();
+    }());
   }
 
   Future<void> playSelected(List<OnlineTrack> tracks, int startIndex) => playQueue(tracks, startIndex, resolver.resolve);
