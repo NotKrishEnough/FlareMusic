@@ -56,53 +56,42 @@ class PlaybackController {
     if (!_initialized || tracks.isEmpty || startIndex < 0 || startIndex >= tracks.length) return;
 
     final sources = <AudioSource>[];
-    for (final track in tracks) {
-      final url = await resolve(track.videoId);
-      if (url.trim().isEmpty) continue;
-      sources.add(AudioSource.uri(
-        Uri.parse(url),
-        tag: MediaItem(
-          id: track.videoId,
-          title: track.title,
-          artist: track.artist,
-          album: 'FlareMusic',
-          displayTitle: track.title,
-          displaySubtitle: track.artist,
-          artUri: track.thumbnail.isNotEmpty ? Uri.tryParse(track.thumbnail) : null,
-        ),
-      ));
-    }
-
-    if (sources.isEmpty) {
-      throw StateError('No playable audio streams were returned.');
-    }
-
-    // Keep the logical queue aligned with the successfully resolved sources.
     final playable = <OnlineTrack>[];
-    for (final source in sources) {
-      final tag = source.tag;
-      if (tag is! MediaItem) continue;
-      final original = tracks.cast<OnlineTrack?>().firstWhere(
-        (t) => t?.videoId == tag.id,
-        orElse: () => null,
-      );
-      if (original != null) playable.add(original);
+    for (final track in tracks) {
+      try {
+        final url = await resolve(track.videoId);
+        if (url.trim().isEmpty) continue;
+        sources.add(AudioSource.uri(
+          Uri.parse(url),
+          tag: MediaItem(
+            id: track.videoId,
+            title: track.title,
+            artist: track.artist,
+            album: 'FlareMusic',
+            displayTitle: track.title,
+            displaySubtitle: track.artist,
+            artUri: track.thumbnail.isNotEmpty ? Uri.tryParse(track.thumbnail) : null,
+          ),
+        ));
+        playable.add(track);
+      } catch (_) {
+        // Skip tracks that cannot currently be resolved; keep the rest of the queue usable.
+      }
     }
-    if (playable.isEmpty) throw StateError('No playable tracks were returned.');
+
+    if (sources.isEmpty) throw StateError('No playable audio streams were returned.');
 
     queue
       ..clear()
       ..addAll(playable);
-    index = startIndex.clamp(0, queue.length - 1);
-    final initialIndex = sources.indexWhere((source) {
-      final tag = source.tag;
-      return tag is MediaItem && tag.id == queue[index].videoId;
-    });
-    final safeInitialIndex = initialIndex < 0 ? 0 : initialIndex;
+    final requestedId = tracks[startIndex].videoId;
+    final safeInitialIndex = playable.indexWhere((t) => t.videoId == requestedId);
+    final initialIndex = safeInitialIndex < 0 ? 0 : safeInitialIndex;
+    index = initialIndex;
 
     await player.setAudioSource(
       ConcatenatingAudioSource(children: sources),
-      initialIndex: safeInitialIndex,
+      initialIndex: initialIndex,
     );
     await player.setLoopMode(LoopMode.all);
     await _persist();
