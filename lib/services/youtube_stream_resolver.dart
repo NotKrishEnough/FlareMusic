@@ -14,15 +14,16 @@ class YouTubeStreamResolver {
     ]) {
       try {
         final manifest = clients == null
-            ? await _youtube.videos.streamsClient.getManifest(videoId)
-            : await _youtube.videos.streamsClient.getManifest(videoId, ytClients: clients);
+            ? await _youtube.videos.streamsClient.getManifest(videoId, requireWatchPage: true).timeout(const Duration(seconds: 20))
+            : await _youtube.videos.streamsClient.getManifest(videoId, ytClients: clients, requireWatchPage: true).timeout(const Duration(seconds: 20));
         final audio = manifest.audioOnly.withHighestBitrate();
+        if (audio.url.toString().isEmpty) throw StateError('No playable audio stream was returned.');
         return audio.url.toString();
       } catch (e) {
         lastError = e;
       }
     }
-    throw Exception('Could not resolve an audio stream: $lastError');
+    throw Exception('Could not resolve a playable YouTube audio stream. ${lastError ?? ''}');
   }
 
   Future<void> close() async => _youtube.close();
