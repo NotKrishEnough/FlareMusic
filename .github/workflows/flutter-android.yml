@@ -23,9 +23,23 @@ jobs:
           channel: stable
           cache: true
 
-      # The source repo is native Android; generate the Flutter host in CI.
+      # Generate the Flutter host because the source repo keeps the native app
+      # separately from the Flutter rewrite.
       - name: Generate Android host
         run: flutter create --platforms=android --project-name flare_music .
+
+      # audio_service requires the launcher Activity to provide its shared
+      # FlutterEngine. The generated FlutterActivity does not do that.
+      - name: Configure audio_service Activity
+        run: |
+          mkdir -p android/app/src/main/kotlin/com/example/flare_music
+          cat > android/app/src/main/kotlin/com/example/flare_music/MainActivity.kt <<'EOF'
+          package com.example.flare_music
+
+          import com.ryanheise.audioservice.AudioServiceActivity
+
+          class MainActivity : AudioServiceActivity()
+          EOF
 
       - name: Configure Android media playback service
         run: |
@@ -39,7 +53,8 @@ jobs:
               <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
               <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
           '''
-          s = s.replace('<application', permissions + '\n    <application', 1)
+          if 'android.permission.WAKE_LOCK' not in s:
+              s = s.replace('<application', permissions + '\n    <application', 1)
           service = '''
                   <service
                       android:name="com.ryanheise.audioservice.AudioService"
@@ -57,7 +72,8 @@ jobs:
                       </intent-filter>
                   </receiver>
           '''
-          s = s.replace('</application>', service + '\n    </application>', 1)
+          if 'com.ryanheise.audioservice.AudioService' not in s:
+              s = s.replace('</application>', service + '\n    </application>', 1)
           p.write_text(s)
           PY
 
