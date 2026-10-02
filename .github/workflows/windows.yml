@@ -1,0 +1,37 @@
+name: Windows Desktop
+on:
+  push:
+    branches: [main]
+    paths:
+      - "windows/**"
+      - ".github/workflows/windows.yml"
+  pull_request:
+    branches: [main]
+    paths:
+      - "windows/**"
+      - ".github/workflows/windows.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build-windows:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+      - name: Publish self-contained Windows app
+        run: dotnet publish windows/FlareMusic.Windows/FlareMusic.Windows.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true -o artifacts/FlareMusic
+      - name: Package Windows build
+        run: Compress-Archive -Path artifacts/FlareMusic/* -DestinationPath artifacts/FlareMusic-Windows-x64.zip
+      - name: Upload Windows build
+        uses: actions/upload-artifact@v4
+        with:
+          name: FlareMusic-Windows-x64
+          path: artifacts/FlareMusic-Windows-x64.zip
+          if-no-files-found: error
