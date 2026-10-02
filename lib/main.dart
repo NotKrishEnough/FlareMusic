@@ -59,6 +59,7 @@ class _MusicHomeState extends State<MusicHome> {
   final _account = YouTubeAccountService();
   bool _syncing = false;
   List<LocalPlaylist> _playlists = [];
+  LocalPlaylist? _openPlaylist;
   final _searchController = TextEditingController();
   final _searchFocus = FocusNode();
   final List<OnlineTrack> _results = [];
@@ -323,7 +324,7 @@ class _MusicHomeState extends State<MusicHome> {
   @override
   Widget build(BuildContext context) => Scaffold(
     body: SafeArea(child: Stack(children: [
-      if (_tab == 2) _libraryPage() else if (_tab == 1) _explorePage() else if (_tab == 3) _accountPage() else CustomScrollView(slivers: [
+      if (_openPlaylist != null) _playlistDetailPage(_openPlaylist!) else if (_tab == 2) _libraryPage() else if (_tab == 1) _explorePage() else if (_tab == 3) _accountPage() else CustomScrollView(slivers: [
         SliverPadding(padding: const EdgeInsets.fromLTRB(22, 18, 22, 150), sliver: SliverList(delegate: SliverChildListDelegate([
           Row(children: [
             Container(width: 42, height: 42, decoration: BoxDecoration(color: const Color(0xFF8BC5FF).withValues(alpha: .16), borderRadius: BorderRadius.circular(15)), child: const Icon(Icons.graphic_eq_rounded, color: Color(0xFF8BC5FF))),
@@ -522,11 +523,202 @@ class _MusicHomeState extends State<MusicHome> {
                 title: Text(p.name),
                 subtitle: Text('${p.tracks.length} tracks'),
                 trailing: IconButton(icon: const Icon(Icons.delete_outline), onPressed: () async { await _library.remove(p.id); await _refreshLibrary(); }),
-                onTap: () { if (p.tracks.isNotEmpty) _selectTrack(p.tracks.first, source: p.tracks); },
+                onTap: () => setState(() => _openPlaylist = p),
               );
             },
           )),
   ]))));
+
+  Widget _playlistDetailPage(LocalPlaylist playlist) => Positioned.fill(
+    child: Container(
+      color: const Color(0xFF101114),
+      child: SafeArea(
+        child: CustomScrollView(
+          slivers: [
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(18, 10, 18, 0),
+              sliver: SliverToBoxAdapter(
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => setState(() => _openPlaylist = null),
+                      icon: const Icon(Icons.arrow_back_rounded),
+                    ),
+                    const Expanded(
+                      child: Text(
+                        'PLAYLIST',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          letterSpacing: 2,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 48),
+                  ],
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(22, 18, 22, 8),
+              sliver: SliverToBoxAdapter(
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(18),
+                      child: playlist.tracks.isNotEmpty &&
+                              playlist.tracks.first.thumbnail.isNotEmpty
+                          ? Image.network(
+                              playlist.tracks.first.thumbnail,
+                              width: 128,
+                              height: 128,
+                              fit: BoxFit.cover,
+                              errorBuilder: (_, __, ___) =>
+                                  _playlistArtworkFallback(),
+                            )
+                          : _playlistArtworkFallback(),
+                    ),
+                    const SizedBox(width: 18),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            playlist.name,
+                            maxLines: 3,
+                            overflow: TextOverflow.ellipsis,
+                            style: const TextStyle(
+                              fontSize: 25,
+                              height: 1.05,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${playlist.tracks.length} tracks',
+                            style: const TextStyle(color: Colors.white60),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(22, 12, 22, 12),
+              sliver: SliverToBoxAdapter(
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: playlist.tracks.isEmpty
+                            ? null
+                            : () => _playAll(playlist.tracks),
+                        icon: const Icon(Icons.play_arrow_rounded),
+                        label: const Text('Play all'),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    IconButton.filledTonal(
+                      onPressed: playlist.tracks.isEmpty
+                          ? null
+                          : () {
+                              final shuffled = List<OnlineTrack>.from(
+                                playlist.tracks,
+                              )..shuffle();
+                              _selectTrack(shuffled.first, source: shuffled);
+                            },
+                      icon: const Icon(Icons.shuffle_rounded),
+                      tooltip: 'Shuffle',
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (playlist.tracks.isEmpty)
+              const SliverFillRemaining(
+                hasScrollBody: false,
+                child: Center(
+                  child: Text('This playlist has no tracks yet.'),
+                ),
+              )
+            else
+              SliverPadding(
+                padding: const EdgeInsets.fromLTRB(10, 0, 10, 160),
+                sliver: SliverList(
+                  delegate: SliverChildBuilderDelegate(
+                    (context, index) {
+                      final track = playlist.tracks[index];
+                      return ListTile(
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 3,
+                        ),
+                        leading: ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: track.thumbnail.isNotEmpty
+                              ? Image.network(
+                                  track.thumbnail,
+                                  width: 54,
+                                  height: 54,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (_, __, ___) =>
+                                      _playlistTrackFallback(),
+                                )
+                              : _playlistTrackFallback(),
+                        ),
+                        title: Text(
+                          track.title,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        subtitle: Text(
+                          track.artist,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        trailing: Text(
+                          track.duration,
+                          style: const TextStyle(
+                            color: Colors.white54,
+                            fontSize: 11,
+                          ),
+                        ),
+                        onTap: () => _selectTrack(
+                          track,
+                          source: playlist.tracks,
+                        ),
+                      );
+                    },
+                    childCount: playlist.tracks.length,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    ),
+  );
+
+  Widget _playlistArtworkFallback() => Container(
+    width: 128,
+    height: 128,
+    decoration: BoxDecoration(
+      color: const Color(0xFF31516B),
+      borderRadius: BorderRadius.circular(18),
+    ),
+    child: const Icon(Icons.queue_music_rounded, size: 46),
+  );
+
+  Widget _playlistTrackFallback() => Container(
+    width: 54,
+    height: 54,
+    color: const Color(0xFF31516B),
+    child: const Icon(Icons.music_note_rounded),
+  );
 
   Widget _searchPanel() => Positioned.fill(child: Material(color: const Color(0xFF101114).withValues(alpha: .98), child: Column(children: [
     Padding(padding: const EdgeInsets.fromLTRB(16, 10, 16, 12), child: Row(children: [
