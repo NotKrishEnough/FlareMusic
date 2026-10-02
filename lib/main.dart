@@ -211,13 +211,13 @@ class _MusicHomeState extends State<MusicHome> {
         synced = await _account.syncPlaylists();
       } else if (_cookieAuth.isLoggedIn) {
         await _loadPersonalizedMusic();
-        final remote = _homeTracks;
+        final remotePlaylists = await _api.fetchLibraryPlaylists();
         synced = [
           LocalPlaylist(
             id: 'ytm:home',
             name: 'YouTube Music Home',
             sourceId: 'FEmusic_home',
-            tracks: List<OnlineTrack>.from(remote),
+            tracks: List<OnlineTrack>.from(_homeTracks),
           ),
           if (_likedTracks.isNotEmpty)
             LocalPlaylist(
@@ -227,6 +227,21 @@ class _MusicHomeState extends State<MusicHome> {
               tracks: List<OnlineTrack>.from(_likedTracks),
             ),
         ];
+        for (final remote in remotePlaylists.take(12)) {
+          try {
+            final tracks = await _api.fetchPlaylist(remote.id);
+            if (tracks.isNotEmpty) {
+              synced.add(LocalPlaylist(
+                id: 'ytm:${remote.id}',
+                name: remote.title,
+                sourceId: remote.id,
+                tracks: tracks,
+              ));
+            }
+          } catch (e) {
+            debugPrint('Could not load YouTube Music playlist ' + remote.id + ': ' + e.toString());
+          }
+        }
       } else {
         await _account.signIn();
         if (_account.currentUser == null) return;
