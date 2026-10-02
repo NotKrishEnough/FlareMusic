@@ -331,7 +331,8 @@ class InnerTubeClient {
         final standardId = node['videoId'];
         if (standardId is String && standardId.isNotEmpty) {
           final thumbList = (node['thumbnail']?['thumbnails'] as List?) ?? const [];
-          final thumb = thumbList.isEmpty ? '' : (thumbList.last['url']?.toString() ?? '');
+          final rawThumb = thumbList.isEmpty ? '' : (thumbList.last['url']?.toString() ?? '');
+          final thumb = _highResThumbnail(rawThumb, videoId: standardId);
           out.add(OnlineTrack(
             videoId: standardId,
             title: textFrom(node['title']) ?? 'Unknown title',
@@ -350,8 +351,13 @@ class InnerTubeClient {
     walk(root);
   }
 
-  String _highResThumbnail(String url) {
-    if (url.isEmpty) return url;
+  String _highResThumbnail(String url, {String? videoId}) {
+    if (url.isEmpty && (videoId == null || videoId.isEmpty)) return url;
+    if (videoId != null && videoId.isNotEmpty) {
+      // Prefer YouTube's highest-resolution standard artwork for the player.
+      // If unavailable, Image.network will fall back to the original thumbnail.
+      return 'https://i.ytimg.com/vi/$videoId/maxresdefault.jpg';
+    }
     if (url.contains('i.ytimg.com/vi/')) {
       final match = RegExp(r'/vi/([A-Za-z0-9_-]{11})/').firstMatch(url);
       if (match != null) {
