@@ -12,7 +12,7 @@ dependencies:
   cupertino_icons: ^1.0.8
   http: ^1.2.2
   just_audio: ^0.9.42
-  just_audio_background: ^0.0.1-beta.15
+  just_audio_background: ^0.0.1-beta.17
   audio_service: ^0.18.15
   youtube_explode_dart: ^3.1.0
   shared_preferences: ^2.3.5
