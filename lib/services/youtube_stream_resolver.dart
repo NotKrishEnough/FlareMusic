@@ -7,15 +7,17 @@ class YouTubeStreamResolver {
 
   Future<String> resolve(String videoId) async {
     Object? lastError;
+    // Android VR HTTPS streams are currently subject to YouTube's GVS
+    // PO-token checks, which can make otherwise valid URLs return 403.
+    // Prefer clients that still expose directly playable HTTPS audio.
     final primaryClients = <YoutubeApiClient>[
-      YoutubeApiClient.androidVr,
-      YoutubeApiClient.androidSdkless,
       YoutubeApiClient.ios,
+      YoutubeApiClient.safari,
+      YoutubeApiClient.tv,
     ];
     final fallbackClients = <YoutubeApiClient>[
-      YoutubeApiClient.tv,
       YoutubeApiClient.mediaConnect,
-      YoutubeApiClient.safari,
+      YoutubeApiClient.androidSdkless,
     ];
 
     for (final clients in <List<YoutubeApiClient>>[
