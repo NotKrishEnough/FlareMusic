@@ -673,30 +673,46 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable private fun Artwork(source: String?, modifier: Modifier = Modifier, fitArtwork: Boolean = false) {
+    val context = LocalContext.current
     var bitmap by remember(source) { mutableStateOf<android.graphics.Bitmap?>(null) }
     LaunchedEffect(source) {
         bitmap = withContext(Dispatchers.IO) {
-            try {
-                if (source.isNullOrBlank()) null else {
-                    val decoded = URL(source).openConnection().apply { connectTimeout = 8000; readTimeout = 8000 }.getInputStream().use { BitmapFactory.decodeStream(it) }
-                    if (decoded == null) null else {
-                        // YouTube thumbnails often place square cover art inside a 16:9 canvas.
-                        // Extract the centered square before rendering it in the full-player frame.
-                        val side = minOf(decoded.width, decoded.height)
-                        if (side > 0 && decoded.width.toFloat() / decoded.height.toFloat() > 1.15f) {
-                            val left = (decoded.width - side) / 2
-                            android.graphics.Bitmap.createBitmap(decoded, left, 0, side, side)
-                        } else if (side > 0 && decoded.height.toFloat() / decoded.width.toFloat() > 1.15f) {
-                            val top = (decoded.height - side) / 2
-                            android.graphics.Bitmap.createBitmap(decoded, 0, top, side, side)
-                        } else decoded
-                    }
+            if (source.isNullOrBlank()) return@withContext null
+            val candidates = buildList {
+                // Prefer the largest YouTube video thumbnail; some videos do not provide maxres.
+                if (source.contains("i.ytimg.com/vi/") || source.contains("img.youtube.com/vi/")) {
+                    add(source.replace(Regex("/(default|mqdefault|hqdefault|sddefault|maxresdefault)\\.jpg"), "/maxresdefault.jpg"))
+                    add(source.replace(Regex("/(default|mqdefault|hqdefault|sddefault|maxresdefault)\\.jpg"), "/sddefault.jpg"))
                 }
-            } catch (_: Exception) { null }
+                add(source)
+                if (source.contains("i.ytimg.com/vi/") || source.contains("img.youtube.com/vi/")) {
+                    add(source.replace(Regex("/(default|mqdefault|hqdefault|sddefault|maxresdefault)\\.jpg"), "/hqdefault.jpg"))
+                }
+            }.distinct()
+            var decoded: android.graphics.Bitmap? = null
+            for (candidate in candidates) {
+                decoded = try {
+                    if (candidate.startsWith("content://") || candidate.startsWith("file://")) {
+                        context.contentResolver.openInputStream(Uri.parse(candidate))?.use { BitmapFactory.decodeStream(it) }
+                    } else {
+                        URL(candidate).openConnection().apply { connectTimeout = 7000; readTimeout = 7000 }.getInputStream().use { BitmapFactory.decodeStream(it) }
+                    }
+                } catch (_: Exception) { null }
+                if (decoded != null) break
+            }
+            decoded?.let { image ->
+                // YouTube video thumbnails are 16:9 with the cover centered; crop to square.
+                val side = minOf(image.width, image.height)
+                if (side > 0 && image.width.toFloat() / image.height.toFloat() > 1.15f) {
+                    android.graphics.Bitmap.createBitmap(image, (image.width - side) / 2, 0, side, side)
+                } else if (side > 0 && image.height.toFloat() / image.width.toFloat() > 1.15f) {
+                    android.graphics.Bitmap.createBitmap(image, 0, (image.height - side) / 2, side, side)
+                } else image
+            }
         }
     }
     if (bitmap != null) Image(bitmap = bitmap!!.asImageBitmap(), contentDescription = "Album art", modifier = modifier, contentScale = if (fitArtwork) androidx.compose.ui.layout.ContentScale.Fit else androidx.compose.ui.layout.ContentScale.Crop)
-    else Box(modifier.background(MaterialTheme.colorScheme.surface), contentAlignment = Alignment.Center) { Image(painterResource(R.drawable.ic_flare_logo), contentDescription = "FlareMusic logo", modifier = Modifier.fillMaxSize().padding(5.dp), contentScale = androidx.compose.ui.layout.ContentScale.Fit) }
+    else Box(modifier.background(MaterialTheme.colorScheme.surface), contentAlignment = Alignment.Center) { Image(painterResource(R.drawable.ic_flare_logo), contentDescription = "Album art", modifier = Modifier.fillMaxSize().padding(5.dp), contentScale = androidx.compose.ui.layout.ContentScale.Fit) }
 }
 
 @Composable private fun FullPlayer(track: Track, playing: Boolean, position: Long, duration: Long, isFavourite: Boolean, queue: List<Track>, onClose: () -> Unit, onPlayPause: () -> Unit, onSeek: (Long) -> Unit, onPrevious: () -> Unit, onNext: () -> Unit, onToggleFavourite: () -> Unit, onPlayQueueItem: (Int) -> Unit, onRemoveQueueItem: (Int) -> Unit, onClearQueue: () -> Unit, onStartSleepTimer: (Int) -> Unit, swipeToMinimize: Boolean, swipeToChangeTracks: Boolean) {
