@@ -479,8 +479,8 @@ class MainActivity : ComponentActivity() {
                     Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 4.dp)
                         .clip(miniShape)
                         .background(Brush.linearGradient(listOf(
-                            miniColors.surfaceVariant.copy(alpha = if (FlarePreferences.glassmorphism.value) 0.20f else 0.94f),
-                            miniColors.primaryContainer.copy(alpha = if (FlarePreferences.glassmorphism.value) 0.14f else 0.38f)
+                            miniColors.surfaceVariant.copy(alpha = if (FlarePreferences.glassmorphism.value) 0.10f else 0.94f),
+                            miniColors.primaryContainer.copy(alpha = if (FlarePreferences.glassmorphism.value) 0.08f else 0.38f)
                         )))
                         .clickable { playerExpanded = true }
                 ) {
@@ -510,7 +510,7 @@ class MainActivity : ComponentActivity() {
                 Row(
                     Modifier.fillMaxWidth()
                         .clip(RoundedCornerShape(34.dp))
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = if (amoled) 0.88f else 0.76f))
+                        .background(MaterialTheme.colorScheme.surface.copy(alpha = if (FlarePreferences.glassmorphism.value) 0.12f else if (amoled) 0.88f else 0.76f))
                         .padding(horizontal = 7.dp, vertical = 7.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
@@ -585,7 +585,7 @@ class MainActivity : ComponentActivity() {
         Text("Settings", fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp, color = MaterialTheme.colorScheme.onSurface)
         Text("Make FlareMusic yours.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp, modifier = Modifier.padding(top = 5.dp, bottom = 24.dp))
         Text("APPEARANCE", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(bottom = 9.dp))
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(if (FlarePreferences.glassmorphism.value) MaterialTheme.colorScheme.surface.copy(alpha = 0.24f) else MaterialTheme.colorScheme.surfaceVariant).clickable {
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(if (FlarePreferences.glassmorphism.value) MaterialTheme.colorScheme.surface.copy(alpha = 0.10f) else MaterialTheme.colorScheme.surfaceVariant).clickable {
             FlarePreferences.darkMode.value = !FlarePreferences.darkMode.value
             if (!FlarePreferences.darkMode.value) onAmoledChange(false)
             settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("dark_mode", FlarePreferences.darkMode.value).apply()
@@ -599,7 +599,7 @@ class MainActivity : ComponentActivity() {
             })
         }
         Spacer(Modifier.height(10.dp))
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(if (FlarePreferences.glassmorphism.value) MaterialTheme.colorScheme.surface.copy(alpha = 0.24f) else MaterialTheme.colorScheme.surfaceVariant).clickable {
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(if (FlarePreferences.glassmorphism.value) MaterialTheme.colorScheme.surface.copy(alpha = 0.10f) else MaterialTheme.colorScheme.surfaceVariant).clickable {
             FlarePreferences.glassmorphism.value = !FlarePreferences.glassmorphism.value
             settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("glassmorphism", FlarePreferences.glassmorphism.value).apply()
         }.padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -610,13 +610,13 @@ class MainActivity : ComponentActivity() {
             })
         }
         Spacer(Modifier.height(10.dp))
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(if (FlarePreferences.glassmorphism.value) MaterialTheme.colorScheme.surface.copy(alpha = 0.24f) else MaterialTheme.colorScheme.surfaceVariant).clickable { onAmoledChange(!amoled) }.padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(if (FlarePreferences.glassmorphism.value) MaterialTheme.colorScheme.surface.copy(alpha = 0.10f) else MaterialTheme.colorScheme.surfaceVariant).clickable { onAmoledChange(!amoled) }.padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.outlineVariant), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.DarkMode, null, tint = Mint) }
             Column(Modifier.weight(1f).padding(start = 13.dp)) { Text("AMOLED mode", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold); Text("Pure black backgrounds", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp)) }
             Switch(checked = amoled, onCheckedChange = onAmoledChange)
         }
         Text("Material You colours adapt to your wallpaper on supported Android versions.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp, bottom = 14.dp))
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(if (FlarePreferences.glassmorphism.value) MaterialTheme.colorScheme.surface.copy(alpha = 0.24f) else MaterialTheme.colorScheme.surfaceVariant).clickable {
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(if (FlarePreferences.glassmorphism.value) MaterialTheme.colorScheme.surface.copy(alpha = 0.10f) else MaterialTheme.colorScheme.surfaceVariant).clickable {
             FlarePreferences.dynamicColors.value = !FlarePreferences.dynamicColors.value
             settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("dynamic_colors", FlarePreferences.dynamicColors.value).apply()
         }.padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -631,7 +631,7 @@ class MainActivity : ComponentActivity() {
         }
         Text("Choose a preset or let Android generate a palette from your wallpaper.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp, bottom = 20.dp))
         Text("PERSONALIZATION", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(bottom = 9.dp))
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(if (FlarePreferences.glassmorphism.value) MaterialTheme.colorScheme.surface.copy(alpha = 0.58f) else MaterialTheme.colorScheme.surfaceVariant).padding(17.dp)) {
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(if (FlarePreferences.glassmorphism.value) MaterialTheme.colorScheme.surface.copy(alpha = 0.10f) else MaterialTheme.colorScheme.surfaceVariant).padding(17.dp)) {
             Text("Accent colour", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
             Text("Choose the colour used for highlights and controls.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 4.dp, bottom = 13.dp))
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(13.dp)) {
@@ -662,7 +662,7 @@ class MainActivity : ComponentActivity() {
             }
         }
         Text("PLAYER GESTURES", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(top = 20.dp, bottom = 9.dp))
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(if (FlarePreferences.glassmorphism.value) MaterialTheme.colorScheme.surface.copy(alpha = 0.58f) else MaterialTheme.colorScheme.surfaceVariant).padding(17.dp)) {
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(if (FlarePreferences.glassmorphism.value) MaterialTheme.colorScheme.surface.copy(alpha = 0.10f) else MaterialTheme.colorScheme.surfaceVariant).padding(17.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) { Text("Swipe down to minimize", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold); Text("Pull down anywhere in the full player", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp) }
                 Switch(checked = FlarePreferences.swipeToMinimize.value, onCheckedChange = {
@@ -680,7 +680,7 @@ class MainActivity : ComponentActivity() {
             }
         }
         Text("YOUTUBE MUSIC", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(bottom = 9.dp))
-        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(if (FlarePreferences.glassmorphism.value) MaterialTheme.colorScheme.surface.copy(alpha = 0.58f) else MaterialTheme.colorScheme.surfaceVariant).padding(17.dp)) {
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(if (FlarePreferences.glassmorphism.value) MaterialTheme.colorScheme.surface.copy(alpha = 0.10f) else MaterialTheme.colorScheme.surfaceVariant).padding(17.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Rounded.MusicNote, null, tint = Mint, modifier = Modifier.size(25.dp))
                 Column(Modifier.weight(1f).padding(start = 12.dp)) {
@@ -761,7 +761,7 @@ class MainActivity : ComponentActivity() {
             else if (kotlin.math.abs(horizontal) > 85f && swipeToChangeTracks) { if (horizontal < 0f) onNext() else onPrevious() }
             dragX = 0f; dragY = 0f
         }, onDragCancel = { dragX = 0f; dragY = 0f }) { _, amount -> dragX += amount.x; dragY += amount.y }
-    }.background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface)))) {
+    }.background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.surface.copy(alpha = if (FlarePreferences.glassmorphism.value) 0.12f else 1f), MaterialTheme.colorScheme.surface.copy(alpha = if (FlarePreferences.glassmorphism.value) 0.12f else 1f), MaterialTheme.colorScheme.surface.copy(alpha = if (FlarePreferences.glassmorphism.value) 0.12f else 1f))))) {
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().displayCutoutPadding().padding(horizontal = 24.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onClose) { Icon(Icons.Rounded.KeyboardArrowDown, "Collapse player", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(30.dp)) }
@@ -774,7 +774,7 @@ class MainActivity : ComponentActivity() {
                 IconButton(onClick = { showQueue = true }) { Icon(Icons.Rounded.QueueMusic, "Queue", tint = MaterialTheme.colorScheme.onSurface) }
             }
             Spacer(Modifier.weight(.65f))
-            Box(Modifier.fillMaxWidth().aspectRatio(1f).padding(horizontal = 8.dp).clip(RoundedCornerShape(30.dp)).background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.surface))).padding(10.dp)) {
+            Box(Modifier.fillMaxWidth().aspectRatio(1f).padding(horizontal = 8.dp).clip(RoundedCornerShape(30.dp)).background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (FlarePreferences.glassmorphism.value) 0.12f else 1f), MaterialTheme.colorScheme.surface.copy(alpha = if (FlarePreferences.glassmorphism.value) 0.12f else 1f)))).padding(10.dp)) {
                 Artwork(track.artwork, Modifier.fillMaxSize().clip(RoundedCornerShape(23.dp)), fitArtwork = true)
             }
             Spacer(Modifier.weight(.65f))
@@ -849,7 +849,7 @@ class MainActivity : ComponentActivity() {
 @Composable private fun HomeScreen(count: Int, loading: Boolean, error: String, accent: Color, openLibrary: () -> Unit) {
     val colors = MaterialTheme.colorScheme
     val homeSurface = colors.surface
-    val homeCard = colors.surfaceVariant.copy(alpha = if (FlarePreferences.glassmorphism.value) 0.28f else 0.72f)
+    val homeCard = colors.surfaceVariant.copy(alpha = if (FlarePreferences.glassmorphism.value) 0.10f else 0.72f)
     Column(Modifier.fillMaxSize().background(colors.background).verticalScroll(rememberScrollState()).padding(horizontal = 22.dp)) {
         Row(Modifier.fillMaxWidth().padding(top = 22.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
@@ -980,7 +980,7 @@ class MainActivity : ComponentActivity() {
         if (youtubePlaylists.isNotEmpty()) {
             LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 14.dp)) {
                 items(youtubePlaylists, key = { it.id }) { playlist ->
-                    Column(Modifier.width(142.dp).clip(RoundedCornerShape(16.dp)).background(if (FlarePreferences.glassmorphism.value) MaterialTheme.colorScheme.surface.copy(alpha = 0.58f) else MaterialTheme.colorScheme.surfaceVariant).clickable { openPlaylist(playlist) }.padding(9.dp)) {
+                    Column(Modifier.width(142.dp).clip(RoundedCornerShape(16.dp)).background(if (FlarePreferences.glassmorphism.value) MaterialTheme.colorScheme.surface.copy(alpha = 0.10f) else MaterialTheme.colorScheme.surfaceVariant).clickable { openPlaylist(playlist) }.padding(9.dp)) {
                         Artwork(playlist.thumbnail, Modifier.fillMaxWidth().height(112.dp).clip(RoundedCornerShape(11.dp)))
                         Text(playlist.title, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
                         Text(if (playlist.itemCount > 0) "${playlist.itemCount} tracks" else playlist.description, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
