@@ -230,4 +230,52 @@ object YouTubePlaylists {
         }
     }
 
+
+    /** Adds a searched YouTube video to a user's YouTube Music playlist. */
+    suspend fun addToPlaylist(cookieHeader: String, playlistId: String, videoId: String) = withContext(Dispatchers.IO) {
+        val origin = "https://music.youtube.com"
+        val userAgent = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36"
+        val cookies = cookieHeader.split(';').mapNotNull { part ->
+            val item = part.trim(); val index = item.indexOf('=')
+            if (index <= 0) null else item.substring(0, index).trim() to item.substring(index + 1).trim()
+        }.toMap()
+        val sapisid = cookies["SAPISID"] ?: cookies["__Secure-3PAPISID"]
+            ?: throw IllegalStateException("YouTube Music session expired. Reconnect your account.")
+        val page = Request.Builder().url(origin).header("Cookie", cookieHeader).header("User-Agent", userAgent).get().build()
+        val (apiKey, clientVersion) = http.newCall(page).execute().use { response ->
+            val html = response.body?.string().orEmpty()
+            if (!response.isSuccessful) throw IllegalStateException("Couldn't load YouTube Music config (HTTP ${response.code}).")
+            val key = Regex("""["']INNERTUBE_API_KEY["']\\s*:\\s*["']([^"']+)["']""").find(html)?.groupValues?.get(1)
+                ?: throw IllegalStateException("YouTube Music API configuration unavailable.")
+            val version = Regex("""["']INNERTUBE_CLIENT_VERSION["']\\s*:\\s*["']([^"']+)["']""").find(html)?.groupValues?.get(1)
+                ?: "1.20260304.03.00"
+            key to version
+        }
+        val timestamp = System.currentTimeMillis() / 1000
+        val digest = MessageDigest.getInstance("SHA-1").digest("$timestamp $sapisid $origin".toByteArray()).joinToString("") { "%02x".format(it) }
+        val targetId = playlistId.removePrefix("VL")
+        val action = JSONObject().put("addedVideoId", videoId).put("action", "ACTION_ADD_VIDEO")
+        val body = JSONObject()
+            .put("context", JSONObject().put("client", JSONObject().put("clientName", "WEB_REMIX")
+                .put("clientVersion", clientVersion).put("hl", "en").put("gl", "US")))
+            .put("playlistId", targetId).put("actions", org.json.JSONArray().put(action)).toString()
+        val url = okhttp3.HttpUrl.Builder().scheme("https").host("music.youtube.com").addPathSegments("youtubei/v1/browse/edit_playlist")
+            .addQueryParameter("key", apiKey).addQueryParameter("prettyPrint", "false").build()
+        val request = Request.Builder().url(url).post(body.toRequestBody("application/json; charset=utf-8".toMediaType()))
+            .header("Cookie", cookieHeader).header("Authorization", "SAPISIDHASH ${timestamp}_$digest")
+            .header("Origin", origin).header("Referer", "$origin/").header("X-Origin", origin)
+            .header("X-YouTube-Client-Name", "67").header("X-YouTube-Client-Version", clientVersion)
+            .header("User-Agent", userAgent).build()
+        http.newCall(request).execute().use { response ->
+            val raw = response.body?.string().orEmpty()
+            if (!response.isSuccessful) {
+                val detail = runCatching { JSONObject(raw).optJSONObject("error")?.optString("message").orEmpty() }.getOrDefault("")
+                throw IllegalStateException("YouTube Music couldn't add this song (HTTP ${response.code})" + if (detail.isNotBlank()) ": ${detail.take(120)}" else ".")
+            }
+            val root = JSONObject(raw)
+            if (root.has("error")) throw IllegalStateException(root.optJSONObject("error")?.optString("message") ?: "YouTube Music rejected the change.")
+            if (!root.has("playlistEditResults") && raw.isBlank()) throw IllegalStateException("YouTube Music returned an empty response.")
+        }
+    }
+
 }
