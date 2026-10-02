@@ -80,7 +80,6 @@ class _MusicHomeState extends State<MusicHome> {
   void initState() {
     super.initState();
     _api = InnerTubeClient(auth: _cookieAuth);
-    _api = InnerTubeClient(auth: _cookieAuth);
     _restorePlaybackState();
     _refreshLibrary();
     _restoreAccount();
@@ -241,7 +240,7 @@ class _MusicHomeState extends State<MusicHome> {
               ));
             }
           } catch (e) {
-            debugPrint('Could not load YouTube Music playlist ' + remote.id + ': ' + e.toString());
+            debugPrint('Could not load YouTube Music playlist ${remote.id}: $e');
           }
         }
       } else {
