@@ -1,3 +1,4 @@
+import 'dart:ui' as ui;
 import 'dart:async';
 import 'dart:math' show min;
 import 'package:flutter/material.dart';
@@ -822,57 +823,111 @@ class _MusicHomeState extends State<MusicHome> {
                   _miniPlayer(),
                   const SizedBox(height: 12),
                 ],
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: .96),
-                    borderRadius: BorderRadius.circular(32),
-                    border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: .5)),
-                  ),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: List.generate(_tabs.length, (i) {
-                      final selected = _tab == i;
-                      return InkWell(
-                        borderRadius: BorderRadius.circular(25),
-                        onTap: () => _selectTab(i),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 220),
-                          padding: EdgeInsets.symmetric(
-                            horizontal: selected ? 17 : 14,
-                            vertical: 10,
-                          ),
-                          decoration: BoxDecoration(
-                            color: selected
-                                ? Theme.of(context).colorScheme.primary.withValues(alpha: .16)
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(24),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(
-                                _tabs[i].$1,
-                                size: 20,
-                                color: selected
-                                    ? Theme.of(context).colorScheme.primary
-                                    : Theme.of(context).colorScheme.onSurface.withValues(alpha: .7),
-                              ),
-                              if (selected) ...[
-                                const SizedBox(width: 7),
-                                Text(
-                                  _tabs[i].$2,
-                                  style: TextStyle(
-                                    color: Theme.of(context).colorScheme.primary,
-                                    fontWeight: FontWeight.w700,
-                                    fontSize: 12,
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(30),
+                  child: BackdropFilter(
+                    filter: ui.ImageFilter.blur(sigmaX: 22, sigmaY: 22),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: Theme.of(context).colorScheme.surface.withValues(alpha: .58),
+                        borderRadius: BorderRadius.circular(30),
+                        border: Border.all(
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .12),
                         ),
-                      );
-                    }),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Theme.of(context).colorScheme.primary.withValues(alpha: .12),
+                            blurRadius: 28,
+                            spreadRadius: 1,
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: List.generate(_tabs.length, (i) {
+                          final selected = _tab == i;
+                          final scheme = Theme.of(context).colorScheme;
+                          return Expanded(
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(24),
+                              onTap: () => _selectTab(i),
+                              child: AnimatedContainer(
+                                duration: const Duration(milliseconds: 280),
+                                curve: Curves.easeOutCubic,
+                                margin: const EdgeInsets.symmetric(horizontal: 3),
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: selected ? 10 : 7,
+                                  vertical: 9,
+                                ),
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(23),
+                                  gradient: selected
+                                      ? LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: [
+                                            scheme.primary.withValues(alpha: .28),
+                                            scheme.secondary.withValues(alpha: .16),
+                                          ],
+                                        )
+                                      : null,
+                                  border: selected
+                                      ? Border.all(
+                                          color: scheme.primary.withValues(alpha: .22),
+                                        )
+                                      : null,
+                                  boxShadow: selected
+                                      ? [
+                                          BoxShadow(
+                                            color: scheme.primary.withValues(alpha: .16),
+                                            blurRadius: 16,
+                                            spreadRadius: 1,
+                                          ),
+                                        ]
+                                      : null,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    AnimatedScale(
+                                      scale: selected ? 1.08 : 1.0,
+                                      duration: const Duration(milliseconds: 220),
+                                      curve: Curves.easeOutBack,
+                                      child: Icon(
+                                        _tabs[i].$1,
+                                        size: 20,
+                                        color: selected
+                                            ? scheme.primary
+                                            : scheme.onSurface.withValues(alpha: .68),
+                                      ),
+                                    ),
+                                    AnimatedSize(
+                                      duration: const Duration(milliseconds: 220),
+                                      curve: Curves.easeOutCubic,
+                                      child: selected
+                                          ? Padding(
+                                              padding: const EdgeInsets.only(left: 6),
+                                              child: Text(
+                                                _tabs[i].$2,
+                                                style: TextStyle(
+                                                  color: scheme.primary,
+                                                  fontWeight: FontWeight.w700,
+                                                  fontSize: 11,
+                                                ),
+                                              ),
+                                            )
+                                          : const SizedBox.shrink(),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                    ),
                   ),
                 ),
               ],
