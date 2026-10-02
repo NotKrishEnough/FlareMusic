@@ -575,6 +575,33 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
+    if (trackToAdd != null) {
+        AlertDialog(
+            onDismissRequest = { trackToAdd = null },
+            title = { Text("Add to YouTube Music") },
+            text = {
+                Column {
+                    Text(trackToAdd?.title.orEmpty())
+                    if (youtubePlaylists.isEmpty()) Text("Connect YouTube Music and refresh playlists first.")
+                    youtubePlaylists.forEach { playlist ->
+                        TextButton(onClick = {
+                            val selected = trackToAdd ?: return@TextButton
+                            scope.launch {
+                                try {
+                                    val cookies = YouTubeSessionStore.read(context)
+                                        ?: throw IllegalStateException("Connect YouTube Music first.")
+                                    YouTubePlaylists.addToPlaylist(cookies, playlist.id, selected.videoId)
+                                    trackToAdd = null
+                                    onSyncPlaylists()
+                                } catch (e: Exception) { error = e.message ?: "Couldn't add song." }
+                            }
+                        }) { Text(playlist.title) }
+                    }
+                }
+            },
+            confirmButton = { TextButton(onClick = { trackToAdd = null }) { Text("Close") } }
+        )
+    }
     AnimatedVisibility(visible = playerExpanded && current != null, modifier = Modifier.fillMaxSize(), enter = fadeIn() + slideInVertically { it / 6 }, exit = fadeOut() + slideOutVertically { it / 6 }) {
         current?.let { track ->
             val queue = (0 until player.mediaItemCount).mapNotNull { index -> queueTracks[player.getMediaItemAt(index).mediaId] }
