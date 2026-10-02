@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' show min;
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
@@ -65,24 +66,44 @@ class _MusicHomeState extends State<MusicHome> {
   int _tab = 0;
   bool _playing = false;
   bool _playerExpanded = false;
+  StreamSubscription<PlayerState>? _playerStateSubscription;
 
   static const _tabs = [(Icons.home_rounded, 'Home'), (Icons.explore_rounded, 'Explore'), (Icons.library_music_rounded, 'Library'), (Icons.person_rounded, 'You')];
 
   @override
   void initState() {
     super.initState();
-    _playback.restore();
+    _restorePlaybackState();
     _refreshLibrary();
     _restoreAccount();
+    _playerStateSubscription = _playback.player.playerStateStream.listen((state) {
+      if (!mounted) return;
+      setState(() => _playing = state.playing);
+    });
   }
 
   @override
   void dispose() {
+    _playerStateSubscription?.cancel();
     _playback.dispose();
     _api.close();
     _searchController.dispose();
     _searchFocus.dispose();
     super.dispose();
+  }
+
+  Future<void> _restorePlaybackState() async {
+    try {
+      await _playback.restore();
+      final track = _playback.current;
+      if (!mounted || track == null) return;
+      setState(() {
+        _nowTitle = track.title;
+        _nowArtist = track.artist;
+      });
+    } catch (e) {
+      debugPrint('Playback restore failed: $e');
+    }
   }
 
   Future<void> _restoreAccount() async {
@@ -178,7 +199,7 @@ class _MusicHomeState extends State<MusicHome> {
       ]),
       if (_searching) _searchPanel(),
       if (_playerExpanded) _fullPlayer(),
-      Align(alignment: Alignment.bottomCenter, child: Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 12), child: Column(mainAxisSize: MainAxisSize.min, children: [
+      if (!_playerExpanded) Align(alignment: Alignment.bottomCenter, child: Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 12), child: Column(mainAxisSize: MainAxisSize.min, children: [
         _miniPlayer(),
         const SizedBox(height: 12),
         Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9), decoration: BoxDecoration(color: const Color(0xFF22252B).withValues(alpha: .96), borderRadius: BorderRadius.circular(32), border: Border.all(color: Colors.white.withValues(alpha: .07))), child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: List.generate(_tabs.length, (i) {
@@ -328,7 +349,7 @@ class _MusicHomeState extends State<MusicHome> {
         IconButton(onPressed: () {}, icon: const Icon(Icons.more_horiz_rounded)),
       ])),
       const Spacer(),
-      Container(width: min(MediaQuery.of(context).size.width - 72, 340), height: min(MediaQuery.of(context).size.width - 72, 340), decoration: BoxDecoration(color: const Color(0xFF263E59), borderRadius: BorderRadius.circular(28), boxShadow: [BoxShadow(color: const Color(0xFF8BC5FF).withValues(alpha: .12), blurRadius: 35, spreadRadius: 2)]), child: const Icon(Icons.graphic_eq_rounded, size: 110, color: Color(0xFF8BC5FF))),
+      _playerArtwork(size: min(MediaQuery.of(context).size.width - 72, 340)),
       const Spacer(),
       Padding(padding: const EdgeInsets.symmetric(horizontal: 28), child: Row(children: [
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -343,10 +364,10 @@ class _MusicHomeState extends State<MusicHome> {
         stream: _playback.player.positionStream,
         builder: (context, snapshot) {
           final position = snapshot.data ?? Duration.zero;
-          final duration = _playback.player.duration ?? Duration.zero;
+          final duration = _playback.player.duration ?? _currentTrackDuration();
           final maxMs = duration.inMilliseconds > 0 ? duration.inMilliseconds.toDouble() : 1.0;
           return Column(children: [
-            Slider(value: position.inMilliseconds.clamp(0, maxMs.toInt()).toDouble(), max: maxMs, onChanged: duration > Duration.zero ? (v) => _playback.player.seek(Duration(milliseconds: v.round())) : null),
+            Slider(value: position.inMilliseconds.clamp(0, maxMs.toInt()).toDouble(), max: maxMs, onChanged: _playback.player.duration != null && duration > Duration.zero ? (v) => _playback.player.seek(Duration(milliseconds: v.round())) : null),
             Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
               Text(_formatDuration(position), style: const TextStyle(color: Colors.white60, fontSize: 11)),
               Text(_formatDuration(duration), style: const TextStyle(color: Colors.white60, fontSize: 11)),
@@ -377,6 +398,49 @@ class _MusicHomeState extends State<MusicHome> {
     ])),
   ));
 
+  Widget _playerArtwork({required double size, double radius = 28}) {
+    final track = _playback.current;
+    final thumbnail = track?.thumbnail ?? '';
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: thumbnail.isNotEmpty
+          ? Image.network(
+              thumbnail,
+              width: size,
+              height: size,
+              fit: BoxFit.cover,
+              errorBuilder: (_, __, ___) => _artworkFallback(size, radius),
+            )
+          : _artworkFallback(size, radius),
+    );
+  }
+
+  Widget _artworkFallback(double size, double radius) => Container(
+    width: size,
+    height: size,
+    decoration: BoxDecoration(
+      color: const Color(0xFF263E59),
+      borderRadius: BorderRadius.circular(radius),
+    ),
+    child: Icon(
+      Icons.graphic_eq_rounded,
+      size: size * .32,
+      color: const Color(0xFF8BC5FF),
+    ),
+  );
+
+  Duration _currentTrackDuration() {
+    final raw = _playback.current?.duration.trim() ?? '';
+    final parts = raw.split(':').map(int.tryParse).toList();
+    if (parts.length == 2 && parts[0] != null && parts[1] != null) {
+      return Duration(minutes: parts[0]!, seconds: parts[1]!);
+    }
+    if (parts.length == 3 && parts.every((p) => p != null)) {
+      return Duration(hours: parts[0]!, minutes: parts[1]!, seconds: parts[2]!);
+    }
+    return Duration.zero;
+  }
+
   String _formatDuration(Duration value) {
     final seconds = value.inSeconds;
     return '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}';
@@ -393,7 +457,7 @@ class _MusicHomeState extends State<MusicHome> {
       borderRadius: BorderRadius.circular(18),
       onTap: () => setState(() => _playerExpanded = true),
       child: Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: Colors.white.withValues(alpha: .08))), child: Row(children: [
-        Container(width: 42, height: 42, decoration: BoxDecoration(color: const Color(0xFF31516B), borderRadius: BorderRadius.circular(11)), child: const Icon(Icons.music_note_rounded)),
+        _playerArtwork(size: 42, radius: 11),
         const SizedBox(width: 11),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(_nowTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)), const SizedBox(height: 3), Text(_nowArtist, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Colors.white60))])),
         IconButton(onPressed: () async { try { if (_playing) { await _playback.pause(); } else { await _playback.resume(); } if (mounted) setState(() => _playing = !_playing); } catch (e) { _showPlaybackError(e); } }, icon: Icon(_playing ? Icons.pause_rounded : Icons.play_arrow_rounded)),
