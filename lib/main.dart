@@ -1564,6 +1564,7 @@ class _MusicHomeState extends State<MusicHome> {
       ),
     ),
   );
+  }
 
   Widget _playerArtwork({required double size, double radius = 28, Key? key}) {
     final track = _playback.current;
