@@ -359,7 +359,7 @@ class InnerTubeClient {
       }
     }
     return url.replaceFirst(
-      RegExp(r'=w\\d+-h\\d+[^?]*$'),
+      RegExp(r'=w\d+-h\d+[^?]*$'),
       '=w1000-h1000',
     );
   }
