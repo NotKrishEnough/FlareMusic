@@ -64,10 +64,6 @@ class PlaybackController {
     if (url.trim().isEmpty) throw StateError('YouTube returned an empty audio stream.');
     await player.setAudioSource(AudioSource.uri(
       Uri.parse(url),
-      headers: const {
-        'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/125.0.0.0 Mobile Safari/537.36',
-        'Accept': '*/*',
-      },
       tag: MediaItem(
         id: track.videoId,
         title: track.title,
