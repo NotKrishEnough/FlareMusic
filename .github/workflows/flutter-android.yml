@@ -36,8 +36,8 @@ jobs:
           s = p.read_text()
           # Keep the same application identity as the existing Kotlin app so
           # Android recognizes Flutter builds as updates to the installed app.
-          s = s.replace('namespace = "com.example.flare_music"', 'namespace = "com.xin.flaremusic"')
-          s = s.replace('applicationId = "com.example.flare_music"', 'applicationId = "com.xin.flaremusic"')
+          s = s.replace('namespace = "com.nke.flaremusic"', 'namespace = "com.nke.flaremusic"')
+          s = s.replace('applicationId = "com.nke.flaremusic"', 'applicationId = "com.nke.flaremusic"')
           # The old Kotlin app used a timestamp versionCode. Keep using a
           # monotonically increasing timestamp so every release can update it.
           import re
@@ -133,9 +133,9 @@ jobs:
 
       - name: Configure audio_service Activity
         run: |
-          mkdir -p android/app/src/main/kotlin/com/example/flare_music
-          cat > android/app/src/main/kotlin/com/example/flare_music/MainActivity.kt <<'EOF'
-          package com.example.flare_music
+          mkdir -p android/app/src/main/kotlin/com/nke/flaremusic
+          cat > android/app/src/main/kotlin/com/nke/flaremusic/MainActivity.kt <<'EOF'
+          package com.nke.flaremusic
 
           import android.os.Bundle
           import android.os.Handler
@@ -237,9 +237,9 @@ jobs:
               s = s.replace('dependencies {', 'dependencies {\n' + dep, 1)
           p.write_text(s)
           PY
-          mkdir -p android/app/src/main/kotlin/com/example/flare_music
-          cat > android/app/src/main/kotlin/com/example/flare_music/NewPipeAudioResolver.kt <<'EOF'
-          package com.example.flare_music
+          mkdir -p android/app/src/main/kotlin/com/nke/flaremusic
+          cat > android/app/src/main/kotlin/com/nke/flaremusic/NewPipeAudioResolver.kt <<'EOF'
+          package com.nke.flaremusic
 
           import okhttp3.MediaType.Companion.toMediaType
           import okhttp3.OkHttpClient
