@@ -903,22 +903,21 @@ class _MusicHomeState extends State<MusicHome> {
                                             : scheme.onSurface.withValues(alpha: .68),
                                       ),
                                     ),
-                                    AnimatedSize(
-                                      duration: const Duration(milliseconds: 220),
-                                      curve: Curves.easeOutCubic,
-                                      child: selected
-                                          ? Padding(
-                                              padding: const EdgeInsets.only(left: 6),
-                                              child: Text(
-                                                _tabs[i].$2,
-                                                style: TextStyle(
-                                                  color: scheme.primary,
-                                                  fontWeight: FontWeight.w700,
-                                                  fontSize: 11,
-                                                ),
-                                              ),
-                                            )
-                                          : const SizedBox.shrink(),
+                                    const SizedBox(width: 6),
+                                    Flexible(
+                                      child: Text(
+                                        _tabs[i].$2,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        textAlign: TextAlign.center,
+                                        style: TextStyle(
+                                          color: selected
+                                              ? scheme.primary
+                                              : scheme.onSurface.withValues(alpha: .68),
+                                          fontWeight: selected ? FontWeight.w700 : FontWeight.w600,
+                                          fontSize: 11,
+                                        ),
+                                      ),
                                     ),
                                   ],
                                 ),
