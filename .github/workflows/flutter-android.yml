@@ -68,7 +68,7 @@ jobs:
         run: flutter analyze --no-pub
 
       - name: Build release APK
-        run: flutter build apk --release
+        run: flutter build apk --release --dart-define=GOOGLE_WEB_CLIENT_ID=${{ secrets.GOOGLE_WEB_CLIENT_ID }}
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
