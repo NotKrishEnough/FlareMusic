@@ -51,7 +51,8 @@ class PlaybackController {
     queue..clear()..addAll(tracks);
     index = startIndex;
     await _persist();
-    await playCurrent(resolve);
+    await _loadQueue(resolve);
+    await player.play();
   }
 
   Future<void> playSelected(List<OnlineTrack> tracks, int startIndex) => playQueue(tracks, startIndex, resolver.resolve);
@@ -85,44 +86,92 @@ class PlaybackController {
     await previous(resolver.resolve);
   }
 
+  MediaItem _mediaItem(OnlineTrack track) {
+    return MediaItem(
+      id: track.videoId,
+      title: track.title,
+      artist: track.artist,
+      album: 'FlareMusic',
+      displayTitle: track.title,
+      displaySubtitle: track.artist,
+      artUri: track.thumbnail.isNotEmpty ? Uri.tryParse(track.thumbnail) : null,
+    );
+  }
+
+  Future<UriAudioSource> _resolveSource(
+    OnlineTrack track,
+    Future<String> Function(String) resolve,
+  ) async {
+    final url = await resolve(track.videoId);
+    if (url.trim().isEmpty) {
+      throw StateError('YouTube returned an empty audio stream.');
+    }
+    return AudioSource.uri(Uri.parse(url), tag: _mediaItem(track));
+  }
+
   Future<void> playCurrent(Future<String> Function(String) resolve) async {
     if (!_initialized) return;
     final track = current;
     if (track == null) return;
-    final url = await resolve(track.videoId);
-    if (url.trim().isEmpty) throw StateError('YouTube returned an empty audio stream.');
-    await player.setAudioSource(AudioSource.uri(
-      Uri.parse(url),
-      tag: MediaItem(
-        id: track.videoId,
-        title: track.title,
-        artist: track.artist,
-        album: 'FlareMusic',
-        displayTitle: track.title,
-        displaySubtitle: track.artist,
-        artUri: track.thumbnail.isNotEmpty ? Uri.tryParse(track.thumbnail) : null,
-      ),
-    ));
+
+    // When a queue is loaded into just_audio, Android's media session can
+    // expose that queue to the lock screen, notification, Bluetooth controls,
+    // Android Auto, etc. Selecting a source directly would discard that queue.
+    if (player.sequence.length == queue.length &&
+        index >= 0 &&
+        index < player.sequence.length) {
+      await player.seek(Duration.zero, index: index);
+      await player.play();
+      await _persist();
+      return;
+    }
+
+    final source = await _resolveSource(track, resolve);
+    await player.setAudioSource(source);
     await player.play();
     await _persist();
-    if (index + 1 < queue.length) unawaited(resolver.preload(queue[index + 1].videoId));
-    if (index > 0) unawaited(resolver.preload(queue[index - 1].videoId));
+  }
+
+  Future<void> _loadQueue(
+    Future<String> Function(String) resolve,
+  ) async {
+    final sources = <UriAudioSource>[];
+    for (final track in queue) {
+      sources.add(await _resolveSource(track, resolve));
+    }
+    await player.setAudioSource(
+      ConcatenatingAudioSource(
+        useLazyPreparation: true,
+        children: sources,
+      ),
+      initialIndex: index,
+      initialPosition: Duration.zero,
+    );
   }
 
   Future<void> next(Future<String> Function(String) resolve) async {
     if (queue.isEmpty) return;
     index = (index + 1) % queue.length;
     await _persist();
-    await playCurrent(resolve);
+    if (player.sequence.length == queue.length) {
+      await player.seek(Duration.zero, index: index);
+      await player.play();
+    } else {
+      await playCurrent(resolve);
+    }
   }
 
   Future<void> previous(Future<String> Function(String) resolve) async {
     if (queue.isEmpty) return;
     index = index <= 0 ? queue.length - 1 : index - 1;
     await _persist();
-    await playCurrent(resolve);
+    if (player.sequence.length == queue.length) {
+      await player.seek(Duration.zero, index: index);
+      await player.play();
+    } else {
+      await playCurrent(resolve);
+    }
   }
-
   Future<void> _persist() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setStringList('flare.queue.ids', queue.map((e) => e.videoId).toList());
