@@ -79,6 +79,7 @@ private val Mint: Color get() = Violet.copy(alpha = .82f)
 private object FlarePreferences {
     val glassmorphism = mutableStateOf(false)
     val progressStyle = mutableIntStateOf(0)
+    val darkMode = mutableStateOf(true)
     val accentIndex = mutableIntStateOf(0)
     val animations = mutableStateOf(true)
     val compact = mutableStateOf(false)
@@ -155,6 +156,7 @@ class MainActivity : ComponentActivity() {
             }
         }
         amoledMode = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("amoled", false)
+        FlarePreferences.darkMode.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("dark_mode", true)
         FlarePreferences.glassmorphism.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("glassmorphism", false)
         FlarePreferences.progressStyle.intValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getInt("progress_style", 0).coerceIn(0, 2)
         FlarePreferences.accentIndex.intValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getInt("accent_index", 0).coerceIn(0, FlarePreferences.accents.lastIndex)
@@ -175,7 +177,7 @@ class MainActivity : ComponentActivity() {
     private fun showApp() {
         val activePlayer = player ?: return
         if (ContextCompat.checkSelfPermission(this, audioPermission()) != PackageManager.PERMISSION_GRANTED) return
-        setContent { FlareTheme(amoledMode, FlarePreferences.dynamicColors.value) { FlareApp(activePlayer, ::loadTracks, amoledMode, googleStatus, youtubePlaylists, playlistLoading, playlistError, ::connectGoogle, ::syncYouTubePlaylists, ::disconnectYouTube) { enabled -> amoledMode = enabled; getSharedPreferences("flare_settings", MODE_PRIVATE).edit().putBoolean("amoled", enabled).apply() } } }
+        setContent { FlareTheme(amoledMode, FlarePreferences.dynamicColors.value, FlarePreferences.darkMode.value) { FlareApp(activePlayer, ::loadTracks, amoledMode, googleStatus, youtubePlaylists, playlistLoading, playlistError, ::connectGoogle, ::syncYouTubePlaylists, ::disconnectYouTube) { enabled -> amoledMode = enabled; getSharedPreferences("flare_settings", MODE_PRIVATE).edit().putBoolean("amoled", enabled).apply() } } }
     }
 
     private fun connectGoogle() {
@@ -236,19 +238,26 @@ class MainActivity : ComponentActivity() {
     override fun onDestroy() { controllerFuture?.let { MediaController.releaseFuture(it) }; super.onDestroy() }
 }
 
-@Composable private fun FlareTheme(amoled: Boolean, dynamicColors: Boolean, content: @Composable () -> Unit) {
+@Composable private fun FlareTheme(amoled: Boolean, dynamicColors: Boolean, darkMode: Boolean, content: @Composable () -> Unit) {
     val context = LocalContext.current
     val accent = FlarePreferences.accents[FlarePreferences.accentIndex.intValue.coerceIn(0, FlarePreferences.accents.lastIndex)]
-    val fallback = darkColorScheme(
+    val darkFallback = darkColorScheme(
         primary = accent, secondary = accent.copy(alpha = .85f), tertiary = Mint,
-        background = Color(0xFF101116), surface = Color(0xFF171922),
-        surfaceVariant = Color(0xFF292D39), onPrimary = Color.White,
-        onSecondary = Color(0xFF101116), onTertiary = Color(0xFF101116),
-        onBackground = Color.White, onSurface = Color.White,
-        onSurfaceVariant = Color(0xFFE1E3EA), inverseSurface = Color(0xFFE1E3EA),
-        inverseOnSurface = Color(0xFF17191F)
+        background = Color(0xFF101116), surface = Color(0xFF171922), surfaceVariant = Color(0xFF292D39),
+        onPrimary = Color.White, onSecondary = Color(0xFF101116), onTertiary = Color(0xFF101116),
+        onBackground = Color.White, onSurface = Color.White, onSurfaceVariant = Color(0xFFE1E3EA),
+        inverseSurface = Color(0xFFE1E3EA), inverseOnSurface = Color(0xFF17191F)
     )
-    val wallpaperScheme = if (dynamicColors && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) dynamicDarkColorScheme(context) else fallback
+    val lightFallback = lightColorScheme(
+        primary = accent, secondary = accent.copy(alpha = .85f), tertiary = accent,
+        background = Color(0xFFF7F7FB), surface = Color(0xFFFFFFFF), surfaceVariant = Color(0xFFE9EAF1),
+        onPrimary = Color.White, onSecondary = Color.White, onTertiary = Color.White,
+        onBackground = Color(0xFF171821), onSurface = Color(0xFF171821), onSurfaceVariant = Color(0xFF555966),
+        outlineVariant = Color(0xFFD5D7E0)
+    )
+    val wallpaperScheme = if (dynamicColors && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        if (darkMode) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    } else if (darkMode) darkFallback else lightFallback
     SideEffect {
         if (dynamicColors && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             FlarePreferences.dynamicAccent.value = wallpaperScheme.primary
@@ -256,7 +265,7 @@ class MainActivity : ComponentActivity() {
     }
     val expressiveScheme = wallpaperScheme
     MaterialTheme(
-        colorScheme = if (amoled) expressiveScheme.copy(background = Color.Black, surface = Color.Black, surfaceContainer = Color(0xFF080808)) else expressiveScheme,
+        colorScheme = if (amoled && darkMode) expressiveScheme.copy(background = Color.Black, surface = Color.Black, surfaceContainer = Color(0xFF080808)) else expressiveScheme,
         content = content
     )
 }
@@ -470,8 +479,8 @@ class MainActivity : ComponentActivity() {
                     Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)
                         .clip(miniShape)
                         .background(Brush.linearGradient(listOf(
-                            miniColors.surfaceVariant.copy(alpha = if (amoled) 0.98f else 0.96f),
-                            miniColors.primaryContainer.copy(alpha = if (amoled) 0.34f else 0.48f)
+                            miniColors.surfaceVariant.copy(alpha = if (FlarePreferences.glassmorphism.value) 0.34f else 0.96f),
+                            miniColors.primaryContainer.copy(alpha = if (FlarePreferences.glassmorphism.value) 0.22f else 0.48f)
                         )))
                         .clickable { playerExpanded = true }
                 ) {
@@ -580,6 +589,20 @@ class MainActivity : ComponentActivity() {
         Text("Settings", fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp, color = MaterialTheme.colorScheme.onSurface)
         Text("Make FlareMusic yours.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp, modifier = Modifier.padding(top = 5.dp, bottom = 24.dp))
         Text("APPEARANCE", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(bottom = 9.dp))
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable {
+            FlarePreferences.darkMode.value = !FlarePreferences.darkMode.value
+            if (!FlarePreferences.darkMode.value) onAmoledChange(false)
+            settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("dark_mode", FlarePreferences.darkMode.value).apply()
+        }.padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.outlineVariant), contentAlignment = Alignment.Center) { Icon(if (FlarePreferences.darkMode.value) Icons.Rounded.DarkMode else Icons.Rounded.LightMode, null, tint = Mint) }
+            Column(Modifier.weight(1f).padding(start = 13.dp)) { Text("Dark theme", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold); Text(if (FlarePreferences.darkMode.value) "Use the dark appearance" else "Use the light appearance", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp)) }
+            Switch(checked = FlarePreferences.darkMode.value, onCheckedChange = {
+                FlarePreferences.darkMode.value = it
+                if (!it) onAmoledChange(false)
+                settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("dark_mode", it).apply()
+            })
+        }
+        Spacer(Modifier.height(10.dp))
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(if (FlarePreferences.glassmorphism.value) MaterialTheme.colorScheme.surface.copy(alpha = 0.58f) else MaterialTheme.colorScheme.surfaceVariant).clickable { onAmoledChange(!amoled) }.padding(17.dp), verticalAlignment = Alignment.CenterVertically) {
             Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.outlineVariant), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.DarkMode, null, tint = Mint) }
             Column(Modifier.weight(1f).padding(start = 13.dp)) { Text("AMOLED mode", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold); Text("Pure black backgrounds", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp)) }
