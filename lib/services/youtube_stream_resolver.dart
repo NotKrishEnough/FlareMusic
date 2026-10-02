@@ -78,6 +78,6 @@ class YouTubeStreamResolver {
 
   Future<void> close() async {
     _resolvedCache.clear();
-    await _youtube.close();
+    _youtube.close();
   }
 }
