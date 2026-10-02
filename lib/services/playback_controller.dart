@@ -1,4 +1,5 @@
 import 'package:just_audio/just_audio.dart';
+import 'package:audio_service/audio_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'inner_tube_client.dart';
 import 'youtube_stream_resolver.dart';
@@ -49,7 +50,7 @@ class PlaybackController {
     final track = current;
     if (track == null) return;
     final url = await resolve(track.videoId);
-    await player.setUrl(url);
+    await player.setAudioSource(AudioSource.uri(Uri.parse(url), tag: MediaItem(id: track.videoId, title: track.title, artist: track.artist, artUri: null)));
     await player.play();
     await _persist();
   }
