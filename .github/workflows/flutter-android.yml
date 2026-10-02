@@ -248,6 +248,39 @@ jobs:
           }
           EOF
 
+      - name: Configure permanent release signing
+        env:
+          FLARE_KEYSTORE_BASE64: ${{ secrets.FLARE_KEYSTORE_BASE64 }}
+          FLARE_KEYSTORE_PASSWORD: ${{ secrets.FLARE_KEYSTORE_PASSWORD }}
+          FLARE_KEY_ALIAS: ${{ secrets.FLARE_KEY_ALIAS }}
+          FLARE_KEY_PASSWORD: ${{ secrets.FLARE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "$FLARE_KEYSTORE_BASE64"
+          test -n "$FLARE_KEYSTORE_PASSWORD"
+          test -n "$FLARE_KEY_ALIAS"
+          test -n "$FLARE_KEY_PASSWORD"
+          echo "$FLARE_KEYSTORE_BASE64" | base64 --decode > android/app/flare-release.jks
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('android/app/build.gradle.kts')
+          s = p.read_text()
+          signing = '''    signingConfigs {
+              create("release") {
+                  storeFile = file("flare-release.jks")
+                  storePassword = System.getenv("FLARE_KEYSTORE_PASSWORD")
+                  keyAlias = System.getenv("FLARE_KEY_ALIAS")
+                  keyPassword = System.getenv("FLARE_KEY_PASSWORD")
+              }
+          }
+          '''
+          if 'create("release")' not in s:
+              s = s.replace('android {', 'android {\n' + signing, 1)
+          if 'signingConfig = signingConfigs.getByName("release")' not in s:
+              s = s.replace('isShrinkResources = false', 'isShrinkResources = false\n            signingConfig = signingConfigs.getByName("release")', 1)
+          p.write_text(s)
+          PY
+
       - name: Install dependencies
         run: flutter pub get
 
