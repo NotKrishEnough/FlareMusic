@@ -402,7 +402,7 @@ class _MusicHomeState extends State<MusicHome> {
         ]))),
       ]),
       if (_searching) _searchPanel(),
-      AnimatedSwitcher(duration: const Duration(milliseconds: 280), switchInCurve: Curves.easeOutCubic, switchOutCurve: Curves.easeInCubic, child: _playerExpanded ? _fullPlayer() : const SizedBox.shrink()),
+      if (_playerExpanded) _fullPlayer(),
       if (!_playerExpanded) Align(alignment: Alignment.bottomCenter, child: Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 12), child: Column(mainAxisSize: MainAxisSize.min, children: [
         _miniPlayer(),
         const SizedBox(height: 12),
