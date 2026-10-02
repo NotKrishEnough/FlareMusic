@@ -80,6 +80,7 @@ class _MusicHomeState extends State<MusicHome> {
   void initState() {
     super.initState();
     _api = InnerTubeClient(auth: _cookieAuth);
+    _api = InnerTubeClient(auth: _cookieAuth);
     _restorePlaybackState();
     _refreshLibrary();
     _restoreAccount();
