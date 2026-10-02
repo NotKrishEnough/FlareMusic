@@ -64,6 +64,41 @@ class InnerTubeClient {
     return unique.values.take(50).toList();
   }
 
+  Future<List<YouTubePlaylist>> fetchLibraryPlaylists() async {
+    final response = await _musicBrowse('FEmusic_library_landing');
+    final output = <YouTubePlaylist>[];
+    final seen = <String>{};
+    final root = jsonDecode(response.body);
+
+    void walk(dynamic node) {
+      if (node is Map) {
+        final renderer = node['musicTwoRowItemRenderer'] ?? node['musicResponsiveListItemRenderer'];
+        if (renderer is Map) {
+          final endpoint = renderer['navigationEndpoint'];
+          final browseId = endpoint is Map
+              ? endpoint['browseEndpoint']?['browseId']?.toString()
+              : null;
+          final watchPlaylist = endpoint is Map
+              ? endpoint['watchEndpoint']?['playlistId']?.toString()
+              : null;
+          final id = (browseId ?? watchPlaylist ?? '').replaceFirst(RegExp(r'^VL'), '');
+          final title = _text(renderer['title']) ?? '';
+          if (id.isNotEmpty && title.isNotEmpty && seen.add(id)) {
+            final thumbs = (renderer['thumbnail']?['thumbnails'] as List?) ?? const [];
+            final thumbnail = thumbs.isEmpty ? '' : (thumbs.last['url']?.toString() ?? '');
+            output.add(YouTubePlaylist(id: id, title: title, thumbnail: thumbnail));
+          }
+        }
+        node.values.forEach(walk);
+      } else if (node is List) {
+        node.forEach(walk);
+      }
+    }
+
+    walk(root);
+    return output;
+  }
+
   Future<List<OnlineTrack>> fetchPlaylist(String playlistId) async {
     final id = playlistId.replaceFirst(RegExp(r'^VL'), '');
     final browseId = RegExp(r'^(PL|UU|LL|OLAK)').hasMatch(id) ? 'VL$id' : id;
