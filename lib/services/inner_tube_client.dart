@@ -64,6 +64,51 @@ class InnerTubeClient {
     return unique.values.take(50).toList();
   }
 
+  Future<List<OnlineTrack>> fetchHome() async {
+    final response = await _musicBrowse('FEmusic_home');
+    return _uniqueTracks(response.body);
+  }
+
+  Future<List<OnlineTrack>> fetchLikedSongs() async {
+    final response = await _musicBrowse('FEmusic_liked_videos');
+    return _uniqueTracks(response.body);
+  }
+
+  Future<http.Response> _musicBrowse(String browseId) async {
+    if (_auth == null || !_auth!.isLoggedIn) {
+      throw StateError('Sign in with YouTube Music first.');
+    }
+    final response = await _http.post(
+      Uri.parse('https://music.youtube.com/youtubei/v1/browse?prettyPrint=false'),
+      headers: await _headers(music: true),
+      body: jsonEncode({
+        'context': {
+          'client': {
+            'clientName': 'WEB_REMIX',
+            'clientVersion': _musicVersion,
+            'hl': 'en',
+            'gl': 'US',
+          },
+        },
+        'browseId': browseId,
+      }),
+    ).timeout(const Duration(seconds: 20));
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw Exception('YouTube Music request failed: HTTP ${response.statusCode}');
+    }
+    return response;
+  }
+
+  List<OnlineTrack> _uniqueTracks(String raw) {
+    final tracks = <OnlineTrack>[];
+    _collect(raw, tracks);
+    final unique = <String, OnlineTrack>{};
+    for (final track in tracks) {
+      unique.putIfAbsent(track.videoId, () => track);
+    }
+    return unique.values.take(100).toList();
+  }
+
   Future<List<YouTubePlaylist>> fetchLibraryPlaylists() async {
     final response = await _musicBrowse('FEmusic_library_landing');
     final output = <YouTubePlaylist>[];
@@ -75,12 +120,10 @@ class InnerTubeClient {
         final renderer = node['musicTwoRowItemRenderer'] ?? node['musicResponsiveListItemRenderer'];
         if (renderer is Map) {
           final endpoint = renderer['navigationEndpoint'];
-          final browseId = endpoint is Map
-              ? endpoint['browseEndpoint']?['browseId']?.toString()
-              : null;
-          final watchPlaylist = endpoint is Map
-              ? endpoint['watchEndpoint']?['playlistId']?.toString()
-              : null;
+          final browseEndpoint = endpoint is Map ? endpoint['browseEndpoint'] : null;
+          final browseId = browseEndpoint is Map ? browseEndpoint['browseId']?.toString() : null;
+          final watchEndpoint = endpoint is Map ? endpoint['watchEndpoint'] : null;
+          final watchPlaylist = watchEndpoint is Map ? watchEndpoint['playlistId']?.toString() : null;
           final id = (browseId ?? watchPlaylist ?? '').replaceFirst(RegExp(r'^VL'), '');
           final title = _text(renderer['title']) ?? '';
           if (id.isNotEmpty && title.isNotEmpty && seen.add(id)) {
