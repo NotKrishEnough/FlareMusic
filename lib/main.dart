@@ -3,7 +3,15 @@ import 'package:just_audio_background/just_audio_background.dart';
 import 'services/inner_tube_client.dart';
 import 'services/playback_controller.dart';
 
-Future<void> main() async {\n  WidgetsFlutterBinding.ensureInitialized();\n  await JustAudioBackground.init(\n    androidNotificationChannelId: 'com.flaremusic.playback',\n    androidNotificationChannelName: 'FlareMusic playback',\n    androidNotificationOngoing: true,\n  );\n  runApp(const FlareMusicApp());\n}
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await JustAudioBackground.init(
+    androidNotificationChannelId: 'com.flaremusic.playback',
+    androidNotificationChannelName: 'FlareMusic playback',
+    androidNotificationOngoing: true,
+  );
+  runApp(const FlareMusicApp());
+}
 
 class FlareMusicApp extends StatelessWidget {
   const FlareMusicApp({super.key});
@@ -98,7 +106,8 @@ class _MusicHomeState extends State<MusicHome> {
           const SizedBox(height: 30),
           Text('GOOD EVENING', style: TextStyle(fontSize: 11, letterSpacing: 2, color: Colors.white.withValues(alpha: .55), fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
-          const Text('Your music,\nyour mood.', style: TextStyle(fontSize: 34, height: 1.12, fontWeight: FontWeight.w800)),
+          const Text('Your music,
+your mood.', style: TextStyle(fontSize: 34, height: 1.12, fontWeight: FontWeight.w800)),
           const SizedBox(height: 25),
           _sectionTitle('Made for you', 'Refresh'),
           const SizedBox(height: 14),
