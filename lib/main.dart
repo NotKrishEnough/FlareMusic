@@ -36,6 +36,8 @@ class FlareMusicApp extends StatefulWidget {
 class _FlareMusicAppState extends State<FlareMusicApp> {
   ThemeMode _themeMode = ThemeMode.dark;
   bool _useDynamicColors = true;
+  bool _amoledMode = false;
+  double _textScale = 1.0;
   int _accentIndex = 0;
 
   static const _accents = <Color>[
@@ -58,6 +60,8 @@ class _FlareMusicAppState extends State<FlareMusicApp> {
       _themeMode = mode == 'light' ? ThemeMode.light
           : mode == 'system' ? ThemeMode.system : ThemeMode.dark;
       _useDynamicColors = prefs.getBool('flare.appearance.dynamic') ?? true;
+      _amoledMode = prefs.getBool('flare.appearance.amoled') ?? false;
+      _textScale = prefs.getDouble('flare.appearance.textScale') ?? 1.0;
       _accentIndex = (prefs.getInt('flare.appearance.accent') ?? 0)
           .clamp(0, _accents.length - 1).toInt();
     });
@@ -81,6 +85,18 @@ class _FlareMusicAppState extends State<FlareMusicApp> {
     await prefs.setInt('flare.appearance.accent', value);
   }
 
+  Future<void> _setAmoledMode(bool value) async {
+    setState(() => _amoledMode = value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('flare.appearance.amoled', value);
+  }
+
+  Future<void> _setTextScale(double value) async {
+    setState(() => _textScale = value);
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('flare.appearance.textScale', value);
+  }
+
   ThemeData _makeTheme(Brightness brightness, ColorScheme? dynamicScheme) {
     final scheme = _useDynamicColors && dynamicScheme != null
         ? dynamicScheme
@@ -88,7 +104,7 @@ class _FlareMusicAppState extends State<FlareMusicApp> {
     return ThemeData(
       brightness: brightness,
       colorScheme: scheme,
-      scaffoldBackgroundColor: scheme.surface,
+      scaffoldBackgroundColor: _amoledMode && brightness == Brightness.dark ? Colors.black : scheme.surface,
       useMaterial3: true,
       appBarTheme: AppBarTheme(backgroundColor: scheme.surface, foregroundColor: scheme.onSurface),
       snackBarTheme: SnackBarThemeData(
@@ -137,6 +153,10 @@ class MusicHome extends StatefulWidget {
   final ValueChanged<ThemeMode> onThemeModeChanged;
   final ValueChanged<bool> onDynamicColorsChanged;
   final ValueChanged<int> onAccentChanged;
+  final bool amoledMode;
+  final double textScale;
+  final ValueChanged<bool> onAmoledModeChanged;
+  final ValueChanged<double> onTextScaleChanged;
   @override
   State<MusicHome> createState() => _MusicHomeState();
 }
@@ -919,6 +939,88 @@ class _MusicHomeState extends State<MusicHome> {
         SizedBox(width: double.infinity, child: OutlinedButton.icon(onPressed: () async { await _account.signOut(); if (mounted) setState(() {}); }, icon: const Icon(Icons.logout_rounded), label: const Text('Sign out Google'))),
       ],
     ])),
+    const SizedBox(height: 26),
+    const Text('Appearance & customization', style: TextStyle(fontSize: 22, fontWeight: FontWeight.w800)),
+    const SizedBox(height: 8),
+    Text('Make FlareMusic feel like yours.', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .65))),
+    const SizedBox(height: 12),
+    Card(
+      color: Theme.of(context).colorScheme.surfaceContainerHighest,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          const Text('Theme', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 10),
+          SegmentedButton<ThemeMode>(
+            segments: const [
+              ButtonSegment(value: ThemeMode.system, label: Text('System'), icon: Icon(Icons.brightness_auto_rounded)),
+              ButtonSegment(value: ThemeMode.light, label: Text('Light'), icon: Icon(Icons.light_mode_rounded)),
+              ButtonSegment(value: ThemeMode.dark, label: Text('Dark'), icon: Icon(Icons.dark_mode_rounded)),
+            ],
+            selected: {widget.themeMode},
+            onSelectionChanged: (values) => widget.onThemeModeChanged(values.first),
+            showSelectedIcon: false,
+          ),
+          const SizedBox(height: 16),
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Dynamic wallpaper colors'),
+            subtitle: const Text('Use colors from your Android wallpaper when supported'),
+            value: widget.useDynamicColors,
+            onChanged: widget.onDynamicColorsChanged,
+          ),
+          SwitchListTile.adaptive(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('AMOLED black'),
+            subtitle: const Text('Use a pure-black background in dark mode'),
+            value: widget.amoledMode,
+            onChanged: widget.onAmoledModeChanged,
+          ),
+          const SizedBox(height: 8),
+          const Text('Accent color', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 12,
+            runSpacing: 12,
+            children: List.generate(widget.accents.length, (i) => InkWell(
+              onTap: () => widget.onAccentChanged(i),
+              borderRadius: BorderRadius.circular(24),
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 180),
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  color: widget.accents[i],
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: widget.accentIndex == i ? Theme.of(context).colorScheme.onSurface : Colors.transparent,
+                    width: 3,
+                  ),
+                ),
+                child: widget.accentIndex == i
+                    ? const Icon(Icons.check_rounded, color: Colors.black, size: 20)
+                    : null,
+              ),
+            )),
+          ),
+          const SizedBox(height: 18),
+          const Text('Text size', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700)),
+          const SizedBox(height: 10),
+          SegmentedButton<double>(
+            segments: const [
+              ButtonSegment(value: 1.0, label: Text('100%')),
+              ButtonSegment(value: 1.1, label: Text('110%')),
+              ButtonSegment(value: 1.2, label: Text('120%')),
+            ],
+            selected: {widget.textScale},
+            onSelectionChanged: (values) => widget.onTextScaleChanged(values.first),
+            showSelectedIcon: false,
+          ),
+          const SizedBox(height: 8),
+          Text('Your appearance choices are saved on this device.', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .65), fontSize: 12)),
+        ]),
+      ),
+    ),
     const SizedBox(height: 22),
     const Text('Your music stays yours', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
     const SizedBox(height: 8),
