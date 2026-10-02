@@ -151,7 +151,7 @@ jobs:
           from pathlib import Path
           p = Path('android/app/build.gradle.kts')
           s = p.read_text()
-          dep = '    implementation("com.github.teamnewpipe:newpipeextractor:0.26.5")'
+          dep = '    implementation("com.github.TeamNewPipe:NewPipeExtractor:v0.26.5")'
           if dep not in s:
               s = s.replace('dependencies {', 'dependencies {\n' + dep, 1)
           p.write_text(s)
