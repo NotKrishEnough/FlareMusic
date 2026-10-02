@@ -93,7 +93,7 @@ class _FlareMusicAppState extends State<FlareMusicApp> {
 
   @override
   Widget build(BuildContext context) => DynamicColorBuilder(
-    builder: (context, lightDynamic, darkDynamic) => MaterialApp(
+    builder: (lightDynamic, darkDynamic) => MaterialApp(
       title: 'FlareMusic',
       debugShowCheckedModeBanner: false,
       theme: _makeTheme(Brightness.light, lightDynamic),
