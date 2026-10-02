@@ -1,12 +1,14 @@
 import 'package:just_audio/just_audio.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'inner_tube_client.dart';
+import 'youtube_stream_resolver.dart';
 
 /// Owns the queue and audio engine for the Flutter app. Stream URLs are
 /// resolved by the caller; YouTube extraction is deliberately not faked here.
 class PlaybackController {
   PlaybackController({AudioPlayer? player}) : player = player ?? AudioPlayer();
   final AudioPlayer player;
+  final YouTubeStreamResolver resolver = YouTubeStreamResolver();
   final List<OnlineTrack> queue = [];
   int index = -1;
 
@@ -35,6 +37,13 @@ class PlaybackController {
     await _persist();
     await playCurrent(resolve);
   }
+
+  Future<void> playSelected(List<OnlineTrack> tracks, int startIndex) => playQueue(tracks, startIndex, resolver.resolve);
+
+  Future<void> resume() => player.play();
+  Future<void> pause() => player.pause();
+  Future<void> skipNext() => next(resolver.resolve);
+  Future<void> skipPrevious() => previous(resolver.resolve);
 
   Future<void> playCurrent(Future<String> Function(String) resolve) async {
     final track = current;
@@ -67,5 +76,5 @@ class PlaybackController {
     await prefs.setInt('flare.queue.index', index);
   }
 
-  Future<void> dispose() => player.dispose();
+  Future<void> dispose() async { await resolver.close(); await player.dispose(); }
 }
