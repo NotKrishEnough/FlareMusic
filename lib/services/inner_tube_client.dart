@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'youtube_cookie_auth.dart';
 
 /// Public YouTube/YouTube Music catalog models. InnerTube is an unofficial API
 /// and can change without notice; this client does not bypass access controls.
@@ -16,8 +17,25 @@ class YouTubePlaylist {
 }
 
 class InnerTubeClient {
-  InnerTubeClient({http.Client? client}) : _http = client ?? http.Client();
+  InnerTubeClient({http.Client? client, YouTubeCookieAuth? auth})
+      : _http = client ?? http.Client(),
+        _auth = auth;
   final http.Client _http;
+  final YouTubeCookieAuth? _auth;
+
+  Future<Map<String, String>> _headers({bool music = false}) async {
+    final headers = <String, String>{
+      'content-type': 'application/json',
+      'user-agent': _ua,
+    };
+    if (_auth != null) headers.addAll(await _auth!.authHeaders());
+    if (music) {
+      headers['x-youtube-client-name'] = '67';
+      headers['x-youtube-client-version'] = _musicVersion;
+      headers['x-origin'] = 'https://music.youtube.com';
+    }
+    return headers;
+  }
   static const _webVersion = '2.20250626.01.00';
   static const _musicVersion = '1.20250626.01.00';
   static const _ua = 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/125.0.0.0 Mobile Safari/537.36';
@@ -33,7 +51,7 @@ class InnerTubeClient {
       try {
         final response = await _http.post(
           Uri.parse('${source.$1}/search?prettyPrint=false'),
-          headers: {'content-type': 'application/json', 'user-agent': _ua},
+          headers: await _headers(music: source.$4),
           body: jsonEncode({'context': {'client': {'clientName': source.$2, 'clientVersion': source.$3, 'hl': 'en', 'gl': 'US'}}, 'query': query.trim()}),
         ).timeout(const Duration(seconds: 20));
         if (response.statusCode < 200 || response.statusCode >= 300) throw Exception('HTTP ${response.statusCode}');
@@ -51,7 +69,7 @@ class InnerTubeClient {
     final browseId = RegExp(r'^(PL|UU|LL|OLAK)').hasMatch(id) ? 'VL$id' : id;
     final response = await _http.post(
       Uri.parse('https://www.youtube.com/youtubei/v1/browse?prettyPrint=false'),
-      headers: {'content-type': 'application/json', 'user-agent': _ua},
+      headers: await _headers(),
       body: jsonEncode({'context': {'client': {'clientName': 'WEB', 'clientVersion': _webVersion, 'hl': 'en', 'gl': 'US'}}, 'browseId': browseId}),
     ).timeout(const Duration(seconds: 25));
     if (response.statusCode < 200 || response.statusCode >= 300) throw Exception('Playlist request failed: HTTP ${response.statusCode}');
