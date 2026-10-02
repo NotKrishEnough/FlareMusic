@@ -43,7 +43,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG_NAME: ${{ steps.version.outputs.tag }}
-          HEAD_SHA: ${{ github.sha }}
+          HEAD_SHA: ${{ steps.version.outputs.sha }}
         run: |
           set -euo pipefail
 
@@ -100,7 +100,7 @@ jobs:
 
           if gh release view "$TAG_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
             gh release upload "$TAG_NAME" release/*               --repo "$GITHUB_REPOSITORY"               --clobber
-            gh release edit "$TAG_NAME"               --repo "$GITHUB_REPOSITORY"               --title "FlareMusic $TAG_NAME"               --generate-notes               --target "$GITHUB_SHA"
+            gh release edit "$TAG_NAME"               --repo "$GITHUB_REPOSITORY"               --title "FlareMusic $TAG_NAME"               --generate-notes               --target "${{ steps.version.outputs.sha }}"
           else
             gh release create "$TAG_NAME" release/*               --repo "$GITHUB_REPOSITORY"               --title "FlareMusic $TAG_NAME"               --generate-notes               --target "$GITHUB_SHA"
           fi
