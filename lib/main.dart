@@ -15,17 +15,8 @@ import 'package:dynamic_color/dynamic_color.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // AudioPlayer must not be created until JustAudioBackground has finished
-  // creating its AudioService handler. Starting the UI after a timeout can
-  // leave just_audio's internal _audioHandler uninitialized and every play()
-  // call then fails with LateInitializationError.
-  await JustAudioBackground.init(
-    androidNotificationChannelId: 'com.flaremusic.playback',
-    androidNotificationChannelName: 'FlareMusic playback',
-    androidNotificationOngoing: true,
-    androidStopForegroundOnPause: false,
-    preloadArtwork: true,
-  );
+  // Never block Flutter's first frame on the audio service. Android can take
+  // a moment to bind the notification service; the app UI should still open.
   runApp(const FlareMusicApp());
 }
 
@@ -175,14 +166,10 @@ class _MusicHomeState extends State<MusicHome> {
     super.initState();
     _api = InnerTubeClient(auth: _cookieAuth);
     _requestMediaNotificationPermission();
-    _restorePlaybackState();
     _refreshLibrary();
     _restoreAccount();
     _restoreYouTubeMusicSession();
-    _playerStateSubscription = _playback.player.playerStateStream.listen((state) {
-      if (!mounted) return;
-      setState(() => _playing = state.playing);
-    });
+    _initializeAudio();
   }
 
   @override
@@ -202,6 +189,30 @@ class _MusicHomeState extends State<MusicHome> {
       debugPrint('Notification permission request failed: $e');
     }
   }
+
+  Future<void> _initializeAudio() async {
+    try {
+      await JustAudioBackground.init(
+        androidNotificationChannelId: 'com.flaremusic.playback',
+        androidNotificationChannelName: 'FlareMusic playback',
+        androidNotificationOngoing: true,
+        androidStopForegroundOnPause: false,
+        preloadArtwork: true,
+      );
+      await _playback.initialize();
+      if (!mounted) return;
+      await _restorePlaybackState();
+      _playerStateSubscription = _playback.player.playerStateStream.listen((state) {
+        if (!mounted) return;
+        setState(() => _playing = state.playing);
+      });
+    } catch (e, st) {
+      debugPrint('Audio initialization failed: $e');
+      debugPrintStack(stackTrace: st);
+      if (mounted) setState(() => _error = 'Audio engine could not start. Restart FlareMusic to try again.');
+    }
+  }
+
 
   Future<void> _refreshPersonalized() async {
     if (!_cookieAuth.isLoggedIn) {
