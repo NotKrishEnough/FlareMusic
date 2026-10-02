@@ -1356,21 +1356,37 @@ class _MusicHomeState extends State<MusicHome> {
 
   Widget _sectionTitle(String title, String action, {VoidCallback? onAction}) => Row(children: [Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)), const Spacer(), TextButton(onPressed: onAction ?? () => setState(() => _searching = true), child: Text(action))]);
 
-  Widget _fullPlayer() => Positioned.fill(
-    child: Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            Theme.of(context).colorScheme.primaryContainer.withValues(alpha: .92),
-            Theme.of(context).colorScheme.surface,
-            Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: .72),
-            Theme.of(context).colorScheme.surface,
-          ],
+  Widget _fullPlayer() {
+    final scheme = Theme.of(context).colorScheme;
+    // Keep the full player fully opaque so the Explore/Home screen never
+    // bleeds through it. The gradient is blended into the surface first,
+    // preserving the colorful look without making the page underneath visible.
+    final playerTop = Color.lerp(
+      scheme.surface,
+      scheme.primaryContainer,
+      .32,
+    )!;
+    final playerMid = Color.lerp(
+      scheme.surface,
+      scheme.secondaryContainer,
+      .16,
+    )!;
+
+    return Positioned.fill(
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              playerTop,
+              scheme.surface,
+              playerMid,
+              scheme.surface,
+            ],
+          ),
         ),
-      ),
-      child: GestureDetector(
+        child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onHorizontalDragEnd: (details) {
           final velocity = details.primaryVelocity ?? 0;
