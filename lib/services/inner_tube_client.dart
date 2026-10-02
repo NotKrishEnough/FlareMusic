@@ -65,6 +65,97 @@ class InnerTubeClient {
     return unique.values.take(50).toList();
   }
 
+  Future<String?> fetchLyrics(String videoId) async {
+    final response = await _http.post(
+      Uri.parse('https://music.youtube.com/youtubei/v1/next?key=$_musicApiKey&prettyPrint=false'),
+      headers: await _headers(music: true),
+      body: jsonEncode({
+        'context': {
+          'client': {
+            'clientName': 'WEB_REMIX',
+            'clientVersion': _musicVersion,
+            'hl': 'en',
+            'gl': 'US',
+          },
+        },
+        'videoId': videoId,
+        'enablePersistentPlaylistPanel': true,
+        'isAudioOnly': true,
+        'tunerSettingValue': 'AUTOMIX_SETTING_NORMAL',
+      }),
+    ).timeout(const Duration(seconds: 20));
+    if (response.statusCode < 200 || response.statusCode >= 300) return null;
+
+    final root = jsonDecode(response.body);
+    String? lyricsBrowseId;
+
+    void findLyrics(dynamic node) {
+      if (lyricsBrowseId != null) return;
+      if (node is Map) {
+        final tab = node['tabRenderer'];
+        if (tab is Map) {
+          final endpoint = tab['endpoint'];
+          if (endpoint is Map) {
+            final browse = endpoint['browseEndpoint'];
+            if (browse is Map) {
+              final id = browse['browseId']?.toString();
+              if (id != null && id.startsWith('MPLYt')) {
+                lyricsBrowseId = id;
+                return;
+              }
+            }
+          }
+        }
+        node.values.forEach(findLyrics);
+      } else if (node is List) {
+        node.forEach(findLyrics);
+      }
+    }
+
+    findLyrics(root);
+    if (lyricsBrowseId == null) return null;
+
+    final lyricsResponse = await _http.post(
+      Uri.parse('https://music.youtube.com/youtubei/v1/browse?key=$_musicApiKey&prettyPrint=false'),
+      headers: await _headers(music: true),
+      body: jsonEncode({
+        'context': {
+          'client': {
+            'clientName': 'WEB_REMIX',
+            'clientVersion': _musicVersion,
+            'hl': 'en',
+            'gl': 'US',
+          },
+        },
+        'browseId': lyricsBrowseId,
+      }),
+    ).timeout(const Duration(seconds: 20));
+    if (lyricsResponse.statusCode < 200 || lyricsResponse.statusCode >= 300) return null;
+
+    final lyricsRoot = jsonDecode(lyricsResponse.body);
+    String? lyrics;
+
+    void findLyricsText(dynamic node) {
+      if (lyrics != null) return;
+      if (node is Map) {
+        final shelf = node['musicDescriptionShelfRenderer'];
+        if (shelf is Map) {
+          final description = _text(shelf['description']);
+          if (description != null && description.trim().isNotEmpty) {
+            lyrics = description.trim();
+            return;
+          }
+        }
+        node.values.forEach(findLyricsText);
+      } else if (node is List) {
+        node.forEach(findLyricsText);
+      }
+    }
+
+    findLyricsText(lyricsRoot);
+    return lyrics;
+  }
+
   Future<List<OnlineTrack>> fetchHome() async {
     final response = await _musicBrowse('FEmusic_home');
     return _uniqueTracks(response.body);
@@ -177,7 +268,9 @@ class InnerTubeClient {
         final list = direct['thumbnails'];
         if (list is List && list.isNotEmpty) {
           final last = list.last;
-          if (last is Map && last['url'] != null) return last['url'].toString();
+          if (last is Map && last['url'] != null) {
+            return _highResThumbnail(last['url'].toString());
+          }
         }
       }
       return null;
@@ -255,6 +348,20 @@ class InnerTubeClient {
     }
 
     walk(root);
+  }
+
+  String _highResThumbnail(String url) {
+    if (url.isEmpty) return url;
+    if (url.contains('i.ytimg.com/vi/')) {
+      final match = RegExp(r'/vi/([A-Za-z0-9_-]{11})/').firstMatch(url);
+      if (match != null) {
+        return 'https://i.ytimg.com/vi/${match.group(1)}/maxresdefault.jpg';
+      }
+    }
+    return url.replaceFirst(
+      RegExp(r'=w\\d+-h\\d+[^?]*$'),
+      '=w1000-h1000',
+    );
   }
 
   String? _text(dynamic value) {
