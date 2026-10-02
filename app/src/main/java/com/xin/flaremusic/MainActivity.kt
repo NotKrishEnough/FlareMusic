@@ -526,9 +526,9 @@ class MainActivity : ComponentActivity() {
             Box(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
                 Row(
                     Modifier.fillMaxWidth()
-                        .clip(RoundedCornerShape(34.dp))
-                        .background(MaterialTheme.colorScheme.surface.copy(alpha = if (amoled) 0.88f else 0.76f))
-                        .padding(horizontal = 7.dp, vertical = 7.dp),
+                        .clip(RoundedCornerShape(50))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (amoled) 0.94f else 0.88f))
+                        .padding(horizontal = 6.dp, vertical = 6.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -536,20 +536,25 @@ class MainActivity : ComponentActivity() {
                         val selected = tab == item
                         Column(
                             Modifier.weight(1f)
-                                .clip(RoundedCornerShape(24.dp))
-                                .background(if (selected) Violet else Color.Transparent)
+                                .clip(RoundedCornerShape(50))
+                                .background(if (selected) Violet.copy(alpha = 0.20f) else Color.Transparent)
                                 .clickable { selectTab(item) }
-                                .padding(vertical = 8.dp),
+                                .padding(vertical = 9.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
-                            Icon(
-                                when(item) { "Home" -> Icons.Rounded.Home; "Search" -> Icons.Rounded.Search; "Library" -> Icons.Rounded.LibraryMusic; else -> Icons.Rounded.Settings },
-                                contentDescription = item,
-                                tint = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                modifier = Modifier.size(21.dp)
-                            )
-                            Text(item, color = if (selected) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp), maxLines = 1)
+                            Box(contentAlignment = Alignment.Center) {
+                                if (selected) {
+                                    Box(Modifier.size(34.dp).clip(RoundedCornerShape(50)).background(Violet.copy(alpha = 0.16f)))
+                                }
+                                Icon(
+                                    when(item) { "Home" -> Icons.Rounded.Home; "Search" -> Icons.Rounded.Search; "Library" -> Icons.Rounded.LibraryMusic; else -> Icons.Rounded.Settings },
+                                    contentDescription = item,
+                                    tint = if (selected) Violet else MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(21.dp)
+                                )
+                            }
+                            Text(item, color = if (selected) Violet else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp), maxLines = 1)
                         }
                     }
                 }
