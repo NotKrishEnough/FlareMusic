@@ -28,6 +28,7 @@ class PlaybackController {
   final YouTubeStreamResolver resolver = YouTubeStreamResolver();
   final List<OnlineTrack> queue = [];
   int index = -1;
+  int _queueGeneration = 0;
 
   OnlineTrack? get current => index >= 0 && index < queue.length ? queue[index] : null;
 
@@ -84,6 +85,9 @@ class PlaybackController {
     }
 
     // Resolve the tapped song first so playback starts as soon as possible.
+    // Each new playback request invalidates any queue that is still resolving
+    // in the background.
+    final generation = ++_queueGeneration;
     final selected = tracks[startIndex];
     final firstSource = await _sourceFor(selected, resolve);
     final concat = ConcatenatingAudioSource(children: [firstSource]);
@@ -105,24 +109,22 @@ class PlaybackController {
     ];
 
     unawaited(() async {
-      final resolved = await Future.wait(
-        remaining.map((track) async {
-          try {
-            final source = await _sourceFor(track, resolve);
-            return (track, source);
-          } catch (_) {
-            return null;
-          }
-        }),
-      );
-
-      for (final item in resolved) {
-        if (item == null) continue;
-        final (track, source) = item;
-        await concat.add(source);
-        queue.add(track);
+      // Resolve playlist/queue items one at a time. Running dozens of native
+      // YouTube extractors concurrently can make NewPipe fail with a generic
+      // just_audio "Source error".
+      for (final track in remaining) {
+        if (generation != _queueGeneration) return;
+        try {
+          final source = await _sourceFor(track, resolve);
+          if (generation != _queueGeneration) return;
+          await concat.add(source);
+          queue.add(track);
+          await _persist();
+        } catch (_) {
+          // One unavailable track must not break the currently playing song
+          // or the rest of the playlist.
+        }
       }
-      await _persist();
     }());
   }
 
