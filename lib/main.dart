@@ -146,7 +146,7 @@ class _MusicHomeState extends State<MusicHome> {
   @override
   Widget build(BuildContext context) => Scaffold(
     body: SafeArea(child: Stack(children: [
-      if (_tab == 2) _libraryPage() else CustomScrollView(slivers: [
+      if (_tab == 2) _libraryPage() else if (_tab == 1) _explorePage() else if (_tab == 3) _accountPage() else CustomScrollView(slivers: [
         SliverPadding(padding: const EdgeInsets.fromLTRB(22, 18, 22, 150), sliver: SliverList(delegate: SliverChildListDelegate([
           Row(children: [
             Container(width: 42, height: 42, decoration: BoxDecoration(color: const Color(0xFF8BC5FF).withValues(alpha: .16), borderRadius: BorderRadius.circular(15)), child: const Icon(Icons.graphic_eq_rounded, color: Color(0xFF8BC5FF))),
@@ -187,6 +187,67 @@ class _MusicHomeState extends State<MusicHome> {
       ]))),
     ])),
   );
+
+  Widget _explorePage() => Positioned.fill(child: SafeArea(child: ListView(padding: const EdgeInsets.fromLTRB(22, 22, 22, 150), children: [
+    const Text('Explore', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800)),
+    const SizedBox(height: 8),
+    Text('Find something for every mood.', style: TextStyle(color: Colors.white.withValues(alpha: .6))),
+    const SizedBox(height: 22),
+    InkWell(onTap: () { setState(() { _searching = true; _error = null; }); }, borderRadius: BorderRadius.circular(18), child: Container(padding: const EdgeInsets.all(17), decoration: BoxDecoration(color: const Color(0xFF22252B), borderRadius: BorderRadius.circular(18)), child: const Row(children: [Icon(Icons.search_rounded), SizedBox(width: 12), Text('Search songs, artists, albums...'), Spacer(), Icon(Icons.arrow_forward_rounded)]))),
+    const SizedBox(height: 28),
+    const Text('Browse by mood', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+    const SizedBox(height: 14),
+    Wrap(spacing: 10, runSpacing: 10, children: [
+      _moodChip('Chill', Icons.nightlight_round, const Color(0xFF354F75)),
+      _moodChip('Focus', Icons.bolt_rounded, const Color(0xFF66513A)),
+      _moodChip('Feel good', Icons.wb_sunny_rounded, const Color(0xFF715044)),
+      _moodChip('Romance', Icons.favorite_rounded, const Color(0xFF70465F)),
+      _moodChip('Workout', Icons.fitness_center_rounded, const Color(0xFF42645A)),
+      _moodChip('Throwbacks', Icons.album_rounded, const Color(0xFF5B5075)),
+    ]),
+    const SizedBox(height: 28),
+    const Text('Discover music', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+    const SizedBox(height: 8),
+    Text('Search YouTube Music to discover tracks and start listening.', style: TextStyle(color: Colors.white.withValues(alpha: .6))),
+    const SizedBox(height: 12),
+    FilledButton.icon(onPressed: () { setState(() => _searching = true); }, icon: const Icon(Icons.explore_rounded), label: const Text('Explore songs')),
+  ])));
+
+  Widget _moodChip(String label, IconData icon, Color color) => ActionChip(
+    avatar: Icon(icon, size: 18, color: Colors.white),
+    label: Text(label),
+    backgroundColor: color,
+    side: BorderSide.none,
+    onPressed: () { _searchController.text = label; setState(() => _searching = true); _search(label); },
+  );
+
+  Widget _accountPage() => Positioned.fill(child: SafeArea(child: ListView(padding: const EdgeInsets.fromLTRB(22, 22, 22, 150), children: [
+    const Text('Your account', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800)),
+    const SizedBox(height: 8),
+    Text('Connect YouTube to sync your playlists.', style: TextStyle(color: Colors.white.withValues(alpha: .6))),
+    const SizedBox(height: 28),
+    Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: const Color(0xFF20242C), borderRadius: BorderRadius.circular(22)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+      CircleAvatar(radius: 30, backgroundColor: const Color(0xFF8BC5FF).withValues(alpha: .18), child: const Icon(Icons.person_rounded, size: 32, color: Color(0xFF8BC5FF))),
+      const SizedBox(height: 16),
+      Text(_account.currentUser?.displayName ?? 'Not signed in', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+      const SizedBox(height: 5),
+      Text(_account.currentUser?.email ?? 'Sign in with Google to connect your YouTube account.', style: TextStyle(color: Colors.white.withValues(alpha: .6))),
+      const SizedBox(height: 20),
+      SizedBox(width: double.infinity, child: FilledButton.icon(
+        onPressed: _syncing ? null : _accountSync,
+        icon: _syncing ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2)) : Icon(_account.currentUser == null ? Icons.login_rounded : Icons.sync_rounded),
+        label: Text(_syncing ? 'Syncing...' : _account.currentUser == null ? 'Sign in with Google' : 'Sync YouTube playlists'),
+      )),
+      if (_account.currentUser != null) ...[
+        const SizedBox(height: 8),
+        SizedBox(width: double.infinity, child: OutlinedButton.icon(onPressed: () async { await _account.signOut(); if (mounted) setState(() {}); }, icon: const Icon(Icons.logout_rounded), label: const Text('Sign out'))),
+      ],
+    ]),
+    const SizedBox(height: 22),
+    const Text('Your music stays yours', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
+    const SizedBox(height: 8),
+    Text('Local playlists remain on this device. YouTube sync uses Google sign-in and the read-only YouTube permission.', style: TextStyle(color: Colors.white.withValues(alpha: .6), height: 1.5)),
+  ])));
 
   Widget _libraryPage() => Positioned.fill(child: Container(color: const Color(0xFF101114), child: SafeArea(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     Padding(padding: const EdgeInsets.fromLTRB(22, 22, 16, 12), child: Row(children: [const Expanded(child: Text('Your Library', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800))), IconButton(onPressed: _syncing ? null : _accountSync, icon: _syncing ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.sync_rounded), tooltip: 'Sign in and sync YouTube'), IconButton(onPressed: _createPlaylist, icon: const Icon(Icons.add_rounded)), IconButton(onPressed: _importPlaylist, icon: const Icon(Icons.download_rounded))])),
