@@ -1,0 +1,102 @@
+<Window x:Class="FlareMusic.Windows.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="FlareMusic" Height="820" Width="1320" MinHeight="680" MinWidth="980"
+        Background="#101116" Foreground="#F4F5FA" WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <SolidColorBrush x:Key="Panel" Color="#191C26"/>
+        <SolidColorBrush x:Key="Muted" Color="#A3A8B8"/>
+        <SolidColorBrush x:Key="Accent" Color="#B7C9F5"/>
+        <Style TargetType="Button">
+            <Setter Property="Foreground" Value="#F4F5FA"/>
+            <Setter Property="Background" Value="#292E3C"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Padding" Value="16,10"/>
+            <Setter Property="FontSize" Value="14"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value><ControlTemplate TargetType="Button">
+                    <Border Background="{TemplateBinding Background}" CornerRadius="12" Padding="{TemplateBinding Padding}">
+                        <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Border>
+                </ControlTemplate></Setter.Value>
+            </Setter>
+        </Style>
+        <Style TargetType="ListView">
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Foreground" Value="#F4F5FA"/>
+        </Style>
+        <Style TargetType="ListViewItem">
+            <Setter Property="Padding" Value="12,14"/>
+            <Setter Property="Margin" Value="0,2"/>
+            <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+            <Setter Property="Background" Value="Transparent"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Template"><Setter.Value><ControlTemplate TargetType="ListViewItem">
+                <Border x:Name="Bd" Background="{TemplateBinding Background}" CornerRadius="12" Padding="{TemplateBinding Padding}">
+                    <ContentPresenter/>
+                </Border>
+                <ControlTemplate.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True"><Setter TargetName="Bd" Property="Background" Value="#252A38"/></Trigger>
+                    <Trigger Property="IsSelected" Value="True"><Setter TargetName="Bd" Property="Background" Value="#30394F"/></Trigger>
+                </ControlTemplate.Triggers>
+            </ControlTemplate></Setter.Value></Setter>
+        </Style>
+    </Window.Resources>
+    <Grid Margin="22">
+        <Grid.RowDefinitions><RowDefinition Height="*"/><RowDefinition Height="112"/></Grid.RowDefinitions>
+        <Grid ColumnDefinitions="220,*" Grid.Row="0">
+            <Border Grid.Column="0" Background="{StaticResource Panel}" CornerRadius="22" Padding="20" Margin="0,0,18,18">
+                <DockPanel>
+                    <StackPanel DockPanel.Dock="Top">
+                        <TextBlock Text="♫  FlareMusic" FontSize="24" FontWeight="Bold" Margin="0,8,0,36"/>
+                        <TextBlock Text="YOUR SPACE" Foreground="{StaticResource Muted}" FontSize="11" FontWeight="SemiBold" Margin="10,0,0,12"/>
+                        <Button Content="♫    Library" HorizontalContentAlignment="Left" Background="#30394F" Margin="0,0,0,8"/>
+                        <Button Content="＋    Add music" HorizontalContentAlignment="Left" Click="AddMusic_Click" Margin="0,0,0,8"/>
+                    </StackPanel>
+                    <TextBlock DockPanel.Dock="Bottom" Text="Local playback · Windows" Foreground="{StaticResource Muted}" FontSize="11" Margin="8"/>
+                </DockPanel>
+            </Border>
+            <Grid Grid.Column="1" Margin="0,4,0,18">
+                <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
+                <StackPanel Grid.Row="0" Margin="4,8,0,22">
+                    <TextBlock Text="Your library" FontSize="34" FontWeight="Bold"/>
+                    <TextBlock Text="Your music, in your own space." Foreground="{StaticResource Muted}" FontSize="16" Margin="0,6,0,0"/>
+                </StackPanel>
+                <Grid Grid.Row="1" Margin="0,0,0,12">
+                    <Grid.ColumnDefinitions><ColumnDefinition Width="*"/><ColumnDefinition Width="Auto"/></Grid.ColumnDefinitions>
+                    <TextBlock Text="TRACKS" Foreground="{StaticResource Muted}" FontSize="11" FontWeight="Bold" VerticalAlignment="Center" Margin="8,0"/>
+                    <Button Grid.Column="1" Content="＋  Add tracks" Background="{StaticResource Accent}" Foreground="#20283A" Click="AddMusic_Click"/>
+                </Grid>
+                <Border Grid.Row="2" Background="{StaticResource Panel}" CornerRadius="18" Padding="10">
+                    <ListView x:Name="TrackList" ItemsSource="{Binding Tracks}" SelectionChanged="TrackList_SelectionChanged" MouseDoubleClick="TrackList_MouseDoubleClick">
+                        <ListView.View><GridView>
+                            <GridViewColumn Header="TITLE" Width="390" DisplayMemberBinding="{Binding Title}"/>
+                            <GridViewColumn Header="ARTIST" Width="210" DisplayMemberBinding="{Binding Artist}"/>
+                            <GridViewColumn Header="FORMAT" Width="100" DisplayMemberBinding="{Binding Format}"/>
+                        </GridView></ListView.View>
+                    </ListView>
+                </Border>
+            </Grid>
+        </Grid>
+        <Border Grid.Row="1" Background="#202431" CornerRadius="20" Padding="18,14">
+            <Grid>
+                <Grid.ColumnDefinitions><ColumnDefinition Width="2*"/><ColumnDefinition Width="3*"/><ColumnDefinition Width="2*"/></Grid.ColumnDefinitions>
+                <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                    <TextBlock x:Name="NowTitle" Text="Nothing playing" FontSize="15" FontWeight="SemiBold" TextTrimming="CharacterEllipsis"/>
+                    <TextBlock x:Name="NowArtist" Text="Add tracks to get started" Foreground="{StaticResource Muted}" FontSize="12" Margin="0,5,0,0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" VerticalAlignment="Center">
+                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                        <Button Content="⏮" Click="Previous_Click" Padding="12,6" Margin="4,0"/>
+                        <Button x:Name="PlayButton" Content="▶" Click="PlayPause_Click" Background="{StaticResource Accent}" Foreground="#20283A" Padding="20,6" Margin="4,0"/>
+                        <Button Content="⏭" Click="Next_Click" Padding="12,6" Margin="4,0"/>
+                    </StackPanel>
+                    <Slider x:Name="SeekSlider" Minimum="0" Maximum="1" Value="0" Margin="4,8,4,0" ValueChanged="SeekSlider_ValueChanged"/>
+                </StackPanel>
+                <TextBlock x:Name="TimeLabel" Grid.Column="2" Text="0:00 / 0:00" Foreground="{StaticResource Muted}" VerticalAlignment="Center" HorizontalAlignment="Right"/>
+            </Grid>
+        </Border>
+    </Grid>
+</Window>
