@@ -61,6 +61,15 @@ class PlaybackController {
   Future<void> skipNext() => _initialized ? next(resolver.resolve) : Future.value();
   Future<void> skipPrevious() => _initialized ? previous(resolver.resolve) : Future.value();
 
+  Future<void> togglePlayPause() async {
+    if (!_initialized) return;
+    if (player.playing) {
+      await player.pause();
+    } else {
+      await player.play();
+    }
+  }
+
   Future<void> playCurrent(Future<String> Function(String) resolve) async {
     if (!_initialized) return;
     final track = current;
