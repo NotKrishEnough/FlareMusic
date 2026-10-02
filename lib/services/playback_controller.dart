@@ -15,7 +15,7 @@ class PlaybackController {
 
   Future<void> initialize() async {
     if (_initialized) return;
-    player = AudioPlayer();
+    player = AudioPlayer(userAgent: 'FlareMusic/1.0 (Android)');
     _initialized = true;
   }
   final YouTubeStreamResolver resolver = YouTubeStreamResolver();
@@ -61,6 +61,7 @@ class PlaybackController {
     final track = current;
     if (track == null) return;
     final url = await resolve(track.videoId);
+    if (url.trim().isEmpty) throw StateError('YouTube returned an empty audio stream.');
     await player.setAudioSource(AudioSource.uri(
       Uri.parse(url),
       tag: MediaItem(
