@@ -12,7 +12,7 @@ This branch contains the in-progress Flutter client. The Kotlin app on `main` is
    `--dart-define=GOOGLE_WEB_CLIENT_ID=YOUR_WEB_CLIENT_ID`
 5. For CI, add a repository Actions secret named `GOOGLE_WEB_CLIENT_ID` and pass it as a dart-define in the workflow build command.
 
-The app uses that OAuth grant to read the signed-in user's YouTube playlists and playlist items. It does not upload, edit, or delete YouTube playlists. Synced playlists are cached locally; local playlists remain device-only.
+The app uses that OAuth grant to read the signed-in user's YouTube playlists and playlist items. On launch it asks the official Google Sign-In SDK to restore its cached session, so users should not need to sign in every time. This is the supported equivalent of a remembered login; it does not embed Google's login page or scrape browser cookies. It does not upload, edit, or delete YouTube playlists. Synced playlists are cached locally; local playlists remain device-only.
 
 ## Background playback
 
