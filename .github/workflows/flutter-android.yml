@@ -51,6 +51,8 @@ jobs:
           p.write_text(s)
           p = Path('android/app/build.gradle.kts')
           s = p.read_text()
+          if 'https://jitpack.io' not in s:
+              s = 'repositories {\n    maven { url = uri("https://jitpack.io") }\n}\n\n' + s
           if 'isCoreLibraryDesugaringEnabled = true' not in s:
               s = s.replace('compileOptions {', 'compileOptions {\n        isCoreLibraryDesugaringEnabled = true', 1)
           if 'coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")' not in s:
