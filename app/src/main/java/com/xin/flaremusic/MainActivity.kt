@@ -295,6 +295,7 @@ class MainActivity : ComponentActivity() {
     var query by remember { mutableStateOf("") }
     var error by remember { mutableStateOf("") }
     var onlineResults by remember { mutableStateOf(emptyList<OnlineTrack>()) }
+    var trackToAdd by remember { mutableStateOf<OnlineTrack?>(null) }
     var selectedPlaylist by remember { mutableStateOf<YouTubePlaylist?>(null) }
     var selectedPlaylistTracks by remember { mutableStateOf(emptyList<YouTubePlaylistTrack>()) }
     var selectedPlaylistLoading by remember { mutableStateOf(false) }
@@ -568,7 +569,7 @@ class MainActivity : ComponentActivity() {
         ) { page ->
             when(page) {
                 "Home" -> HomeScreen(tracks.size, loading, error, Violet) { selectTab("Library") }
-                "Search" -> SearchScreen(query, { query = it }, tracks.filter { it.title.contains(query, true) || it.artist.contains(query, true) }, ::play, onlineResults, searching, ::searchOnline, ::playOnline, error)
+                "Search" -> SearchScreen(query, { query = it }, tracks.filter { it.title.contains(query, true) || it.artist.contains(query, true) }, ::play, onlineResults, searching, ::searchOnline, ::playOnline, { trackToAdd = it }, error)
                 "Library" -> LibraryScreen(tracks, loading, tracks.filter { it.id.toString() in favouriteIds }, youtubePlaylists, googleStatus, playlistLoading, playlistError, selectedPlaylist, selectedPlaylistTracks, selectedPlaylistLoading, selectedPlaylistError, ::openYouTubePlaylist, { selectedPlaylist = null; selectedPlaylistTracks = emptyList() }, { item -> playYouTubePlaylistQueue(item) }, ::play, { selectTab("Search") }, { tracks = emptyList(); loading = true }, onSyncPlaylists, onConnectGoogle)
                 else -> SettingsScreen(amoled, onAmoledChange, googleStatus, youtubePlaylists, playlistLoading, playlistError, onConnectGoogle, onSyncPlaylists, onDisconnectYouTube)
             }
@@ -952,7 +953,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable private fun SearchScreen(query: String, onQuery: (String) -> Unit, results: List<Track>, play: (Track) -> Unit, online: List<OnlineTrack>, searching: Boolean, searchOnline: (String) -> Unit, playOnline: (OnlineTrack) -> Unit, error: String) {
+@Composable private fun SearchScreen(query: String, onQuery: (String) -> Unit, results: List<Track>, play: (Track) -> Unit, online: List<OnlineTrack>, searching: Boolean, searchOnline: (String) -> Unit, playOnline: (OnlineTrack) -> Unit, addOnline: (OnlineTrack) -> Unit, error: String) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(horizontal = 18.dp)) {
         Text("Discover", fontSize = 34.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp, color = MaterialTheme.colorScheme.onSurface, modifier = Modifier.padding(top = 18.dp))
         Text("Find something for the moment.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 14.sp, modifier = Modifier.padding(top = 4.dp, bottom = 18.dp))
@@ -972,7 +973,7 @@ class MainActivity : ComponentActivity() {
             items(online, key = { it.videoId }) { result -> Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable { playOnline(result) }.padding(vertical = 9.dp, horizontal = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                 Artwork(result.thumbnail, Modifier.size(54.dp).clip(RoundedCornerShape(13.dp)))
                 Column(Modifier.weight(1f).padding(horizontal = 12.dp)) { Text(result.title, color = MaterialTheme.colorScheme.onSurface, maxLines = 2, overflow = TextOverflow.Ellipsis, fontWeight = FontWeight.SemiBold, fontSize = 14.sp); Text(result.author + " • " + result.duration, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 1) }
-                Icon(Icons.Rounded.PlayCircleFilled, null, tint = Violet, modifier = Modifier.size(30.dp))
+                Row(verticalAlignment = Alignment.CenterVertically) { IconButton(onClick = { addOnline(result) }) { Icon(Icons.Rounded.PlaylistAdd, "Add to playlist", tint = Mint) }; Icon(Icons.Rounded.PlayCircleFilled, null, tint = Violet, modifier = Modifier.size(30.dp)) }
             } }
         }
     }
