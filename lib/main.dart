@@ -552,23 +552,18 @@ class _MusicHomeState extends State<MusicHome> {
       ]),
       if (_searching) _searchPanel(),
       if (_playerExpanded) _fullPlayer(),
-      if (!_playerExpanded && _playback.current != null)
-        Align(
-          alignment: Alignment.bottomCenter,
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: _miniPlayer(),
-          ),
-        ),
       if (!_playerExpanded)
         Align(
           alignment: Alignment.bottomCenter,
           child: Padding(
-            padding: EdgeInsets.fromLTRB(16, _playback.current != null ? 0 : 0, 16, 12),
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                if (_playback.current != null) const SizedBox(height: 64),
+                if (_playback.current != null) ...[
+                  _miniPlayer(),
+                  const SizedBox(height: 12),
+                ],
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
                   decoration: BoxDecoration(
