@@ -62,6 +62,7 @@ class _MusicHomeState extends State<MusicHome> {
   String _nowArtist = 'Search for a song to get started';
   int _tab = 0;
   bool _playing = false;
+  bool _playerExpanded = false;
 
   static const _tabs = [(Icons.home_rounded, 'Home'), (Icons.explore_rounded, 'Explore'), (Icons.library_music_rounded, 'Library'), (Icons.person_rounded, 'You')];
 
@@ -174,6 +175,7 @@ class _MusicHomeState extends State<MusicHome> {
         ]))),
       ]),
       if (_searching) _searchPanel(),
+      if (_playerExpanded) _fullPlayer(),
       Align(alignment: Alignment.bottomCenter, child: Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 12), child: Column(mainAxisSize: MainAxisSize.min, children: [
         _miniPlayer(),
         const SizedBox(height: 12),
@@ -313,10 +315,87 @@ class _MusicHomeState extends State<MusicHome> {
     ]));
   }
 
-  Widget _miniPlayer() => Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(color: const Color(0xFF292D35), borderRadius: BorderRadius.circular(18), border: Border.all(color: Colors.white.withValues(alpha: .08))), child: Row(children: [
-    Container(width: 42, height: 42, decoration: BoxDecoration(color: const Color(0xFF31516B), borderRadius: BorderRadius.circular(11)), child: const Icon(Icons.music_note_rounded)),
-    const SizedBox(width: 11),
-    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(_nowTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)), const SizedBox(height: 3), Text(_nowArtist, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Colors.white60))])),
-    IconButton(onPressed: () async { try { if (_playing) { await _playback.pause(); } else { await _playback.resume(); } if (mounted) setState(() => _playing = !_playing); } catch (e) { if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Playback error: $e'))); } }, icon: Icon(_playing ? Icons.pause_rounded : Icons.play_arrow_rounded)),
-  ]));
+  Widget _fullPlayer() => Positioned.fill(child: Material(
+    color: const Color(0xFF101114),
+    child: SafeArea(child: Column(children: [
+      Padding(padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8), child: Row(children: [
+        IconButton(onPressed: () => setState(() => _playerExpanded = false), icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 30)),
+        const Spacer(),
+        const Text('NOW PLAYING', style: TextStyle(letterSpacing: 2, fontSize: 11, fontWeight: FontWeight.w700)),
+        const Spacer(),
+        IconButton(onPressed: () {}, icon: const Icon(Icons.more_horiz_rounded)),
+      ])),
+      const Spacer(),
+      Hero(tag: 'flare-player-art', child: Container(width:  min(MediaQuery.of(context).size.width - 72, 340), height: min(MediaQuery.of(context).size.width - 72, 340), decoration: BoxDecoration(color: const Color(0xFF263E59), borderRadius: BorderRadius.circular(28), boxShadow: [BoxShadow(color: const Color(0xFF8BC5FF).withValues(alpha: .12), blurRadius: 35, spreadRadius: 2)]), child: const Icon(Icons.graphic_eq_rounded, size: 110, color: Color(0xFF8BC5FF)))),
+      const Spacer(),
+      Padding(padding: const EdgeInsets.symmetric(horizontal: 28), child: Row(children: [
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+          Text(_nowTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 6),
+          Text(_nowArtist, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withValues(alpha: .6), fontSize: 16)),
+        ])),
+        IconButton(onPressed: () {}, icon: const Icon(Icons.favorite_border_rounded, size: 26)),
+      ])),
+      const SizedBox(height: 24),
+      Padding(padding: const EdgeInsets.symmetric(horizontal: 24), child: StreamBuilder<Duration>(
+        stream: _playback.player.positionStream,
+        builder: (context, snapshot) {
+          final position = snapshot.data ?? Duration.zero;
+          final duration = _playback.player.duration ?? Duration.zero;
+          final maxMs = duration.inMilliseconds > 0 ? duration.inMilliseconds.toDouble() : 1.0;
+          return Column(children: [
+            Slider(value: position.inMilliseconds.clamp(0, maxMs.toInt()).toDouble(), max: maxMs, onChanged: duration > Duration.zero ? (v) => _playback.player.seek(Duration(milliseconds: v.round())) : null),
+            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+              Text(_formatDuration(position), style: const TextStyle(color: Colors.white60, fontSize: 11)),
+              Text(_formatDuration(duration), style: const TextStyle(color: Colors.white60, fontSize: 11)),
+            ]),
+          ]);
+        },
+      )),
+      const SizedBox(height: 16),
+      Row(mainAxisAlignment: MainAxisAlignment.center, children: [
+        IconButton(iconSize: 34, onPressed: () async { try { await _playback.skipPrevious(); } catch (e) { _showPlaybackError(e); } }, icon: const Icon(Icons.skip_previous_rounded)),
+        const SizedBox(width: 22),
+        StreamBuilder<PlayerState>(
+          stream: _playback.player.playerStateStream,
+          builder: (context, snapshot) {
+            final playing = snapshot.data?.playing ?? _playing;
+            return IconButton(
+              iconSize: 38,
+              onPressed: () async { try { if (playing) { await _playback.pause(); } else { await _playback.resume(); } if (mounted) setState(() => _playing = !playing); } catch (e) { _showPlaybackError(e); } },
+              icon: Icon(playing ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded, size: 68),
+            );
+          },
+        ),
+        const SizedBox(width: 22),
+        IconButton(iconSize: 34, onPressed: () async { try { await _playback.skipNext(); } catch (e) { _showPlaybackError(e); } }, icon: const Icon(Icons.skip_next_rounded)),
+      ]),
+      const Spacer(),
+      const SizedBox(height: 22),
+    ])),
+  ));
+
+  String _formatDuration(Duration value) {
+    final seconds = value.inSeconds;
+    return '${seconds ~/ 60}:${(seconds % 60).toString().padLeft(2, '0')}';
+  }
+
+  void _showPlaybackError(Object error) {
+    if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Playback error: $error')));
+  }
+
+  Widget _miniPlayer() => Material(
+    color: const Color(0xFF292D35),
+    borderRadius: BorderRadius.circular(18),
+    child: InkWell(
+      borderRadius: BorderRadius.circular(18),
+      onTap: () => setState(() => _playerExpanded = true),
+      child: Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: Colors.white.withValues(alpha: .08))), child: Row(children: [
+        Hero(tag: 'flare-player-art', child: Container(width: 42, height: 42, decoration: BoxDecoration(color: const Color(0xFF31516B), borderRadius: BorderRadius.circular(11)), child: const Icon(Icons.music_note_rounded))),
+        const SizedBox(width: 11),
+        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(_nowTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)), const SizedBox(height: 3), Text(_nowArtist, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Colors.white60))])),
+        IconButton(onPressed: () async { try { if (_playing) { await _playback.pause(); } else { await _playback.resume(); } if (mounted) setState(() => _playing = !_playing); } catch (e) { _showPlaybackError(e); } }, icon: Icon(_playing ? Icons.pause_rounded : Icons.play_arrow_rounded)),
+      ])),
+    ),
+  );
 }
