@@ -77,6 +77,8 @@ private val Violet: Color get() = if (FlarePreferences.dynamicColors.value) Flar
 private val Mint: Color get() = Violet.copy(alpha = .82f)
 
 private object FlarePreferences {
+    val glassmorphism = mutableStateOf(false)
+    val progressStyle = mutableIntStateOf(0)
     val accentIndex = mutableIntStateOf(0)
     val animations = mutableStateOf(true)
     val compact = mutableStateOf(false)
