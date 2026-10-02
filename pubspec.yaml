@@ -20,6 +20,7 @@ dependencies:
   crypto: ^3.0.6
   flutter_secure_storage: ^9.2.4
   webview_flutter: ^4.10.0
+  permission_handler: ^12.0.3
 
 dev_dependencies:
   flutter_test:
