@@ -476,24 +476,23 @@ class MainActivity : ComponentActivity() {
                         .clickable { playerExpanded = true }
                 ) {
                     Row(
-                        Modifier.fillMaxWidth().padding(start = 10.dp, end = 8.dp, top = 9.dp, bottom = 8.dp),
+                        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box {
-                            Artwork(current!!.artwork, Modifier.size(54.dp).clip(RoundedCornerShape(17.dp)))
-                            Box(Modifier.align(Alignment.BottomEnd).padding(3.dp).size(9.dp).clip(RoundedCornerShape(5.dp)).background(miniColors.primary))
+                            Artwork(current!!.artwork, Modifier.size(52.dp).clip(RoundedCornerShape(15.dp)))
+                            Box(Modifier.align(Alignment.BottomEnd).padding(3.dp).size(8.dp).clip(RoundedCornerShape(4.dp)).background(miniColors.primary))
                         }
-                        Column(Modifier.weight(1f).padding(start = 12.dp, end = 4.dp)) {
+                        Column(Modifier.weight(1f).padding(start = 12.dp, end = 8.dp)) {
                             Text("NOW PLAYING", color = miniColors.primary, fontWeight = FontWeight.Bold, fontSize = 9.sp, letterSpacing = 1.25.sp, maxLines = 1)
                             Text(current!!.title, color = miniColors.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp))
                             Text(current!!.artist, color = miniColors.onSurfaceVariant, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
                         }
-                        IconButton(onClick = { if (playing) player.pause() else player.play() }, modifier = Modifier.size(42.dp).clip(RoundedCornerShape(15.dp)).background(miniColors.primary)) {
-                            Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = miniColors.onPrimary, modifier = Modifier.size(25.dp))
+                        IconButton(onClick = { if (playing) player.pause() else player.play() }, modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(miniColors.primary)) {
+                            Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = miniColors.onPrimary, modifier = Modifier.size(23.dp))
                         }
-                        Spacer(Modifier.width(2.dp))
-                        IconButton(onClick = { player.seekToNextMediaItem() }, modifier = Modifier.size(38.dp)) {
-                            Icon(Icons.Rounded.SkipNext, null, tint = miniColors.onSurface, modifier = Modifier.size(25.dp))
+                        IconButton(onClick = { player.seekToNextMediaItem() }, modifier = Modifier.size(44.dp)) {
+                            Icon(Icons.Rounded.SkipNext, null, tint = miniColors.onSurface, modifier = Modifier.size(23.dp))
                         }
                     }
                     Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp).height(3.dp).clip(RoundedCornerShape(2.dp)).background(miniColors.onSurface.copy(alpha = 0.10f))) {
