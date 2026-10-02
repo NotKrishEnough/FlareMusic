@@ -158,6 +158,7 @@ class _MusicHomeState extends State<MusicHome> {
   bool _playing = false;
   bool _playerExpanded = false;
   StreamSubscription<PlayerState>? _playerStateSubscription;
+  late Future<void> _audioReady;
 
   static const _tabs = [(Icons.home_rounded, 'Home'), (Icons.explore_rounded, 'Explore'), (Icons.library_music_rounded, 'Library'), (Icons.person_rounded, 'You')];
 
@@ -169,7 +170,7 @@ class _MusicHomeState extends State<MusicHome> {
     _refreshLibrary();
     _restoreAccount();
     _restoreYouTubeMusicSession();
-    _initializeAudio();
+    _audioReady = _initializeAudio();
   }
 
   @override
@@ -420,6 +421,13 @@ class _MusicHomeState extends State<MusicHome> {
   Future<void> _selectTrack(OnlineTrack track, {List<OnlineTrack>? source}) async {
     final tracks = source ?? _results;
     final index = tracks.indexOf(track);
+    if (tracks.isEmpty) return;
+    try {
+      await _audioReady;
+    } catch (e) {
+      if (mounted) _showPlaybackError(e);
+      return;
+    }
     setState(() { _nowTitle = track.title; _nowArtist = track.artist; _playing = false; _searching = false; });
     try {
       await _playback.playSelected(tracks, index < 0 ? 0 : index);
@@ -442,7 +450,7 @@ class _MusicHomeState extends State<MusicHome> {
             IconButton(onPressed: () => setState(() { _searching = true; _error = null; }), icon: const Icon(Icons.search_rounded)),
           ]),
           const SizedBox(height: 30),
-          Text('GOOD EVENING', style: TextStyle(fontSize: 11, letterSpacing: 2, color: Colors.white.withValues(alpha: .55), fontWeight: FontWeight.w700)),
+          Text('GOOD EVENING', style: TextStyle(fontSize: 11, letterSpacing: 2, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .55), fontWeight: FontWeight.w700)),
           const SizedBox(height: 8),
           const Text('Your music, your mood.', style: TextStyle(fontSize: 34, height: 1.12, fontWeight: FontWeight.w800)),
           const SizedBox(height: 25),
@@ -627,7 +635,7 @@ class _MusicHomeState extends State<MusicHome> {
   Widget _explorePage() => Positioned.fill(child: SafeArea(child: ListView(padding: const EdgeInsets.fromLTRB(22, 22, 22, 150), children: [
     const Text('Explore', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800)),
     const SizedBox(height: 8),
-    Text('Find something for every mood.', style: TextStyle(color: Colors.white.withValues(alpha: .6))),
+    Text('Find something for every mood.', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6))),
     const SizedBox(height: 22),
     InkWell(onTap: () { setState(() { _searching = true; _error = null; }); }, borderRadius: BorderRadius.circular(18), child: Container(padding: const EdgeInsets.all(17), decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(18)), child: const Row(children: [Icon(Icons.search_rounded), SizedBox(width: 12), Text('Search songs, artists, albums...'), Spacer(), Icon(Icons.arrow_forward_rounded)]))),
     const SizedBox(height: 28),
@@ -644,7 +652,7 @@ class _MusicHomeState extends State<MusicHome> {
     const SizedBox(height: 28),
     const Text('Discover music', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
     const SizedBox(height: 8),
-    Text('Search YouTube Music to discover tracks and start listening.', style: TextStyle(color: Colors.white.withValues(alpha: .6))),
+    Text('Search YouTube Music to discover tracks and start listening.', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6))),
     const SizedBox(height: 12),
     FilledButton.icon(onPressed: () { setState(() => _searching = true); }, icon: const Icon(Icons.explore_rounded), label: const Text('Explore songs')),
   ])));
@@ -660,14 +668,14 @@ class _MusicHomeState extends State<MusicHome> {
   Widget _accountPage() => Positioned.fill(child: SafeArea(child: ListView(padding: const EdgeInsets.fromLTRB(22, 22, 22, 150), children: [
     const Text('Your account', style: TextStyle(fontSize: 30, fontWeight: FontWeight.w800)),
     const SizedBox(height: 8),
-    Text(_cookieAuth.isLoggedIn ? 'YouTube Music is connected. Personalized requests use your session.' : 'Connect YouTube to sync your playlists.', style: TextStyle(color: Colors.white.withValues(alpha: .6))),
+    Text(_cookieAuth.isLoggedIn ? 'YouTube Music is connected. Personalized requests use your session.' : 'Connect YouTube to sync your playlists.', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6))),
     const SizedBox(height: 28),
     Container(padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHighest, borderRadius: BorderRadius.circular(22)), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
       CircleAvatar(radius: 30, backgroundColor: Theme.of(context).colorScheme.primary.withValues(alpha: .18), child: Icon(Icons.person_rounded, size: 32, color: Theme.of(context).colorScheme.primary)),
       const SizedBox(height: 16),
       Text(_account.currentUser?.displayName ?? 'Not signed in', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
       const SizedBox(height: 5),
-      Text(_account.currentUser?.email ?? 'Sign in with Google to connect your YouTube account.', style: TextStyle(color: Colors.white.withValues(alpha: .6))),
+      Text(_account.currentUser?.email ?? 'Sign in with Google to connect your YouTube account.', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6))),
       const SizedBox(height: 20),
       SizedBox(width: double.infinity, child: FilledButton.icon(
         onPressed: _syncing ? null : _accountSync,
@@ -764,12 +772,12 @@ class _MusicHomeState extends State<MusicHome> {
     const SizedBox(height: 22),
     const Text('Your music stays yours', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
     const SizedBox(height: 8),
-    Text('Local playlists remain on this device. Google sync uses the read-only YouTube permission; YouTube Music login uses a securely stored session cookie.', style: TextStyle(color: Colors.white.withValues(alpha: .6), height: 1.5)),
+    Text('Local playlists remain on this device. Google sync uses the read-only YouTube permission; YouTube Music login uses a securely stored session cookie.', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6), height: 1.5)),
   ])));
 
   Widget _libraryPage() => Positioned.fill(child: Container(color: Theme.of(context).scaffoldBackgroundColor, child: SafeArea(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
     Padding(padding: const EdgeInsets.fromLTRB(22, 22, 16, 12), child: Row(children: [const Expanded(child: Text('Your Library', style: TextStyle(fontSize: 28, fontWeight: FontWeight.w800))), IconButton(onPressed: _syncing ? null : _accountSync, icon: _syncing ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)) : const Icon(Icons.sync_rounded), tooltip: 'Sign in and sync YouTube'), IconButton(onPressed: _createPlaylist, icon: const Icon(Icons.add_rounded)), IconButton(onPressed: _importPlaylist, icon: const Icon(Icons.download_rounded))])),
-    Padding(padding: const EdgeInsets.symmetric(horizontal: 22), child: Text('Playlists saved on this device', style: TextStyle(color: Colors.white.withValues(alpha: .6)))),
+    Padding(padding: const EdgeInsets.symmetric(horizontal: 22), child: Text('Playlists saved on this device', style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6)))),
     const SizedBox(height: 12),
     Expanded(child: _playlists.isEmpty
         ? Center(child: Column(mainAxisSize: MainAxisSize.min, children: [
@@ -950,8 +958,8 @@ class _MusicHomeState extends State<MusicHome> {
                         ),
                         trailing: Text(
                           track.duration,
-                          style: const TextStyle(
-                            color: Colors.white54,
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .55),
                             fontSize: 11,
                           ),
                         ),
@@ -1027,7 +1035,7 @@ class _MusicHomeState extends State<MusicHome> {
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(_nowTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
           const SizedBox(height: 6),
-          Text(_nowArtist, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Colors.white.withValues(alpha: .6), fontSize: 16)),
+          Text(_nowArtist, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6), fontSize: 16)),
         ])),
         IconButton(onPressed: () {}, icon: const Icon(Icons.favorite_border_rounded, size: 26)),
       ])),
