@@ -246,7 +246,7 @@ class _MusicHomeState extends State<MusicHome> {
         const SizedBox(height: 8),
         SizedBox(width: double.infinity, child: OutlinedButton.icon(onPressed: () async { await _account.signOut(); if (mounted) setState(() {}); }, icon: const Icon(Icons.logout_rounded), label: const Text('Sign out'))),
       ],
-    ]),
+    ])),
     const SizedBox(height: 22),
     const Text('Your music stays yours', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w700)),
     const SizedBox(height: 8),
