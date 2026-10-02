@@ -1385,7 +1385,13 @@ class _MusicHomeState extends State<MusicHome> with SingleTickerProviderStateMix
     )!;
 
     return Positioned.fill(
-      child: Container(
+      child: TweenAnimationBuilder<double>(
+        duration: const Duration(milliseconds: 420),
+        curve: Curves.easeOutCubic,
+        tween: Tween(begin: .94, end: 1),
+        builder: (context, scale, child) =>
+            Transform.scale(scale: scale, child: child),
+        child: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -1572,6 +1578,7 @@ class _MusicHomeState extends State<MusicHome> with SingleTickerProviderStateMix
               const SizedBox(height: 22),
             ],
           ),
+        ),
         ),
       ),
     ),
