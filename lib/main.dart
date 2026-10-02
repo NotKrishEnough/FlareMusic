@@ -1246,80 +1246,209 @@ class _MusicHomeState extends State<MusicHome> {
 
   Widget _sectionTitle(String title, String action, {VoidCallback? onAction}) => Row(children: [Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)), const Spacer(), TextButton(onPressed: onAction ?? () => setState(() => _searching = true), child: Text(action))]);
 
-  Widget _fullPlayer() => Positioned.fill(child: Material(
-    color: Theme.of(context).scaffoldBackgroundColor,
-    child: SafeArea(child: Column(children: [
-      Padding(padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8), child: Row(children: [
-        IconButton(onPressed: () => setState(() => _playerExpanded = false), icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 30)),
-        const Spacer(),
-        const Text('NOW PLAYING', style: TextStyle(letterSpacing: 2, fontSize: 11, fontWeight: FontWeight.w700)),
-        const Spacer(),
-        IconButton(onPressed: () {}, icon: const Icon(Icons.more_horiz_rounded)),
-      ])),
-      const Spacer(),
-      _playerArtwork(size: min(MediaQuery.of(context).size.width - 72, 340)),
-      const Spacer(),
-      Padding(padding: const EdgeInsets.symmetric(horizontal: 28), child: Row(children: [
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(_nowTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800)),
-          const SizedBox(height: 6),
-          Text(_nowArtist, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6), fontSize: 16)),
-        ])),
-        IconButton(onPressed: () {}, icon: const Icon(Icons.favorite_border_rounded, size: 26)),
-      ])),
-      const SizedBox(height: 24),
-      Padding(padding: const EdgeInsets.symmetric(horizontal: 24), child: StreamBuilder<Duration>(
-        stream: _playback.player.positionStream,
-        builder: (context, snapshot) {
-          final position = snapshot.data ?? Duration.zero;
-          final duration = _playback.player.duration ?? _currentTrackDuration();
-          final maxMs = duration.inMilliseconds > 0 ? duration.inMilliseconds.toDouble() : 1.0;
-          return Column(children: [
-            Slider(value: position.inMilliseconds.clamp(0, maxMs.toInt()).toDouble(), max: maxMs, onChanged: _playback.player.duration != null && duration > Duration.zero ? (v) => _playback.player.seek(Duration(milliseconds: v.round())) : null),
-            Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-              Text(_formatDuration(position), style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6), fontSize: 11)),
-              Text(_formatDuration(duration), style: TextStyle(color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6), fontSize: 11)),
-            ]),
-          ]);
+  Widget _fullPlayer() => Positioned.fill(
+    child: Material(
+      color: Theme.of(context).scaffoldBackgroundColor,
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onHorizontalDragEnd: (details) {
+          final velocity = details.primaryVelocity ?? 0;
+          if (velocity > 250) {
+            _skipPreviousAndSync();
+          } else if (velocity < -250) {
+            _skipNextAndSync();
+          }
         },
-      )),
-      const SizedBox(height: 16),
-      Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-        IconButton(iconSize: 34, onPressed: () async { try { await _playback.skipPrevious(); } catch (e) { _showPlaybackError(e); } }, icon: const Icon(Icons.skip_previous_rounded)),
-        const SizedBox(width: 22),
-        StreamBuilder<PlayerState>(
-          stream: _playback.player.playerStateStream,
-          builder: (context, snapshot) {
-            final playing = snapshot.data?.playing ?? _playing;
-            return IconButton(
-              iconSize: 38,
-              onPressed: () async { try { if (playing) { await _playback.pause(); } else { await _playback.resume(); } if (mounted) setState(() => _playing = !playing); } catch (e) { _showPlaybackError(e); } },
-              icon: Icon(playing ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded, size: 68),
-            );
-          },
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+                child: Row(
+                  children: [
+                    IconButton(
+                      onPressed: () => setState(() => _playerExpanded = false),
+                      icon: const Icon(Icons.keyboard_arrow_down_rounded, size: 30),
+                    ),
+                    const Spacer(),
+                    const Text(
+                      'NOW PLAYING',
+                      style: TextStyle(letterSpacing: 2, fontSize: 11, fontWeight: FontWeight.w700),
+                    ),
+                    const Spacer(),
+                    IconButton(
+                      onPressed: _showLyrics,
+                      icon: const Icon(Icons.lyrics_outlined),
+                      tooltip: 'Lyrics',
+                    ),
+                  ],
+                ),
+              ),
+              const Spacer(),
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 280),
+                switchInCurve: Curves.easeOutCubic,
+                switchOutCurve: Curves.easeInCubic,
+                child: _playerArtwork(
+                  key: ValueKey(_playback.current?.videoId ?? ''),
+                  size: min(MediaQuery.of(context).size.width - 72, 340),
+                ),
+              ),
+              const Spacer(),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 28),
+                child: AnimatedSwitcher(
+                  duration: const Duration(milliseconds: 220),
+                  child: Row(
+                    key: ValueKey(_playback.current?.videoId ?? _nowTitle),
+                    children: [
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _nowTitle,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.w800),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              _nowArtist,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6),
+                                fontSize: 16,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      IconButton(
+                        onPressed: () {},
+                        icon: const Icon(Icons.favorite_border_rounded, size: 26),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: StreamBuilder<Duration>(
+                  stream: _playback.player.positionStream,
+                  builder: (context, snapshot) {
+                    final position = snapshot.data ?? Duration.zero;
+                    final duration = _playback.player.duration ?? _currentTrackDuration();
+                    final maxMs = duration.inMilliseconds > 0 ? duration.inMilliseconds.toDouble() : 1.0;
+                    return Column(
+                      children: [
+                        Slider(
+                          value: position.inMilliseconds.clamp(0, maxMs.toInt()).toDouble(),
+                          max: maxMs,
+                          onChanged: _playback.player.duration != null && duration > Duration.zero
+                              ? (v) => _playback.player.seek(Duration(milliseconds: v.round()))
+                              : null,
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Text(
+                              _formatDuration(position),
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6),
+                                fontSize: 11,
+                              ),
+                            ),
+                            Text(
+                              _formatDuration(duration),
+                              style: TextStyle(
+                                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6),
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  IconButton(
+                    iconSize: 34,
+                    onPressed: _switchingTrack ? null : _skipPreviousAndSync,
+                    icon: const Icon(Icons.skip_previous_rounded),
+                  ),
+                  const SizedBox(width: 22),
+                  StreamBuilder<PlayerState>(
+                    stream: _playback.player.playerStateStream,
+                    builder: (context, snapshot) {
+                      final playing = snapshot.data?.playing ?? _playing;
+                      return IconButton(
+                        iconSize: 38,
+                        onPressed: _switchingTrack
+                            ? null
+                            : () async {
+                                try {
+                                  if (playing) {
+                                    await _playback.pause();
+                                  } else {
+                                    await _playback.resume();
+                                  }
+                                  if (mounted) setState(() => _playing = !playing);
+                                } catch (e) {
+                                  _showPlaybackError(e);
+                                }
+                              },
+                        icon: Icon(
+                          playing ? Icons.pause_circle_filled_rounded : Icons.play_circle_fill_rounded,
+                          size: 68,
+                        ),
+                      );
+                    },
+                  ),
+                  const SizedBox(width: 22),
+                  IconButton(
+                    iconSize: 34,
+                    onPressed: _switchingTrack ? null : _skipNextAndSync,
+                    icon: const Icon(Icons.skip_next_rounded),
+                  ),
+                ],
+              ),
+              const Spacer(),
+              const SizedBox(height: 22),
+            ],
+          ),
         ),
-        const SizedBox(width: 22),
-        IconButton(iconSize: 34, onPressed: () async { try { await _playback.skipNext(); } catch (e) { _showPlaybackError(e); } }, icon: const Icon(Icons.skip_next_rounded)),
-      ]),
-      const Spacer(),
-      const SizedBox(height: 22),
-    ])),
-  ));
+      ),
+    ),
+  );
 
-  Widget _playerArtwork({required double size, double radius = 28}) {
+  Widget _playerArtwork({required double size, double radius = 28, Key? key}) {
     final track = _playback.current;
     final thumbnail = track?.thumbnail ?? '';
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(radius),
-      child: thumbnail.isNotEmpty
-          ? Image.network(
-              thumbnail,
-              width: size,
-              height: size,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => _artworkFallback(size, radius),
-            )
-          : _artworkFallback(size, radius),
+    return AnimatedSwitcher(
+      duration: const Duration(milliseconds: 220),
+      switchInCurve: Curves.easeOutCubic,
+      child: ClipRRect(
+        key: key ?? ValueKey(thumbnail),
+        borderRadius: BorderRadius.circular(radius),
+        child: thumbnail.isNotEmpty
+            ? Image.network(
+                thumbnail,
+                width: size,
+                height: size,
+                fit: BoxFit.cover,
+                filterQuality: FilterQuality.high,
+                errorBuilder: (_, __, ___) => _artworkFallback(size, radius),
+              )
+            : _artworkFallback(size, radius),
+      ),
     );
   }
 
@@ -1367,12 +1496,83 @@ class _MusicHomeState extends State<MusicHome> {
     child: InkWell(
       borderRadius: BorderRadius.circular(18),
       onTap: () => setState(() => _playerExpanded = true),
-      child: Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: .5))), child: Row(children: [
-        _playerArtwork(size: 42, radius: 11),
-        const SizedBox(width: 11),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(_nowTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)), const SizedBox(height: 3), Text(_nowArtist, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6)))])),
-        IconButton(onPressed: () async { try { if (_playing) { await _playback.pause(); } else { await _playback.resume(); } if (mounted) setState(() => _playing = !_playing); } catch (e) { _showPlaybackError(e); } }, icon: Icon(_playing ? Icons.pause_rounded : Icons.play_arrow_rounded)),
-      ])),
+      child: Container(
+        padding: const EdgeInsets.all(10),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(18),
+          border: Border.all(
+            color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: .5),
+          ),
+        ),
+        child: Row(
+          children: [
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 220),
+              child: _playerArtwork(
+                key: ValueKey(_playback.current?.videoId ?? ''),
+                size: 42,
+                radius: 11,
+              ),
+            ),
+            const SizedBox(width: 11),
+            Expanded(
+              child: AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                alignment: Alignment.centerLeft,
+                child: Column(
+                  key: ValueKey(_playback.current?.videoId ?? _nowTitle),
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _nowTitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      _nowArtist,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            IconButton(
+              onPressed: _switchingTrack ? null : _skipPreviousAndSync,
+              icon: const Icon(Icons.skip_previous_rounded, size: 20),
+              tooltip: 'Previous',
+            ),
+            IconButton(
+              onPressed: _switchingTrack
+                  ? null
+                  : () async {
+                      try {
+                        if (_playing) {
+                          await _playback.pause();
+                        } else {
+                          await _playback.resume();
+                        }
+                        if (mounted) setState(() => _playing = !_playing);
+                      } catch (e) {
+                        _showPlaybackError(e);
+                      }
+                    },
+              icon: Icon(_playing ? Icons.pause_rounded : Icons.play_arrow_rounded),
+            ),
+            IconButton(
+              onPressed: _switchingTrack ? null : _skipNextAndSync,
+              icon: const Icon(Icons.skip_next_rounded, size: 20),
+              tooltip: 'Next',
+            ),
+          ],
+        ),
+      ),
     ),
   );
 }
