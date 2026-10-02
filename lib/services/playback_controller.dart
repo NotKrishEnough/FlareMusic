@@ -50,7 +50,16 @@ class PlaybackController {
     final track = current;
     if (track == null) return;
     final url = await resolve(track.videoId);
-    await player.setAudioSource(AudioSource.uri(Uri.parse(url), tag: MediaItem(id: track.videoId, title: track.title, artist: track.artist, artUri: null)));
+    await player.setAudioSource(AudioSource.uri(
+      Uri.parse(url),
+      tag: MediaItem(
+        id: track.videoId,
+        title: track.title,
+        artist: track.artist,
+        album: 'FlareMusic',
+        artUri: track.thumbnail.isNotEmpty ? Uri.tryParse(track.thumbnail) : null,
+      ),
+    ));
     await player.play();
     await _persist();
   }
