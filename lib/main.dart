@@ -9,6 +9,7 @@ import 'services/playlist_library.dart';
 import 'services/youtube_account_service.dart';
 import 'services/youtube_cookie_auth.dart';
 import 'services/youtube_login_page.dart';
+import 'package:permission_handler/permission_handler.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -80,6 +81,7 @@ class _MusicHomeState extends State<MusicHome> {
   void initState() {
     super.initState();
     _api = InnerTubeClient(auth: _cookieAuth);
+    _requestMediaNotificationPermission();
     _restorePlaybackState();
     _refreshLibrary();
     _restoreAccount();
@@ -98,6 +100,27 @@ class _MusicHomeState extends State<MusicHome> {
     _searchController.dispose();
     _searchFocus.dispose();
     super.dispose();
+  }
+
+  Future<void> _requestMediaNotificationPermission() async {
+    try {
+      await Permission.notification.request();
+    } catch (e) {
+      debugPrint('Notification permission request failed: $e');
+    }
+  }
+
+  Future<void> _refreshPersonalized() async {
+    if (!_cookieAuth.isLoggedIn) {
+      setState(() { _searching = true; _error = null; });
+      return;
+    }
+    await _loadPersonalizedMusic();
+  }
+
+  Future<void> _playAll(List<OnlineTrack> tracks) async {
+    if (tracks.isEmpty) return;
+    await _selectTrack(tracks.first, source: tracks);
   }
 
   Future<void> _restorePlaybackState() async {
@@ -314,7 +337,7 @@ class _MusicHomeState extends State<MusicHome> {
           const SizedBox(height: 8),
           const Text('Your music, your mood.', style: TextStyle(fontSize: 34, height: 1.12, fontWeight: FontWeight.w800)),
           const SizedBox(height: 25),
-          _sectionTitle('Made for you', _cookieAuth.isLoggedIn ? 'Refresh' : 'Search music'),
+          _sectionTitle('Made for you', _cookieAuth.isLoggedIn ? 'Refresh' : 'Search music', onAction: _cookieAuth.isLoggedIn ? _refreshPersonalized : () => setState(() => _searching = true)),
           const SizedBox(height: 14),
           if (_homeTracks.isNotEmpty)
             SizedBox(
@@ -325,9 +348,14 @@ class _MusicHomeState extends State<MusicHome> {
                 separatorBuilder: (_, __) => const SizedBox(width: 12),
                 itemBuilder: (context, i) {
                   final track = _homeTracks[i];
-                  return SizedBox(
-                    width: 150,
-                    child: InkWell(
+                  return TweenAnimationBuilder<double>(
+                    duration: Duration(milliseconds: 260 + (i * 45)),
+                    curve: Curves.easeOutCubic,
+                    tween: Tween(begin: .92, end: 1),
+                    builder: (context, scale, child) => Transform.scale(scale: scale, child: child),
+                    child: SizedBox(
+                      width: 150,
+                      child: InkWell(
                       borderRadius: BorderRadius.circular(20),
                       onTap: () => _selectTrack(track, source: _homeTracks),
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -335,12 +363,13 @@ class _MusicHomeState extends State<MusicHome> {
                           borderRadius: BorderRadius.circular(18),
                           child: track.thumbnail.isEmpty
                               ? Container(width: 150, height: 125, color: const Color(0xFF31516B), child: const Icon(Icons.music_note_rounded, size: 34))
-                              : Image.network(track.thumbnail, width: 150, height: 125, fit: BoxFit.cover),
+                              : Image.network(track.thumbnail, width: 150, height: 125, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(width: 150, height: 125, color: const Color(0xFF31516B), child: const Icon(Icons.music_note_rounded, size: 34))),
                         ),
                         const SizedBox(height: 7),
                         Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
                         Text(track.artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Colors.white60)),
                       ]),
+                      ),
                     ),
                   );
                 },
@@ -356,7 +385,7 @@ class _MusicHomeState extends State<MusicHome> {
           ])),
           const SizedBox(height: 28),
           if (_likedTracks.isNotEmpty) ...[
-            _sectionTitle('Liked from YouTube Music', 'Play all'),
+            _sectionTitle('Liked from YouTube Music', 'Play all', onAction: () => _playAll(_likedTracks)),
             const SizedBox(height: 12),
             ..._likedTracks.take(4).map((track) => ListTile(
               contentPadding: EdgeInsets.zero,
@@ -367,13 +396,13 @@ class _MusicHomeState extends State<MusicHome> {
             )),
             const SizedBox(height: 18),
           ],
-          _sectionTitle('Quick picks', 'Search music'),
+          _sectionTitle('Quick picks', 'Search music', onAction: () => setState(() => _searching = true)),
           const SizedBox(height: 12),
           ...List.generate(4, (i) => _trackRow(i)),
         ]))),
       ]),
       if (_searching) _searchPanel(),
-      if (_playerExpanded) _fullPlayer(),
+      AnimatedSwitcher(duration: const Duration(milliseconds: 280), switchInCurve: Curves.easeOutCubic, switchOutCurve: Curves.easeInCubic, child: _playerExpanded ? _fullPlayer() : const SizedBox.shrink()),
       if (!_playerExpanded) Align(alignment: Alignment.bottomCenter, child: Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 12), child: Column(mainAxisSize: MainAxisSize.min, children: [
         _miniPlayer(),
         const SizedBox(height: 12),
@@ -519,7 +548,7 @@ class _MusicHomeState extends State<MusicHome> {
     })),
   ])));
 
-  Widget _sectionTitle(String title, String action) => Row(children: [Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)), const Spacer(), TextButton(onPressed: () => setState(() => _searching = true), child: Text(action))]);
+  Widget _sectionTitle(String title, String action, {VoidCallback? onAction}) => Row(children: [Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)), const Spacer(), TextButton(onPressed: onAction ?? () => setState(() => _searching = true), child: Text(action))]);
 
   Widget _trackRow(int index) {
     const titles = ['Midnight City', 'Golden Hour', 'Afterglow', 'Blue Skies'];
