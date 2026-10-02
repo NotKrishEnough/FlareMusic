@@ -1555,8 +1555,34 @@ class _MusicHomeState extends State<MusicHome> {
     if (mounted) ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Playback error: $error')));
   }
 
+  Widget _gradientProgressBar(double progress, {double height = 6}) {
+    final scheme = Theme.of(context).colorScheme;
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(height),
+      child: SizedBox(
+        height: height,
+        width: double.infinity,
+        child: Stack(
+          children: [
+            Container(color: scheme.onSurface.withValues(alpha: .12)),
+            FractionallySizedBox(
+              widthFactor: progress.clamp(0.0, 1.0),
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [scheme.primary, scheme.tertiary, scheme.secondary],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   Widget _miniPlayer() => Material(
-    color: Theme.of(context).colorScheme.surfaceContainerHigh,
+    color: Colors.transparent,
     borderRadius: BorderRadius.circular(18),
     child: InkWell(
       borderRadius: BorderRadius.circular(18),
@@ -1582,63 +1608,71 @@ class _MusicHomeState extends State<MusicHome> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Row(
-          children: [
-            AnimatedSwitcher(
-              duration: const Duration(milliseconds: 220),
-              child: _playerArtwork(
-                key: ValueKey(_playback.current?.videoId ?? ''),
-                size: 42,
-                radius: 11,
-              ),
-            ),
-            const SizedBox(width: 11),
-            Expanded(
-              child: AnimatedSwitcher(
-                duration: const Duration(milliseconds: 180),
-                                child: Column(
-                  key: ValueKey(_playback.current?.videoId ?? _nowTitle),
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      _nowTitle,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
-                    ),
-                    const SizedBox(height: 3),
-                    Text(
-                      _nowArtist,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6),
-                      ),
-                    ),
-                  ],
+              children: [
+                _playerArtwork(
+                  key: ValueKey(_playback.current?.videoId ?? ''),
+                  size: 42,
+                  radius: 11,
                 ),
-              ),
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _nowTitle,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+                      ),
+                      const SizedBox(height: 3),
+                      Text(
+                        _nowArtist,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                IconButton(
+                  onPressed: _skipPreviousAndSync,
+                  icon: const Icon(Icons.skip_previous_rounded, size: 20),
+                  tooltip: 'Previous',
+                ),
+                IconButton(
+                  onPressed: () async {
+                    try {
+                      await _playback.togglePlayPause();
+                      if (mounted) setState(() => _playing = _playback.player.playing);
+                    } catch (e) {
+                      _showPlaybackError(e);
+                    }
+                  },
+                  icon: Icon(_playing ? Icons.pause_rounded : Icons.play_arrow_rounded),
+                ),
+                IconButton(
+                  onPressed: _skipNextAndSync,
+                  icon: const Icon(Icons.skip_next_rounded, size: 20),
+                  tooltip: 'Next',
+                ),
+              ],
             ),
-            IconButton(
-              onPressed: _skipPreviousAndSync,
-              icon: const Icon(Icons.skip_previous_rounded, size: 20),
-              tooltip: 'Previous',
-            ),
-            IconButton(
-              onPressed: () async {
-                      try {
-                        await _playback.togglePlayPause();
-                        if (mounted) setState(() => _playing = _playback.player.playing);
-                      } catch (e) {
-                        _showPlaybackError(e);
-                      }
-                    },
-              icon: Icon(_playing ? Icons.pause_rounded : Icons.play_arrow_rounded),
-            ),
-            IconButton(
-              onPressed: _skipNextAndSync,
-              icon: const Icon(Icons.skip_next_rounded, size: 20),
-              tooltip: 'Next',
+            const SizedBox(height: 5),
+            StreamBuilder<Duration>(
+              stream: _playback.player.positionStream,
+              builder: (context, snapshot) {
+                final position = snapshot.data ?? Duration.zero;
+                final duration = _playback.player.duration ?? _currentTrackDuration();
+                final total = duration.inMilliseconds;
+                final progress = total > 0
+                    ? (position.inMilliseconds / total).clamp(0.0, 1.0)
+                    : 0.0;
+                return _gradientProgressBar(progress, height: 3);
+              },
             ),
           ],
         ),
