@@ -449,14 +449,36 @@ class MainActivity : ComponentActivity() {
     Box(Modifier.fillMaxSize()) {
     Scaffold(containerColor = if (amoled) Color.Black else Ink, bottomBar = {
         Column(Modifier.padding(bottom = 12.dp)) {
-            if (current != null) Row(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp).clip(RoundedCornerShape(20.dp)).background(if (amoled) Color.Black else Panel).clickable { playerExpanded = true }.padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                Artwork(current!!.artwork, Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)))
-                Column(Modifier.weight(1f).padding(start = 12.dp)) { Text(current!!.title, color = Color.White, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis); Text(current!!.artist, color = Color(0xFFBDB5C0), fontSize = 12.sp, maxLines = 1) }
-                IconButton(onClick = { if (playing) player.pause() else player.play() }) { Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = Violet) }
-                IconButton(onClick = { player.seekToNextMediaItem() }) { Icon(Icons.Rounded.SkipNext, null, tint = Violet) }
-                if (totalDuration > 0) { Spacer(Modifier.width(6.dp)); Text(formatTime(position), color = Color.LightGray, fontSize = 10.sp) }
+            if (current != null) {
+                val miniProgress = if (totalDuration > 0) (position.toFloat() / totalDuration.toFloat()).coerceIn(0f, 1f) else 0f
+                val miniColors = MaterialTheme.colorScheme
+                Column(
+                    Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)
+                        .clip(RoundedCornerShape(20.dp))
+                        .background(miniColors.surfaceVariant.copy(alpha = if (amoled) 0.96f else 0.88f))
+                        .clickable { playerExpanded = true }
+                ) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(start = 9.dp, end = 7.dp, top = 8.dp, bottom = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Artwork(current!!.artwork, Modifier.size(50.dp).clip(RoundedCornerShape(14.dp)))
+                        Column(Modifier.weight(1f).padding(start = 11.dp, end = 5.dp)) {
+                            Text(current!!.title, color = miniColors.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(current!!.artist, color = miniColors.onSurfaceVariant, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
+                        }
+                        IconButton(onClick = { if (playing) player.pause() else player.play() }) {
+                            Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = miniColors.primary, modifier = Modifier.size(27.dp))
+                        }
+                        IconButton(onClick = { player.seekToNextMediaItem() }) {
+                            Icon(Icons.Rounded.SkipNext, null, tint = miniColors.onSurface, modifier = Modifier.size(25.dp))
+                        }
+                    }
+                    Box(Modifier.fillMaxWidth().height(3.dp).background(miniColors.onSurface.copy(alpha = 0.10f))) {
+                        Box(Modifier.fillMaxWidth(miniProgress).fillMaxHeight().background(miniColors.primary))
+                    }
+                }
             }
-            if (current != null && totalDuration > 0) Slider(value = (position.toFloat() / totalDuration.toFloat()).coerceIn(0f, 1f), onValueChange = { player.seekTo((it * totalDuration).toLong()) }, modifier = Modifier.fillMaxWidth().height(18.dp).padding(horizontal = 12.dp), colors = SliderDefaults.colors(thumbColor = Violet, activeTrackColor = Violet, inactiveTrackColor = Panel))
             Box(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
                 Row(
                     Modifier.fillMaxWidth()
