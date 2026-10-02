@@ -552,17 +552,80 @@ class _MusicHomeState extends State<MusicHome> {
       ]),
       if (_searching) _searchPanel(),
       if (_playerExpanded) _fullPlayer(),
-      if (!_playerExpanded && _playback.current != null) Align(alignment: Alignment.bottomCenter, child: Padding(padding: const EdgeInsets.fromLTRB(16, 0, 16, 12), child: Column(mainAxisSize: MainAxisSize.min, children: [
-        _miniPlayer(),
-        const SizedBox(height: 12),
-        Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9), decoration: BoxDecoration(color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: .96), borderRadius: BorderRadius.circular(32), border: Border.all(color: Colors.white.withValues(alpha: .07))), child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: List.generate(_tabs.length, (i) {
-          final selected = _tab == i;
-          return InkWell(borderRadius: BorderRadius.circular(25), onTap: () => setState(() => _tab = i), child: AnimatedContainer(duration: const Duration(milliseconds: 220), padding: EdgeInsets.symmetric(horizontal: selected ? 17 : 14, vertical: 10), decoration: BoxDecoration(color: selected ? Theme.of(context).colorScheme.primary.withValues(alpha: .16) : Colors.transparent, borderRadius: BorderRadius.circular(24)), child: Row(children: [
-            Icon(_tabs[i].$1, size: 20, color: selected ? Theme.of(context).colorScheme.primary : Theme.of(context).colorScheme.onSurface.withValues(alpha: .7)),
-            if (selected) ...[const SizedBox(width: 7), Text(_tabs[i].$2, style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.w700, fontSize: 12))],
-          ])));
-        }))),
-      ]))),
+      if (!_playerExpanded && _playback.current != null)
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: _miniPlayer(),
+          ),
+        ),
+      if (!_playerExpanded)
+        Align(
+          alignment: Alignment.bottomCenter,
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(16, _playback.current != null ? 0 : 0, 16, 12),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (_playback.current != null) const SizedBox(height: 64),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 9),
+                  decoration: BoxDecoration(
+                    color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: .96),
+                    borderRadius: BorderRadius.circular(32),
+                    border: Border.all(color: Colors.white.withValues(alpha: .07)),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: List.generate(_tabs.length, (i) {
+                      final selected = _tab == i;
+                      return InkWell(
+                        borderRadius: BorderRadius.circular(25),
+                        onTap: () => setState(() => _tab = i),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 220),
+                          padding: EdgeInsets.symmetric(
+                            horizontal: selected ? 17 : 14,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color: selected
+                                ? Theme.of(context).colorScheme.primary.withValues(alpha: .16)
+                                : Colors.transparent,
+                            borderRadius: BorderRadius.circular(24),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                _tabs[i].$1,
+                                size: 20,
+                                color: selected
+                                    ? Theme.of(context).colorScheme.primary
+                                    : Theme.of(context).colorScheme.onSurface.withValues(alpha: .7),
+                              ),
+                              if (selected) ...[
+                                const SizedBox(width: 7),
+                                Text(
+                                  _tabs[i].$2,
+                                  style: TextStyle(
+                                    color: Theme.of(context).colorScheme.primary,
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 12,
+                                  ),
+                                ),
+                              ],
+                            ],
+                          ),
+                        ),
+                      );
+                    }),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
     ])),
   );
 
