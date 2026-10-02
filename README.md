@@ -141,6 +141,18 @@ Pushing a `v*` tag triggers the same workflow. Each release includes the APK and
 | Compile / target SDK | 35 |
 | Java compatibility | 17 |
 
+## Windows desktop version
+
+A native Windows desktop companion is available in `windows/FlareMusic.Windows`. It currently supports adding local audio files, track selection, play/pause, previous/next, and seeking. Online search and account features from Android are not included in this initial desktop build.
+
+To build it, install the .NET 8 SDK on Windows and run:
+
+```powershell
+dotnet publish windows/FlareMusic.Windows/FlareMusic.Windows.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o artifacts/FlareMusic
+```
+
+Or open **Actions → Windows Desktop** and download the `FlareMusic-Windows-x64` artifact after the workflow completes. Extract the ZIP and run `FlareMusic.exe`.
+
 ## Contributing
 
 Issues and pull requests are welcome. When reporting a bug, include your device model, Android version, steps to reproduce, and relevant build or crash logs. Please avoid posting private account data, session cookies, or other secrets.
