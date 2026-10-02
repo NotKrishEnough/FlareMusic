@@ -7,11 +7,19 @@ import 'services/youtube_account_service.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await JustAudioBackground.init(
-    androidNotificationChannelId: 'com.flaremusic.playback',
-    androidNotificationChannelName: 'FlareMusic playback',
-    androidNotificationOngoing: true,
-  );
+  // Do not leave Android's native splash screen up if the audio plugin fails
+  // to initialize on a device. The UI can still start; playback can report
+  // its own error when the user tries to play a track.
+  try {
+    await JustAudioBackground.init(
+      androidNotificationChannelId: 'com.flaremusic.playback',
+      androidNotificationChannelName: 'FlareMusic playback',
+      androidNotificationOngoing: true,
+    ).timeout(const Duration(seconds: 8));
+  } catch (error, stackTrace) {
+    debugPrint('Audio background initialization failed: $error');
+    debugPrintStack(stackTrace: stackTrace);
+  }
   runApp(const FlareMusicApp());
 }
 
