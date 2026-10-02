@@ -759,8 +759,8 @@ class MainActivity : ComponentActivity() {
                 value = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f,
                 onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) },
                 colors = SliderDefaults.colors(
-                    thumbColor = MaterialTheme.colorScheme.primary,
-                    activeTrackColor = MaterialTheme.colorScheme.primary,
+                    thumbColor = if (FlarePreferences.progressStyle.intValue == 1) MaterialTheme.colorScheme.primary.copy(alpha = .45f) else MaterialTheme.colorScheme.primary,
+                    activeTrackColor = if (FlarePreferences.progressStyle.intValue == 2) MaterialTheme.colorScheme.primary.copy(alpha = .78f) else MaterialTheme.colorScheme.primary,
                     inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (FlarePreferences.glassmorphism.value) .42f else 1f),
                     activeTickColor = Color.Transparent,
                     inactiveTickColor = Color.Transparent
