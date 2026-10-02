@@ -1,5 +1,7 @@
 # FlareMusic
 
+![Flare Music logo](assets/flare_music_logo.png)
+
 A modern Android music player built with **Kotlin**, **Jetpack Compose**, and **Media3**.
 
 > FlareMusic is under active development. Features and interfaces may change between builds.
