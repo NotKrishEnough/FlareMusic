@@ -13,19 +13,17 @@ import 'package:permission_handler/permission_handler.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Do not leave Android's native splash screen up if the audio plugin fails
-  // to initialize on a device. The UI can still start; playback can report
-  // its own error when the user tries to play a track.
-  try {
-    await JustAudioBackground.init(
-      androidNotificationChannelId: 'com.flaremusic.playback',
-      androidNotificationChannelName: 'FlareMusic playback',
-      androidNotificationOngoing: true,
-    ).timeout(const Duration(seconds: 8));
-  } catch (error, stackTrace) {
-    debugPrint('Audio background initialization failed: $error');
-    debugPrintStack(stackTrace: stackTrace);
-  }
+  // AudioPlayer must not be created until JustAudioBackground has finished
+  // creating its AudioService handler. Starting the UI after a timeout can
+  // leave just_audio's internal _audioHandler uninitialized and every play()
+  // call then fails with LateInitializationError.
+  await JustAudioBackground.init(
+    androidNotificationChannelId: 'com.flaremusic.playback',
+    androidNotificationChannelName: 'FlareMusic playback',
+    androidNotificationOngoing: true,
+    androidStopForegroundOnPause: false,
+    preloadArtwork: true,
+  );
   runApp(const FlareMusicApp());
 }
 
