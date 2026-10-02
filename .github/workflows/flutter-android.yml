@@ -30,15 +30,81 @@ jobs:
 
       # audio_service requires the launcher Activity to provide its shared
       # FlutterEngine. The generated FlutterActivity does not do that.
+
+
+      - name: Configure generated Android Gradle settings
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('android/settings.gradle.kts')
+          s = p.read_text()
+          if 'jitpack.io' not in s:
+              s = s.replace('repositories {', 'repositories {\n        maven { url = uri("https://jitpack.io") }', 1)
+          p.write_text(s)
+          p = Path('android/app/build.gradle.kts')
+          s = p.read_text()
+          if 'isCoreLibraryDesugaringEnabled' not in s:
+              s = s.replace('compileOptions {', 'compileOptions {\n        isCoreLibraryDesugaringEnabled = true', 1)
+          if 'desugar_jdk_libs' not in s:
+              s = s.replace('dependencies {', 'dependencies {\n    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")', 1)
+          p.write_text(s)
+          PY
+
       - name: Configure audio_service Activity
         run: |
           mkdir -p android/app/src/main/kotlin/com/example/flare_music
           cat > android/app/src/main/kotlin/com/example/flare_music/MainActivity.kt <<'EOF'
           package com.example.flare_music
 
+          import android.os.Bundle
+          import android.os.Handler
+          import android.os.Looper
           import com.ryanheise.audioservice.AudioServiceActivity
+          import io.flutter.embedding.engine.FlutterEngine
+          import io.flutter.plugin.common.MethodChannel
+          import java.util.concurrent.Executors
 
-          class MainActivity : AudioServiceActivity()
+          class MainActivity : AudioServiceActivity() {
+              private val executor = Executors.newSingleThreadExecutor()
+              private val mainHandler = Handler(Looper.getMainLooper())
+
+              override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
+                  super.configureFlutterEngine(flutterEngine)
+                  MethodChannel(
+                      flutterEngine.dartExecutor.binaryMessenger,
+                      "flare_music/native_resolver"
+                  ).setMethodCallHandler { call, result ->
+                      if (call.method != "resolve") {
+                          result.notImplemented()
+                          return@setMethodCallHandler
+                      }
+                      val videoId = call.argument<String>("videoId")
+                      if (videoId.isNullOrBlank()) {
+                          result.error("INVALID_ID", "Missing YouTube video ID", null)
+                          return@setMethodCallHandler
+                      }
+                      executor.execute {
+                          try {
+                              val url = NewPipeAudioResolver.resolve(videoId)
+                              mainHandler.post { result.success(url) }
+                          } catch (e: Exception) {
+                              mainHandler.post {
+                                  result.error(
+                                      "RESOLVE_FAILED",
+                                      e.message ?: "Native YouTube extraction failed",
+                                      null
+                                  )
+                              }
+                          }
+                      }
+                  }
+              }
+
+              override fun onDestroy() {
+                  executor.shutdownNow()
+                  super.onDestroy()
+              }
+          }
           EOF
 
       - name: Configure Android media playback service
@@ -76,6 +142,95 @@ jobs:
               s = s.replace('</application>', service + '\n    </application>', 1)
           p.write_text(s)
           PY
+
+      - name: Configure native YouTube resolver
+        run: |
+          cat > android/app/build.gradle.kts.tmp <<'EOF'
+          EOF
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path('android/app/build.gradle.kts')
+          s = p.read_text()
+          dep = '    implementation("com.github.teamnewpipe:newpipeextractor:0.26.5")'
+          if dep not in s:
+              s = s.replace('dependencies {', 'dependencies {\n' + dep, 1)
+          p.write_text(s)
+          PY
+          mkdir -p android/app/src/main/kotlin/com/example/flare_music
+          cat > android/app/src/main/kotlin/com/example/flare_music/NewPipeAudioResolver.kt <<'EOF'
+          package com.example.flare_music
+
+          import okhttp3.MediaType.Companion.toMediaType
+          import okhttp3.OkHttpClient
+          import okhttp3.RequestBody.Companion.toRequestBody
+          import org.schabi.newpipe.extractor.NewPipe
+          import org.schabi.newpipe.extractor.downloader.Downloader
+          import org.schabi.newpipe.extractor.downloader.Request
+          import org.schabi.newpipe.extractor.downloader.Response
+          import org.schabi.newpipe.extractor.localization.Localization
+          import org.schabi.newpipe.extractor.stream.StreamInfo
+          import java.io.IOException
+          import java.util.concurrent.ConcurrentHashMap
+          import java.util.concurrent.TimeUnit
+
+          object NewPipeAudioResolver {
+              private val client = OkHttpClient.Builder()
+                  .callTimeout(25, TimeUnit.SECONDS)
+                  .followRedirects(true)
+                  .followSslRedirects(true)
+                  .build()
+
+              @Volatile private var initialized = false
+              private data class CachedStream(val url: String, val savedAt: Long)
+              private val cache = ConcurrentHashMap<String, CachedStream>()
+              private val cacheTtlMs = TimeUnit.MINUTES.toMillis(20)
+
+              @Synchronized private fun initialize() {
+                  if (initialized) return
+                  NewPipe.init(object : Downloader() {
+                      override fun execute(request: Request): Response {
+                          val bodyBytes = request.dataToSend()
+                          val body = bodyBytes?.toRequestBody("application/octet-stream".toMediaType())
+                          val builder = okhttp3.Request.Builder()
+                              .url(request.url())
+                              .method(request.httpMethod(), body)
+                              .header("User-Agent", "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/125.0.0.0 Mobile Safari/537.36")
+                          request.headers().forEach { (name, values) ->
+                              builder.removeHeader(name)
+                              values.forEach { value -> builder.addHeader(name, value) }
+                          }
+                          client.newCall(builder.build()).execute().use { response ->
+                              val responseBody = response.body?.string().orEmpty()
+                              if (!response.isSuccessful) {
+                                  throw IOException("Extractor HTTP ${response.code}: ${response.message}")
+                              }
+                              return Response(
+                                  response.code,
+                                  response.message,
+                                  response.headers.toMultimap(),
+                                  responseBody,
+                                  response.request.url.toString()
+                              )
+                          }
+                      }
+                  }, Localization("en", "US"))
+                  initialized = true
+              }
+
+              fun resolve(videoId: String): String {
+                  require(videoId.matches(Regex("[A-Za-z0-9_-]{11}"))) { "Invalid YouTube video ID" }
+                  val now = System.currentTimeMillis()
+                  cache[videoId]?.takeIf { now - it.savedAt < cacheTtlMs }?.let { return it.url }
+                  initialize()
+                  val info = StreamInfo.getInfo("https://www.youtube.com/watch?v=$videoId")
+                  val audio = info.audioStreams
+                      .filter { it.isUrl && it.content.startsWith("https://") }
+                      .maxByOrNull { it.averageBitrate }
+                      ?: throw IOException("NewPipe found no direct audio-only stream")
+                  return audio.content.also { cache[videoId] = CachedStream(it, now) }
+              }
+          }
+          EOF
 
       - name: Install dependencies
         run: flutter pub get
