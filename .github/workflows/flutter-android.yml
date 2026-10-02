@@ -36,24 +36,22 @@ jobs:
           cat > /tmp/flare_launcher.svg <<'EOF'
           <svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
             <defs>
-              <linearGradient id="border" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stop-color="#A855F7"/>
-                <stop offset="0.52" stop-color="#7C5CFF"/>
-                <stop offset="1" stop-color="#38BDF8"/>
+              <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0" stop-color="#070812"/>
+                <stop offset="1" stop-color="#15101F"/>
               </linearGradient>
-              <linearGradient id="mark" x1="0.05" y1="0.05" x2="0.95" y2="0.95">
-                <stop offset="0" stop-color="#60A5FA"/>
-                <stop offset="0.48" stop-color="#A855F7"/>
-                <stop offset="1" stop-color="#F472B6"/>
+              <linearGradient id="flame" x1="0.1" y1="0.05" x2="0.9" y2="0.95">
+                <stop offset="0" stop-color="#FFB52E"/>
+                <stop offset="0.42" stop-color="#FF4B35"/>
+                <stop offset="0.72" stop-color="#FF1688"/>
+                <stop offset="1" stop-color="#7419F5"/>
               </linearGradient>
-              <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="12" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-              </filter>
             </defs>
-            <rect x="18" y="18" width="476" height="476" rx="112" fill="#090A10" stroke="url(#border)" stroke-width="12"/>
-            <path d="M154 338c0-65 24-109 70-133l37-20v92l-40 21c-20 11-31 25-31 46 0 24 16 39 40 39 34 0 59-25 59-64V142l75-35v160c0 76-51 134-130 134-48 0-80-26-80-63z" fill="url(#mark)" filter="url(#glow)"/>
-            <path d="M154 338c0-65 24-109 70-133l37-20v92l-40 21c-20 11-31 25-31 46 0 24 16 39 40 39 34 0 59-25 59-64V142l75-35v160c0 76-51 134-130 134-48 0-80-26-80-63z" fill="url(#mark)"/>
+            <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+            <path d="M256 60c-29 62-96 91-125 147-34 66-14 145 47 188 49 35 121 39 179 1 67-44 77-130 34-191-18-26-46-49-55-93-19 38-44 59-69 79 9-48 5-91-11-131z" fill="url(#flame)"/>
+            <path d="M256 142c-24 49-68 75-79 119-10 43 20 82 58 88 39 6 69-23 69-61v-63l53-24v80c0 61-38 109-96 116-62 8-117-34-122-91-6-60 29-99 69-122z" fill="#1B07122A"/>
+            <path d="M238 207h59v65c0 18-14 32-32 32-18 0-32-12-32-29 0-17 14-29 32-29 6 0 11 1 16 3v-28l-43-18z" fill="#FFFFFB"/>
+            <path d="M226 198l52 23v15l-52-23z" fill="#FFFFFB"/>
           </svg>
           EOF
           convert -background none /tmp/flare_launcher.svg android/app/src/main/res/drawable/flare_launcher.png
