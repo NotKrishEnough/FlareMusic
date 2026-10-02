@@ -1,5 +1,6 @@
 import 'dart:math' show min;
 import 'package:flutter/material.dart';
+import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 import 'services/inner_tube_client.dart';
 import 'services/playback_controller.dart';
@@ -327,7 +328,7 @@ class _MusicHomeState extends State<MusicHome> {
         IconButton(onPressed: () {}, icon: const Icon(Icons.more_horiz_rounded)),
       ])),
       const Spacer(),
-      Hero(tag: 'flare-player-art', child: Container(width:  min(MediaQuery.of(context).size.width - 72, 340), height: min(MediaQuery.of(context).size.width - 72, 340), decoration: BoxDecoration(color: const Color(0xFF263E59), borderRadius: BorderRadius.circular(28), boxShadow: [BoxShadow(color: const Color(0xFF8BC5FF).withValues(alpha: .12), blurRadius: 35, spreadRadius: 2)]), child: const Icon(Icons.graphic_eq_rounded, size: 110, color: Color(0xFF8BC5FF)))),
+      Container(width: min(MediaQuery.of(context).size.width - 72, 340), height: min(MediaQuery.of(context).size.width - 72, 340), decoration: BoxDecoration(color: const Color(0xFF263E59), borderRadius: BorderRadius.circular(28), boxShadow: [BoxShadow(color: const Color(0xFF8BC5FF).withValues(alpha: .12), blurRadius: 35, spreadRadius: 2)]), child: const Icon(Icons.graphic_eq_rounded, size: 110, color: Color(0xFF8BC5FF))),
       const Spacer(),
       Padding(padding: const EdgeInsets.symmetric(horizontal: 28), child: Row(children: [
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -392,7 +393,7 @@ class _MusicHomeState extends State<MusicHome> {
       borderRadius: BorderRadius.circular(18),
       onTap: () => setState(() => _playerExpanded = true),
       child: Container(padding: const EdgeInsets.all(10), decoration: BoxDecoration(borderRadius: BorderRadius.circular(18), border: Border.all(color: Colors.white.withValues(alpha: .08))), child: Row(children: [
-        Hero(tag: 'flare-player-art', child: Container(width: 42, height: 42, decoration: BoxDecoration(color: const Color(0xFF31516B), borderRadius: BorderRadius.circular(11)), child: const Icon(Icons.music_note_rounded))),
+        Container(width: 42, height: 42, decoration: BoxDecoration(color: const Color(0xFF31516B), borderRadius: BorderRadius.circular(11)), child: const Icon(Icons.music_note_rounded)),
         const SizedBox(width: 11),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(_nowTitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13)), const SizedBox(height: 3), Text(_nowArtist, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontSize: 11, color: Colors.white60))])),
         IconButton(onPressed: () async { try { if (_playing) { await _playback.pause(); } else { await _playback.resume(); } if (mounted) setState(() => _playing = !_playing); } catch (e) { _showPlaybackError(e); } }, icon: Icon(_playing ? Icons.pause_rounded : Icons.play_arrow_rounded)),
