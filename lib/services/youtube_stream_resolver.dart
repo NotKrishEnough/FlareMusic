@@ -7,22 +7,40 @@ class YouTubeStreamResolver {
 
   Future<String> resolve(String videoId) async {
     Object? lastError;
-    for (final clients in <List<YoutubeApiClient>?>[
-      null,
-      [YoutubeApiClient.androidVr],
-      [YoutubeApiClient.safari],
+    const primaryClients = <YoutubeApiClient>[
+      YoutubeApiClient.androidVr,
+      YoutubeApiClient.androidSdkless,
+      YoutubeApiClient.ios,
+    ];
+    const fallbackClients = <YoutubeApiClient>[
+      YoutubeApiClient.tv,
+      YoutubeApiClient.mediaConnect,
+      YoutubeApiClient.safari,
+    ];
+
+    for (final clients in <List<YoutubeApiClient>>[
+      primaryClients,
+      ...fallbackClients.map((client) => <YoutubeApiClient>[client]),
     ]) {
       try {
-        final manifest = clients == null
-            ? await _youtube.videos.streamsClient.getManifest(videoId, requireWatchPage: true).timeout(const Duration(seconds: 20))
-            : await _youtube.videos.streamsClient.getManifest(videoId, ytClients: clients, requireWatchPage: true).timeout(const Duration(seconds: 20));
-        final audio = manifest.audioOnly.withHighestBitrate();
-        if (audio.url.toString().isEmpty) throw StateError('No playable audio stream was returned.');
+        final manifest = await _youtube.videos.streamsClient
+            .getManifest(videoId, ytClients: clients, requireWatchPage: false)
+            .timeout(const Duration(seconds: 25));
+        final candidates = manifest.audioOnly
+            .where((stream) => stream.url.toString().startsWith('https://'))
+            .toList();
+        if (candidates.isEmpty) {
+          throw StateError('No playable audio stream was returned by YouTube.');
+        }
+        final audio = candidates.reduce(
+          (a, b) => a.bitrate.bitsPerSecond >= b.bitrate.bitsPerSecond ? a : b,
+        );
         return audio.url.toString();
       } catch (e) {
         lastError = e;
       }
     }
+
     throw Exception('Could not resolve a playable YouTube audio stream. ${lastError ?? ''}');
   }
 
