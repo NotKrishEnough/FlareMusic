@@ -195,6 +195,7 @@ class _MusicHomeState extends State<MusicHome> {
   bool _switchingTrack = false;
   StreamSubscription<PlayerState>? _playerStateSubscription;
   StreamSubscription<ProcessingState>? _processingSubscription;
+  StreamSubscription<SequenceState?>? _sequenceSubscription;
   late Future<void> _audioReady;
 
   static const _tabs = [(Icons.home_rounded, 'Home'), (Icons.explore_rounded, 'Explore'), (Icons.library_music_rounded, 'Library'), (Icons.person_rounded, 'You')];
@@ -214,6 +215,7 @@ class _MusicHomeState extends State<MusicHome> {
   void dispose() {
     _playerStateSubscription?.cancel();
     _processingSubscription?.cancel();
+    _sequenceSubscription?.cancel();
     _playback.dispose();
     _api.close();
     _searchController.dispose();
@@ -237,6 +239,14 @@ class _MusicHomeState extends State<MusicHome> {
       _playerStateSubscription = _playback.player.playerStateStream.listen((state) {
         if (!mounted) return;
         setState(() => _playing = state.playing);
+      });
+      _sequenceSubscription = _playback.player.sequenceStateStream.listen((state) {
+        final tag = state?.currentSource?.tag;
+        if (!mounted || tag is! MediaItem) return;
+        setState(() {
+          _nowTitle = tag.displayTitle ?? tag.title;
+          _nowArtist = tag.displaySubtitle ?? tag.artist ?? '';
+        });
       });
       _processingSubscription = _playback.player.processingStateStream.listen((state) async {
         if (state != ProcessingState.completed || _switchingTrack || _playback.queue.isEmpty) return;
