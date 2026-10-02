@@ -746,18 +746,21 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable private fun HomeScreen(count: Int, loading: Boolean, error: String, accent: Color, openLibrary: () -> Unit) {
-    Column(Modifier.fillMaxSize().background(Color(0xFF0B0A10)).verticalScroll(rememberScrollState()).padding(horizontal = 22.dp)) {
+    val colors = MaterialTheme.colorScheme
+    val homeSurface = colors.surface
+    val homeCard = colors.surfaceVariant.copy(alpha = 0.72f)
+    Column(Modifier.fillMaxSize().background(colors.background).verticalScroll(rememberScrollState()).padding(horizontal = 22.dp)) {
         Row(Modifier.fillMaxWidth().padding(top = 22.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text("YOUR SOUND, YOUR SPACE", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp)
-                Text("Good music.\nGood moments.", color = Color.White, fontSize = 34.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp, modifier = Modifier.padding(top = 9.dp))
+                Text("Good music.\nGood moments.", color = colors.onBackground, fontSize = 34.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp, modifier = Modifier.padding(top = 9.dp))
             }
-            Box(Modifier.size(48.dp).clip(RoundedCornerShape(17.dp)).background(Color(0xFF211722)), contentAlignment = Alignment.Center) {
+            Box(Modifier.size(48.dp).clip(RoundedCornerShape(17.dp)).background(colors.primaryContainer.copy(alpha = 0.75f)), contentAlignment = Alignment.Center) {
                 Image(painterResource(R.drawable.ic_flare_logo), contentDescription = "FlareMusic", modifier = Modifier.size(34.dp))
             }
         }
         Spacer(Modifier.height(24.dp))
-        Box(Modifier.fillMaxWidth().height(224.dp).clip(RoundedCornerShape(28.dp)).background(Brush.linearGradient(listOf(Color(0xFF8C392D), Color(0xFF54263D), Color(0xFF242039)))).clickable { openLibrary() }) {
+        Box(Modifier.fillMaxWidth().height(224.dp).clip(RoundedCornerShape(28.dp)).background(Brush.linearGradient(listOf(colors.primary.copy(alpha = 0.88f), colors.secondary.copy(alpha = 0.78f), colors.tertiary.copy(alpha = 0.68f)))).clickable { openLibrary() }) {
             Box(Modifier.align(Alignment.TopEnd).padding(16.dp).size(140.dp).clip(RoundedCornerShape(70.dp)).background(Color.White.copy(alpha = .07f)), contentAlignment = Alignment.Center) {
                 Box(Modifier.size(104.dp).clip(RoundedCornerShape(52.dp)).background(Color.White.copy(alpha = .06f)), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.GraphicEq, null, tint = accent.copy(alpha = .72f), modifier = Modifier.size(58.dp)) }
             }
@@ -773,15 +776,15 @@ class MainActivity : ComponentActivity() {
         Spacer(Modifier.height(27.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("Your library", color = Color.White, fontSize = 23.sp, fontWeight = FontWeight.Bold)
+                Text("Your library", color = colors.onBackground, fontSize = 23.sp, fontWeight = FontWeight.Bold)
                 Text(if (loading) "Finding your music…" else "$count tracks ready when you are", color = Color(0xFF9B94A1), fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
             }
             TextButton(onClick = openLibrary) { Text("See all", color = accent, fontWeight = FontWeight.SemiBold) }
         }
         Row(Modifier.fillMaxWidth().padding(top = 10.dp), horizontalArrangement = Arrangement.spacedBy(11.dp)) {
             listOf(Triple(Icons.Rounded.MusicNote, "Songs", "All tracks"), Triple(Icons.Rounded.Album, "Albums", "Your collection")).forEach { item ->
-                Column(Modifier.weight(1f).clip(RoundedCornerShape(20.dp)).background(Color(0xFF19151E)).clickable { openLibrary() }.padding(16.dp)) {
-                    Icon(item.first, null, tint = Color(0xFFFF9679), modifier = Modifier.size(24.dp))
+                Column(Modifier.weight(1f).clip(RoundedCornerShape(20.dp)).background(homeCard).clickable { openLibrary() }.padding(16.dp)) {
+                    Icon(item.first, null, tint = colors.primary, modifier = Modifier.size(24.dp))
                     Text(item.second, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp, modifier = Modifier.padding(top = 17.dp))
                     Text(item.third, color = Color(0xFF9B94A1), fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
                 }
@@ -789,10 +792,10 @@ class MainActivity : ComponentActivity() {
         }
         if (error.isNotBlank()) Text(error, color = Color(0xFFFFA0A0), fontSize = 12.sp, modifier = Modifier.padding(top = 14.dp))
         Spacer(Modifier.height(18.dp))
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color(0xFF17131B)).clickable { openLibrary() }.padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(Color(0xFF34202A)), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.LibraryMusic, null, tint = Color(0xFFFF9679)) }
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(homeCard).clickable { openLibrary() }.padding(15.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(colors.primaryContainer), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.LibraryMusic, null, tint = colors.primary) }
             Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                Text("Pick up where you left off", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
+                Text("Pick up where you left off", color = colors.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 13.sp)
                 Text("Browse and play something you love", color = Color(0xFF9B94A1), fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
             }
             Icon(Icons.Rounded.ChevronRight, null, tint = Color(0xFF9B94A1))
