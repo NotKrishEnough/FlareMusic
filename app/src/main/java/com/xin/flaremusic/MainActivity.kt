@@ -72,7 +72,7 @@ import java.net.URL
 
 private val Ink = Color(0xFF0B0A10)
 private val Panel = Color(0xFF19151E)
-private val Violet: Color get() = FlarePreferences.accents[FlarePreferences.accentIndex.intValue.coerceIn(0, FlarePreferences.accents.lastIndex)]
+private val Violet: Color get() = if (FlarePreferences.dynamicColors.value) FlarePreferences.dynamicAccent.value else FlarePreferences.accents[FlarePreferences.accentIndex.intValue.coerceIn(0, FlarePreferences.accents.lastIndex)]
 private val Mint: Color get() = Violet.copy(alpha = .82f)
 
 private object FlarePreferences {
@@ -80,6 +80,7 @@ private object FlarePreferences {
     val animations = mutableStateOf(true)
     val compact = mutableStateOf(false)
     val dynamicColors = mutableStateOf(true)
+    val dynamicAccent = mutableStateOf(Color(0xFFFF694F))
     val swipeToMinimize = mutableStateOf(true)
     val swipeToChangeTracks = mutableStateOf(true)
     val accents = listOf(
@@ -232,11 +233,12 @@ class MainActivity : ComponentActivity() {
         inverseOnSurface = Color(0xFF17191F)
     )
     val wallpaperScheme = if (dynamicColors && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) dynamicDarkColorScheme(context) else fallback
+    SideEffect {
+        if (dynamicColors && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            FlarePreferences.dynamicAccent.value = wallpaperScheme.primary
+        }
+    }
     val expressiveScheme = wallpaperScheme.copy(
-        primary = accent,
-        secondary = accent.copy(alpha = .88f),
-        tertiary = Mint,
-        onPrimary = Color.White,
         background = Color(0xFF101116),
         onBackground = Color.White
     )
