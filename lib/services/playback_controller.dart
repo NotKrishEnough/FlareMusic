@@ -7,15 +7,24 @@ import 'youtube_stream_resolver.dart';
 /// Owns the queue and audio engine for the Flutter app. Stream URLs are
 /// resolved by the caller; YouTube extraction is deliberately not faked here.
 class PlaybackController {
-  PlaybackController({AudioPlayer? player}) : player = player ?? AudioPlayer();
-  final AudioPlayer player;
+  PlaybackController({AudioPlayer? player}) {
+    if (player != null) this.player = player;
+  }
+  late final AudioPlayer player;
+  bool _initialized = false;
+
+  Future<void> initialize() async {
+    if (_initialized) return;
+    player = AudioPlayer();
+    _initialized = true;
+  }
   final YouTubeStreamResolver resolver = YouTubeStreamResolver();
   final List<OnlineTrack> queue = [];
   int index = -1;
 
   OnlineTrack? get current => index >= 0 && index < queue.length ? queue[index] : null;
 
-  Future<void> restore() async {
+  Future<void> restore() async {\n    if (!_initialized) return;
     final prefs = await SharedPreferences.getInstance();
     final ids = prefs.getStringList('flare.queue.ids') ?? const [];
     final titles = prefs.getStringList('flare.queue.titles') ?? const [];
@@ -32,7 +41,7 @@ class PlaybackController {
   }
 
   Future<void> playQueue(List<OnlineTrack> tracks, int startIndex, Future<String> Function(String) resolve) async {
-    if (tracks.isEmpty || startIndex < 0 || startIndex >= tracks.length) return;
+    if (!_initialized || tracks.isEmpty || startIndex < 0 || startIndex >= tracks.length) return;
     queue..clear()..addAll(tracks);
     index = startIndex;
     await _persist();
@@ -41,13 +50,13 @@ class PlaybackController {
 
   Future<void> playSelected(List<OnlineTrack> tracks, int startIndex) => playQueue(tracks, startIndex, resolver.resolve);
 
-  Future<void> resume() => player.play();
-  Future<void> pause() => player.pause();
-  Future<void> skipNext() => next(resolver.resolve);
-  Future<void> skipPrevious() => previous(resolver.resolve);
+  Future<void> resume() => _initialized ? player.play() : Future.value();
+  Future<void> pause() => _initialized ? player.pause() : Future.value();
+  Future<void> skipNext() => _initialized ? next(resolver.resolve) : Future.value();
+  Future<void> skipPrevious() => _initialized ? previous(resolver.resolve) : Future.value();
 
   Future<void> playCurrent(Future<String> Function(String) resolve) async {
-    final track = current;
+    if (!_initialized) return;\n    final track = current;
     if (track == null) return;
     final url = await resolve(track.videoId);
     await player.setAudioSource(AudioSource.uri(
@@ -86,5 +95,5 @@ class PlaybackController {
     await prefs.setInt('flare.queue.index', index);
   }
 
-  Future<void> dispose() async { await resolver.close(); await player.dispose(); }
+  Future<void> dispose() async { await resolver.close(); if (_initialized) await player.dispose(); }
 }
