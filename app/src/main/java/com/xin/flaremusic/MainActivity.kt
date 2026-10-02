@@ -473,40 +473,36 @@ class MainActivity : ComponentActivity() {
             if (current != null) {
                 val miniProgress = if (totalDuration > 0) (position.toFloat() / totalDuration.toFloat()).coerceIn(0f, 1f) else 0f
                 val miniColors = MaterialTheme.colorScheme
-                val miniShape = RoundedCornerShape(24.dp)
+                val miniShape = RoundedCornerShape(50)
                 Column(
-                    Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)
+                    Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 4.dp)
                         .clip(miniShape)
                         .background(Brush.linearGradient(listOf(
-                            miniColors.surfaceVariant.copy(alpha = if (FlarePreferences.glassmorphism.value) 0.34f else 0.96f),
-                            miniColors.primaryContainer.copy(alpha = if (FlarePreferences.glassmorphism.value) 0.22f else 0.48f)
+                            miniColors.surfaceVariant.copy(alpha = if (FlarePreferences.glassmorphism.value) 0.20f else 0.94f),
+                            miniColors.primaryContainer.copy(alpha = if (FlarePreferences.glassmorphism.value) 0.14f else 0.38f)
                         )))
                         .clickable { playerExpanded = true }
                 ) {
                     Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                        Modifier.fillMaxWidth().padding(start = 9.dp, end = 8.dp, top = 7.dp, bottom = 7.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Box {
-                            Artwork(current!!.artwork, Modifier.size(52.dp).clip(RoundedCornerShape(15.dp)))
-                            Box(Modifier.align(Alignment.BottomEnd).padding(3.dp).size(8.dp).clip(RoundedCornerShape(4.dp)).background(miniColors.primary))
+                        Artwork(current!!.artwork, Modifier.size(42.dp).clip(CircleShape))
+                        Column(Modifier.weight(1f).padding(start = 10.dp, end = 6.dp)) {
+                            Text(current!!.title, color = miniColors.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(current!!.artist, color = miniColors.onSurfaceVariant, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
                         }
-                        Column(Modifier.weight(1f).padding(start = 12.dp, end = 8.dp)) {
-                            Text("NOW PLAYING", color = miniColors.primary, fontWeight = FontWeight.Bold, fontSize = 9.sp, letterSpacing = 1.25.sp, maxLines = 1)
-                            Text(current!!.title, color = miniColors.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp))
-                            Text(current!!.artist, color = miniColors.onSurfaceVariant, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
+                        IconButton(onClick = { if (playing) player.pause() else player.play() }, modifier = Modifier.size(36.dp).clip(CircleShape).background(miniColors.primary)) {
+                            Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = miniColors.onPrimary, modifier = Modifier.size(20.dp))
                         }
-                        IconButton(onClick = { if (playing) player.pause() else player.play() }, modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(miniColors.primary)) {
-                            Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = miniColors.onPrimary, modifier = Modifier.size(23.dp))
-                        }
-                        IconButton(onClick = { player.seekToNextMediaItem() }, modifier = Modifier.size(44.dp)) {
-                            Icon(Icons.Rounded.SkipNext, null, tint = miniColors.onSurface, modifier = Modifier.size(23.dp))
+                        IconButton(onClick = { player.seekToNextMediaItem() }, modifier = Modifier.size(34.dp)) {
+                            Icon(Icons.Rounded.SkipNext, null, tint = miniColors.onSurface, modifier = Modifier.size(21.dp))
                         }
                     }
-                    Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp).height(3.dp).clip(RoundedCornerShape(2.dp)).background(miniColors.onSurface.copy(alpha = 0.10f))) {
+                    Box(Modifier.fillMaxWidth().padding(horizontal = 16.dp).height(2.dp).clip(RoundedCornerShape(2.dp)).background(miniColors.onSurface.copy(alpha = 0.10f))) {
                         Box(Modifier.fillMaxWidth(miniProgress).fillMaxHeight().clip(RoundedCornerShape(2.dp)).background(miniColors.primary))
                     }
-                    Spacer(Modifier.height(7.dp))
+                    Spacer(Modifier.height(4.dp))
                 }
             }
             Box(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
