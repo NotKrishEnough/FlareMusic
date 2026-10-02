@@ -15,8 +15,15 @@ import 'package:dynamic_color/dynamic_color.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Never block Flutter's first frame on the audio service. Android can take
-  // a moment to bind the notification service; the app UI should still open.
+  // Initialise the background media service before the Flutter UI so its
+  // shared engine is ready for notifications and lock-screen controls.
+  await JustAudioBackground.init(
+    androidNotificationChannelId: 'com.flaremusic.playback',
+    androidNotificationChannelName: 'FlareMusic playback',
+    androidNotificationOngoing: true,
+    androidStopForegroundOnPause: false,
+    preloadArtwork: true,
+  );
   runApp(const FlareMusicApp());
 }
 
@@ -193,13 +200,6 @@ class _MusicHomeState extends State<MusicHome> {
 
   Future<void> _initializeAudio() async {
     try {
-      await JustAudioBackground.init(
-        androidNotificationChannelId: 'com.flaremusic.playback',
-        androidNotificationChannelName: 'FlareMusic playback',
-        androidNotificationOngoing: true,
-        androidStopForegroundOnPause: false,
-        preloadArtwork: true,
-      );
       await _playback.initialize();
       if (!mounted) return;
       await _restorePlaybackState();
