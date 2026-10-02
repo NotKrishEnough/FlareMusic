@@ -52,7 +52,7 @@ class MusicHome extends StatefulWidget {
 
 class _MusicHomeState extends State<MusicHome> {
   final _cookieAuth = YouTubeCookieAuth();
-  final _api = InnerTubeClient(auth: _cookieAuth);
+  late final InnerTubeClient _api;
   final _playback = PlaybackController();
   final _library = PlaylistLibrary();
   final _account = YouTubeAccountService();
@@ -79,6 +79,7 @@ class _MusicHomeState extends State<MusicHome> {
   @override
   void initState() {
     super.initState();
+    _api = InnerTubeClient(auth: _cookieAuth);
     _restorePlaybackState();
     _refreshLibrary();
     _restoreAccount();
