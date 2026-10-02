@@ -8,8 +8,11 @@ import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 class YouTubeStreamResolver {
   final YoutubeExplode _youtube = YoutubeExplode();
   static const _native = MethodChannel('flare_music/native_resolver');
+  final Map<String, String> _resolvedCache = <String, String>{};
 
   Future<String> resolve(String videoId) async {
+    final cached = _resolvedCache[videoId];
+    if (cached != null && cached.isNotEmpty) return cached;
     Object? nativeError;
     if (Platform.isAndroid) {
       try {
@@ -17,6 +20,7 @@ class YouTubeStreamResolver {
             .invokeMethod<String>('resolve', <String, dynamic>{'videoId': videoId})
             .timeout(const Duration(seconds: 30));
         if (url != null && url.trim().isNotEmpty) {
+          _resolvedCache[videoId] = url;
           return url;
         }
         nativeError = StateError('Native extractor returned an empty stream URL.');
@@ -50,7 +54,9 @@ class YouTubeStreamResolver {
         final audio = candidates.reduce(
           (a, b) => a.bitrate.bitsPerSecond >= b.bitrate.bitsPerSecond ? a : b,
         );
-        return audio.url.toString();
+        final url = audio.url.toString();
+        _resolvedCache[videoId] = url;
+        return url;
       } catch (e) {
         lastError = e;
       }
@@ -62,5 +68,16 @@ class YouTubeStreamResolver {
     );
   }
 
-  Future<void> close() async => _youtube.close();
+  Future<void> preload(String videoId) async {
+    try {
+      await resolve(videoId);
+    } catch (_) {
+      // Prefetch is opportunistic; normal playback still reports the real error.
+    }
+  }
+
+  Future<void> close() async {
+    _resolvedCache.clear();
+    await _youtube.close();
+  }
 }
