@@ -62,6 +62,7 @@ class _MusicHomeState extends State<MusicHome> {
     super.initState();
     _playback.restore();
     _refreshLibrary();
+    _restoreAccount();
   }
 
   @override
@@ -71,6 +72,10 @@ class _MusicHomeState extends State<MusicHome> {
     _searchController.dispose();
     _searchFocus.dispose();
     super.dispose();
+  }
+
+  Future<void> _restoreAccount() async {
+    try { await _account.restoreSession(); } catch (_) { /* User can sign in again from Library. */ }
   }
 
   Future<void> _refreshLibrary() async { final lists = await _library.all(); if (mounted) setState(() => _playlists = lists); }
