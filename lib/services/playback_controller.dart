@@ -13,11 +13,22 @@ class PlaybackController {
   }
   late final AudioPlayer player;
   bool _initialized = false;
+  StreamSubscription<int?>? _sequenceIndexSubscription;
 
   Future<void> initialize() async {
     if (_initialized) return;
     player = AudioPlayer(userAgent: 'FlareMusic/1.0 (Android)');
     _initialized = true;
+    _sequenceIndexSubscription = player.currentIndexStream.listen((sequenceIndex) {
+      if (sequenceIndex == null || sequenceIndex < 0 || sequenceIndex >= player.sequence.length) return;
+      final tag = player.sequence[sequenceIndex].tag;
+      if (tag is! MediaItem) return;
+      final queueIndex = queue.indexWhere((track) => track.videoId == tag.id);
+      if (queueIndex >= 0 && queueIndex != index) {
+        index = queueIndex;
+        unawaited(_persist());
+      }
+    });
   }
   final YouTubeStreamResolver resolver = YouTubeStreamResolver();
   final List<OnlineTrack> queue = [];
@@ -227,5 +238,9 @@ class PlaybackController {
     await prefs.setInt('flare.queue.index', index);
   }
 
-  Future<void> dispose() async { await resolver.close(); if (_initialized) await player.dispose(); }
+  Future<void> dispose() async {
+    await _sequenceIndexSubscription?.cancel();
+    await resolver.close();
+    if (_initialized) await player.dispose();
+  }
 }
