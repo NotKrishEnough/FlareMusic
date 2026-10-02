@@ -36,8 +36,8 @@ jobs:
           s = p.read_text()
           # Keep the same application identity as the existing Kotlin app so
           # Android recognizes Flutter builds as updates to the installed app.
-          s = s.replace('namespace = "com.nke.flaremusic"', 'namespace = "com.nke.flaremusic"')
-          s = s.replace('applicationId = "com.nke.flaremusic"', 'applicationId = "com.nke.flaremusic"')
+          s = s.replace('namespace = "com.example.flare_music"', 'namespace = "com.nke.flaremusic"')
+          s = s.replace('applicationId = "com.example.flare_music"', 'applicationId = "com.nke.flaremusic"')
           # The old Kotlin app used a timestamp versionCode. Keep using a
           # monotonically increasing timestamp so every release can update it.
           import re
