@@ -254,14 +254,8 @@ class _MusicHomeState extends State<MusicHome> {
           _nowArtist = tag.displaySubtitle ?? tag.artist ?? '';
         });
       });
-      _processingSubscription = _playback.player.processingStateStream.listen((state) async {
-        if (state != ProcessingState.completed || _switchingTrack || _playback.queue.isEmpty) return;
-        try {
-          await _skipNextAndSync();
-        } catch (e) {
-          _showPlaybackError(e);
-        }
-      });
+      // The AudioPlayer queue now advances automatically, including on
+      // Android lock-screen/notification transport controls.
     } catch (e, st) {
       debugPrint('Audio initialization failed: $e');
       debugPrintStack(stackTrace: st);
@@ -1308,8 +1302,19 @@ class _MusicHomeState extends State<MusicHome> {
   Widget _sectionTitle(String title, String action, {VoidCallback? onAction}) => Row(children: [Text(title, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)), const Spacer(), TextButton(onPressed: onAction ?? () => setState(() => _searching = true), child: Text(action))]);
 
   Widget _fullPlayer() => Positioned.fill(
-    child: Material(
-      color: Theme.of(context).scaffoldBackgroundColor,
+    child: Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Theme.of(context).colorScheme.primaryContainer.withValues(alpha: .92),
+            Theme.of(context).colorScheme.surface,
+            Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: .72),
+            Theme.of(context).colorScheme.surface,
+          ],
+        ),
+      ),
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onHorizontalDragEnd: (details) {
@@ -1403,8 +1408,13 @@ class _MusicHomeState extends State<MusicHome> {
                     final position = snapshot.data ?? Duration.zero;
                     final duration = _playback.player.duration ?? _currentTrackDuration();
                     final maxMs = duration.inMilliseconds > 0 ? duration.inMilliseconds.toDouble() : 1.0;
+                    final progress = maxMs <= 1
+                        ? 0.0
+                        : (position.inMilliseconds / maxMs).clamp(0.0, 1.0);
                     return Column(
                       children: [
+                        _gradientProgressBar(progress, height: 7),
+                        const SizedBox(height: 5),
                         Slider(
                           value: position.inMilliseconds.clamp(0, maxMs.toInt()).toDouble(),
                           max: maxMs,
@@ -1552,14 +1562,26 @@ class _MusicHomeState extends State<MusicHome> {
       borderRadius: BorderRadius.circular(18),
       onTap: () => setState(() => _playerExpanded = true),
       child: Container(
-        padding: const EdgeInsets.all(10),
+        padding: const EdgeInsets.fromLTRB(10, 9, 10, 5),
         decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.centerLeft,
+            end: Alignment.centerRight,
+            colors: [
+              Theme.of(context).colorScheme.primaryContainer.withValues(alpha: .72),
+              Theme.of(context).colorScheme.surfaceContainerHigh,
+              Theme.of(context).colorScheme.secondaryContainer.withValues(alpha: .58),
+            ],
+          ),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color: Theme.of(context).colorScheme.outlineVariant.withValues(alpha: .5),
           ),
         ),
-        child: Row(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
           children: [
             AnimatedSwitcher(
               duration: const Duration(milliseconds: 220),
@@ -1603,9 +1625,7 @@ class _MusicHomeState extends State<MusicHome> {
               tooltip: 'Previous',
             ),
             IconButton(
-              onPressed: _switchingTrack
-                  ? null
-                  : () async {
+              onPressed: () async {
                       try {
                         await _playback.togglePlayPause();
                         if (mounted) setState(() => _playing = _playback.player.playing);
