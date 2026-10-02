@@ -678,12 +678,7 @@ class _MusicHomeState extends State<MusicHome> with SingleTickerProviderStateMix
                       borderRadius: BorderRadius.circular(20),
                       onTap: () => _selectTrack(track, source: _homeTracks),
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(18),
-                          child: track.thumbnail.isEmpty
-                              ? Container(width: 150, height: 125, color: const Color(0xFF31516B), child: const Icon(Icons.music_note_rounded, size: 34))
-                              : Image.network(track.thumbnail, width: 150, height: 125, fit: BoxFit.cover, errorBuilder: (_, __, ___) => Container(width: 150, height: 125, color: const Color(0xFF31516B), child: const Icon(Icons.music_note_rounded, size: 34))),
-                        ),
+                        _trackArtwork(track, width: 150, height: 125, radius: 18),
                         const SizedBox(height: 7),
                         Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis, style: const TextStyle(fontWeight: FontWeight.w700)),
                         Text(track.artist, maxLines: 1, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 11, color: Theme.of(context).colorScheme.onSurface.withValues(alpha: .6))),
@@ -764,7 +759,7 @@ class _MusicHomeState extends State<MusicHome> with SingleTickerProviderStateMix
             const SizedBox(height: 12),
             ..._likedTracks.take(4).map((track) => ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: ClipRRect(borderRadius: BorderRadius.circular(10), child: track.thumbnail.isEmpty ? Container(width: 52, height: 52, color: const Color(0xFF31516B), child: const Icon(Icons.music_note_rounded)) : Image.network(track.thumbnail, width: 52, height: 52, fit: BoxFit.cover)),
+              leading: _trackArtwork(track, width: 52, height: 52, radius: 10),
               title: Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis),
               subtitle: Text(track.artist, maxLines: 1, overflow: TextOverflow.ellipsis),
               onTap: () => _selectTrack(track, source: _likedTracks),
@@ -780,23 +775,7 @@ class _MusicHomeState extends State<MusicHome> with SingleTickerProviderStateMix
           if (_homeTracks.isNotEmpty)
             ..._homeTracks.skip(_homeTracks.length > 8 ? 4 : 0).take(6).map((track) => ListTile(
               contentPadding: EdgeInsets.zero,
-              leading: ClipRRect(
-                borderRadius: BorderRadius.circular(12),
-                child: track.thumbnail.isEmpty
-                    ? Container(width: 54, height: 54, color: Theme.of(context).colorScheme.surfaceContainerHighest, child: const Icon(Icons.music_note_rounded))
-                    : Image.network(
-                        track.thumbnail,
-                        width: 54,
-                        height: 54,
-                        fit: BoxFit.cover,
-                        errorBuilder: (_, __, ___) => Container(
-                          width: 54,
-                          height: 54,
-                          color: Theme.of(context).colorScheme.surfaceContainerHighest,
-                          child: const Icon(Icons.music_note_rounded),
-                        ),
-                      ),
-              ),
+              leading: _trackArtwork(track, width: 54, height: 54, radius: 12),
               title: Text(track.title, maxLines: 1, overflow: TextOverflow.ellipsis),
               subtitle: Text(track.artist, maxLines: 1, overflow: TextOverflow.ellipsis),
               trailing: IconButton(icon: const Icon(Icons.play_arrow_rounded), onPressed: () => _selectTrack(track, source: _homeTracks)),
@@ -1586,6 +1565,36 @@ class _MusicHomeState extends State<MusicHome> with SingleTickerProviderStateMix
       ),
     ),
   );
+  }
+
+  String _trackArtworkUrl(OnlineTrack track) {
+    if (track.thumbnail.isNotEmpty) return track.thumbnail;
+    return 'https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg';
+  }
+
+  Widget _trackArtwork(OnlineTrack track, {double width = 54, double height = 54, double radius = 12}) {
+    final fallback = 'https://i.ytimg.com/vi/${track.videoId}/hqdefault.jpg';
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(radius),
+      child: Image.network(
+        _trackArtworkUrl(track),
+        width: width,
+        height: height,
+        fit: BoxFit.cover,
+        errorBuilder: (_, __, ___) => Image.network(
+          fallback,
+          width: width,
+          height: height,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => Container(
+            width: width,
+            height: height,
+            color: Theme.of(context).colorScheme.surfaceContainerHighest,
+            child: const Icon(Icons.music_note_rounded),
+          ),
+        ),
+      ),
+    );
   }
 
   Widget _playerArtwork({required double size, double radius = 28, Key? key}) {
