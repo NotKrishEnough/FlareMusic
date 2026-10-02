@@ -13,11 +13,17 @@ class PlaybackController {
   }
   late final AudioPlayer player;
   bool _initialized = false;
+  StreamSubscription<int?>? _currentIndexSubscription;
 
   Future<void> initialize() async {
     if (_initialized) return;
     player = AudioPlayer(userAgent: 'FlareMusic/1.0 (Android)');
     _initialized = true;
+    _currentIndexSubscription = player.currentIndexStream.listen((value) {
+      if (value == null || value < 0 || value >= queue.length) return;
+      index = value;
+      unawaited(_persist());
+    });
   }
   final YouTubeStreamResolver resolver = YouTubeStreamResolver();
   final List<OnlineTrack> queue = [];
@@ -48,10 +54,59 @@ class PlaybackController {
 
   Future<void> playQueue(List<OnlineTrack> tracks, int startIndex, Future<String> Function(String) resolve) async {
     if (!_initialized || tracks.isEmpty || startIndex < 0 || startIndex >= tracks.length) return;
-    queue..clear()..addAll(tracks);
-    index = startIndex;
+
+    final sources = <AudioSource>[];
+    for (final track in tracks) {
+      final url = await resolve(track.videoId);
+      if (url.trim().isEmpty) continue;
+      sources.add(AudioSource.uri(
+        Uri.parse(url),
+        tag: MediaItem(
+          id: track.videoId,
+          title: track.title,
+          artist: track.artist,
+          album: 'FlareMusic',
+          displayTitle: track.title,
+          displaySubtitle: track.artist,
+          artUri: track.thumbnail.isNotEmpty ? Uri.tryParse(track.thumbnail) : null,
+        ),
+      ));
+    }
+
+    if (sources.isEmpty) {
+      throw StateError('No playable audio streams were returned.');
+    }
+
+    // Keep the logical queue aligned with the successfully resolved sources.
+    final playable = <OnlineTrack>[];
+    for (final source in sources) {
+      final tag = source.tag;
+      if (tag is! MediaItem) continue;
+      final original = tracks.cast<OnlineTrack?>().firstWhere(
+        (t) => t?.videoId == tag.id,
+        orElse: () => null,
+      );
+      if (original != null) playable.add(original);
+    }
+    if (playable.isEmpty) throw StateError('No playable tracks were returned.');
+
+    queue
+      ..clear()
+      ..addAll(playable);
+    index = startIndex.clamp(0, queue.length - 1);
+    final initialIndex = sources.indexWhere((source) {
+      final tag = source.tag;
+      return tag is MediaItem && tag.id == queue[index].videoId;
+    });
+    final safeInitialIndex = initialIndex < 0 ? 0 : initialIndex;
+
+    await player.setAudioSource(
+      ConcatenatingAudioSource(children: sources),
+      initialIndex: safeInitialIndex,
+    );
+    await player.setLoopMode(LoopMode.all);
     await _persist();
-    await playCurrent(resolve);
+    await player.play();
   }
 
   Future<void> playSelected(List<OnlineTrack> tracks, int startIndex) => playQueue(tracks, startIndex, resolver.resolve);
@@ -74,38 +129,39 @@ class PlaybackController {
     if (!_initialized) return;
     final track = current;
     if (track == null) return;
-    final url = await resolve(track.videoId);
-    if (url.trim().isEmpty) throw StateError('YouTube returned an empty audio stream.');
-    await player.setAudioSource(AudioSource.uri(
-      Uri.parse(url),
-      tag: MediaItem(
-        id: track.videoId,
-        title: track.title,
-        artist: track.artist,
-        album: 'FlareMusic',
-        displayTitle: track.title,
-        displaySubtitle: track.artist,
-        artUri: track.thumbnail.isNotEmpty ? Uri.tryParse(track.thumbnail) : null,
-      ),
-    ));
-    await player.play();
-    await _persist();
-    if (index + 1 < queue.length) unawaited(resolver.preload(queue[index + 1].videoId));
-    if (index > 0) unawaited(resolver.preload(queue[index - 1].videoId));
+
+    final source = player.audioSource;
+    if (source is ConcatenatingAudioSource) {
+      final targetIndex = player.currentIndex;
+      if (targetIndex != null && targetIndex >= 0 && targetIndex < queue.length) {
+        index = targetIndex;
+        await player.play();
+        await _persist();
+        return;
+      }
+    }
+
+    await playQueue(queue, index, resolve);
   }
 
   Future<void> next(Future<String> Function(String) resolve) async {
     if (queue.isEmpty) return;
-    index = (index + 1) % queue.length;
-    await _persist();
-    await playCurrent(resolve);
+    if (player.hasNext) {
+      await player.seekToNext();
+      return;
+    }
+    await player.seek(Duration.zero, index: 0);
+    await player.play();
   }
 
   Future<void> previous(Future<String> Function(String) resolve) async {
     if (queue.isEmpty) return;
-    index = index <= 0 ? queue.length - 1 : index - 1;
-    await _persist();
-    await playCurrent(resolve);
+    if (player.hasPrevious) {
+      await player.seekToPrevious();
+      return;
+    }
+    await player.seek(Duration.zero, index: queue.length - 1);
+    await player.play();
   }
 
   Future<void> _persist() async {
@@ -118,5 +174,9 @@ class PlaybackController {
     await prefs.setInt('flare.queue.index', index);
   }
 
-  Future<void> dispose() async { await resolver.close(); if (_initialized) await player.dispose(); }
+  Future<void> dispose() async {
+    await _currentIndexSubscription?.cancel();
+    await resolver.close();
+    if (_initialized) await player.dispose();
+  }
 }
