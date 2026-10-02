@@ -82,8 +82,8 @@ private object FlarePreferences {
     val accentIndex = mutableIntStateOf(0)
     val animations = mutableStateOf(true)
     val compact = mutableStateOf(false)
-    val dynamicColors = mutableStateOf(true)
-    val dynamicAccent = mutableStateOf(Color(0xFFFF694F))
+    val dynamicColors = mutableStateOf(false)
+    val dynamicAccent = mutableStateOf(Color(0xFFFF6B4A))
     val swipeToMinimize = mutableStateOf(true)
     val swipeToChangeTracks = mutableStateOf(true)
     val accents = listOf(
@@ -257,17 +257,17 @@ class MainActivity : ComponentActivity() {
     val accent = systemPalette?.primary ?: FlarePreferences.accents[FlarePreferences.accentIndex.intValue.coerceIn(0, FlarePreferences.accents.lastIndex)]
     val darkFallback = darkColorScheme(
         primary = accent, secondary = accent.copy(alpha = .85f), tertiary = Mint,
-        background = Color(0xFF101116), surface = Color(0xFF171922), surfaceVariant = Color(0xFF292D39),
+        background = Color(0xFF0B0D12), surface = Color(0xFF151922), surfaceVariant = Color(0xFF242B36),
         onPrimary = Color.White, onSecondary = Color(0xFF101116), onTertiary = Color(0xFF101116),
         onBackground = Color.White, onSurface = Color.White, onSurfaceVariant = Color(0xFFE1E3EA),
         inverseSurface = Color(0xFFE1E3EA), inverseOnSurface = Color(0xFF17191F)
     )
     val lightFallback = lightColorScheme(
         primary = accent, secondary = accent.copy(alpha = .85f), tertiary = accent,
-        background = Color(0xFFF7F7FB), surface = Color(0xFFFFFFFF), surfaceVariant = Color(0xFFE9EAF1),
+        background = Color(0xFFFFF8F3), surface = Color(0xFFFFFFFF), surfaceVariant = Color(0xFFF2E8E1),
         onPrimary = Color.White, onSecondary = Color.White, onTertiary = Color.White,
         onBackground = Color(0xFF171821), onSurface = Color(0xFF171821), onSurfaceVariant = Color(0xFF555966),
-        outlineVariant = Color(0xFFD5D7E0)
+        outlineVariant = Color(0xFFE4D6CC)
     )
     val wallpaperScheme = systemPalette ?: if (darkMode) darkFallback else lightFallback
     SideEffect {
@@ -928,7 +928,7 @@ class MainActivity : ComponentActivity() {
     Column(Modifier.fillMaxSize().background(colors.background).verticalScroll(rememberScrollState()).padding(horizontal = 22.dp)) {
         Row(Modifier.fillMaxWidth().padding(top = 22.dp), verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
-                Text("YOUR SOUND, YOUR SPACE", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp)
+                Text("FLAREMUSIC  /  LISTEN YOUR WAY", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp)
                 Text("Good music.\nGood moments.", color = colors.onBackground, fontSize = 34.sp, lineHeight = 38.sp, fontWeight = FontWeight.Bold, letterSpacing = (-1).sp, modifier = Modifier.padding(top = 9.dp))
             }
             Box(Modifier.size(48.dp).clip(RoundedCornerShape(17.dp)).background(colors.primaryContainer.copy(alpha = 0.75f)), contentAlignment = Alignment.Center) {
@@ -936,12 +936,12 @@ class MainActivity : ComponentActivity() {
             }
         }
         Spacer(Modifier.height(24.dp))
-        Box(Modifier.fillMaxWidth().height(224.dp).clip(RoundedCornerShape(28.dp)).background(Brush.linearGradient(listOf(colors.primary.copy(alpha = 0.88f), colors.secondary.copy(alpha = 0.78f), colors.tertiary.copy(alpha = 0.68f)))).clickable { openLibrary() }) {
+        Box(Modifier.fillMaxWidth().height(224.dp).clip(RoundedCornerShape(30.dp)).background(Brush.linearGradient(listOf(Color(0xFFFF744F), Color(0xFFB65D82), Color(0xFF6859B8)))).clickable { openLibrary() }) {
             Box(Modifier.align(Alignment.TopEnd).padding(16.dp).size(140.dp).clip(RoundedCornerShape(70.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = .07f)), contentAlignment = Alignment.Center) {
                 Box(Modifier.size(104.dp).clip(RoundedCornerShape(52.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = .06f)), contentAlignment = Alignment.Center) { Icon(Icons.Rounded.GraphicEq, null, tint = accent.copy(alpha = .72f), modifier = Modifier.size(58.dp)) }
             }
             Column(Modifier.align(Alignment.BottomStart).padding(22.dp)) {
-                Text("MADE FOR THE MOMENT", color = accent.copy(alpha = .82f), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp)
+                Text("YOUR NEXT REPEAT", color = MaterialTheme.colorScheme.onSurface.copy(alpha = .78f), fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.6.sp)
                 Text("Let the music\ntake over.", color = MaterialTheme.colorScheme.onSurface, fontSize = 28.sp, lineHeight = 31.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 7.dp))
                 Row(Modifier.padding(top = 13.dp).clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.onSurface.copy(alpha = .16f)).padding(horizontal = 13.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text("Explore library", color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
