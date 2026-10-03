@@ -119,10 +119,37 @@ class PlaybackController {
       ..add(selected);
     index = 0;
 
-    await player.setAudioSource(concat, initialIndex: 0);
-    await player.setLoopMode(LoopMode.all);
-    await _persist();
-    await player.play();
+    // A stream can resolve successfully but still be rejected by Android's
+    // decoder/CDN (403, expired URL, unsupported container). Try another
+    // extracted candidate before giving up on the selected track.
+    Object? lastError;
+    var started = false;
+    for (var attempt = 0; attempt < 3 && !started; attempt++) {
+      try {
+        if (attempt > 0) {
+          await player.stop();
+          await resolver.invalidate(selected.videoId);
+          final refreshed = await _sourceFor(selected, resolve);
+          await concat.clear();
+          await concat.add(refreshed);
+        }
+        await player.setAudioSource(concat, initialIndex: 0);
+        await player.setLoopMode(LoopMode.all);
+        await _persist();
+        await player.play();
+        started = true;
+      } catch (error) {
+        lastError = error;
+        // Mark the exact URL used on this attempt as bad so resolve() can
+        // move to the next candidate on the following pass.
+        await resolver.invalidate(selected.videoId);
+      }
+    }
+    if (!started) {
+      throw StateError(
+        'Could not start this YouTube stream after 3 attempts: $lastError',
+      );
+    }
 
     // Build the rest of the queue after playback has already started.
     final remaining = <OnlineTrack>[
