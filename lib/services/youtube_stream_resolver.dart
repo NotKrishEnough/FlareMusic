@@ -116,7 +116,10 @@ class YouTubeStreamResolver {
     }
 
     await addManifest(videoId);
-    if (result.isEmpty && allowSearchFallback) {
+    if (allowSearchFallback) {
+      // On a retry, direct extraction may still return a URL already rejected
+      // by the player. Append the conservative title/artist match as a true
+      // alternate rather than returning the same CDN URL again.
       await _addSearchFallback(videoId, result, seen);
     }
     _cache[videoId] = result;
