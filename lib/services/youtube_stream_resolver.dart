@@ -1,394 +1,270 @@
 import 'dart:async';
-import 'dart:convert';
-import 'dart:io';
 
-import 'package:flutter/services.dart';
-import 'package:http/http.dart' as http;
-import 'package:youtube_explode_dart/youtube_explode_dart.dart';
+import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 
-/// FlareMusic playback resolver.
-///
-/// YouTube media URLs are short-lived playback leases. We therefore use
-/// several InnerTube playback clients, validate URLs before handing them to
-/// the decoder, track failed candidates, and fall back to native extraction.
+/// FlareMusic stream resolver using the same extraction order as DA-Tunes:
+/// VISIONOS, Android, then Android SDK-less; prefer MP4 audio and only use a
+/// title/artist search fallback when the original video cannot be extracted.
 class YouTubeStreamResolver {
-  YouTubeStreamResolver({http.Client? client}) : _http = client ?? http.Client();
+  YouTubeStreamResolver() : _youtube = yt.YoutubeExplode();
 
-  final http.Client _http;
-  final YoutubeExplode _youtube = YoutubeExplode();
-  static const _native = MethodChannel('flare_music/native_resolver');
-  static const _musicApiKey = 'AIzaSyC9XL3ZjWddXya6X74dJoCTL-WEYFDNX30';
-  static const _browserUa =
-      'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 '
-      'Chrome/125.0.0.0 Mobile Safari/537.36';
+  final yt.YoutubeExplode _youtube;
+  final Map<String, List<_StreamCandidate>> _cache = {};
+  final Map<String, Set<String>> _failed = {};
+  final Map<String, String> _lastUrl = {};
 
-  static const _clients = <_PlayerClient>[
-    _PlayerClient(
-      name: 'WEB_REMIX',
-      id: '67',
-      version: '1.20260202.01.00',
-      host: 'music.youtube.com',
-      origin: 'https://music.youtube.com',
-    ),
-    _PlayerClient(
-      name: 'ANDROID_VR',
-      id: '28',
-      version: '1.65.10',
-      host: 'www.youtube.com',
-      origin: 'https://www.youtube.com',
-      userAgent:
-          'com.google.android.apps.youtube.vr.oculus/1.65.10 '
-          '(Linux; U; Android 14) gzip',
-    ),
-    _PlayerClient(
-      name: 'IOS',
-      id: '5',
-      version: '21.03.2',
-      host: 'www.youtube.com',
-      origin: 'https://www.youtube.com',
-      userAgent:
-          'com.google.ios.youtube/21.03.2 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X)',
-    ),
-    _PlayerClient(
-      name: 'ANDROID_MUSIC',
-      id: '21',
-      version: '5.34.51',
-      host: 'music.youtube.com',
-      origin: 'https://music.youtube.com',
-    ),
-    _PlayerClient(
-      name: 'WEB',
-      id: '1',
-      version: '2.20260205.01.00',
-      host: 'www.youtube.com',
-      origin: 'https://www.youtube.com',
-    ),
+  static const yt.YoutubeApiClient _visionOsClient = yt.YoutubeApiClient({
+    'context': {
+      'client': {
+        'clientName': 'VISIONOS',
+        'clientVersion': '1.02',
+        'deviceMake': 'Apple',
+        'deviceModel': 'RealityDevice17,1',
+        'userAgent':
+            'Mozilla/5.0 (Macintosh; Intel Mac OS X 15_7_3) '
+            'AppleWebKit/605.1.15 (KHTML, like Gecko) Version/26.0 Safari/605.1.15',
+        'osName': 'visionOS',
+        'osVersion': '26.5.23O471',
+        'hl': 'en',
+        'gl': 'US',
+        'utcOffsetMinutes': 0,
+      }
+    }
+  }, 'https://www.youtube.com/youtubei/v1/player?prettyPrint=false');
+
+  static const List<yt.YoutubeApiClient> _clients = [
+    _visionOsClient,
+    yt.YoutubeApiClient.android,
+    yt.YoutubeApiClient.androidSdkless,
   ];
 
-  final Map<String, List<_Candidate>> _candidateCache = <String, List<_Candidate>>{};
-  final Map<String, Set<String>> _failedUrls = <String, Set<String>>{};
-  final Map<String, String> _lastResolvedUrl = <String, String>{};
-  // Avoid duplicate extraction when the player and preloader request the same
-  // track together. Failed clients cool down briefly instead of being retried
-  // for every track in a queue.
-  final Map<String, Future<List<_Candidate>>> _inFlight = {};
-  final Map<String, DateTime> _clientCooldownUntil = {};
-  static const _cacheSafetyWindow = Duration(seconds: 60);
-  static const _clientCooldown = Duration(minutes: 2);
-
   Future<String> resolve(String videoId) async {
-    final candidates = await _candidatesFor(videoId);
-    final failed = _failedUrls[videoId] ?? <String>{};
-
+    var candidates = await _getCandidates(videoId);
+    final failed = _failed[videoId] ?? <String>{};
     for (final candidate in candidates) {
-      if (failed.contains(candidate.url)) continue;
-      if (_isExpired(candidate)) continue;
-      // Validate the signed URL with the same browser identity used by the
-      // audio source. YouTube can return an apparently valid player response
-      // whose CDN URL is already forbidden; don't hand that URL to just_audio
-      // and waste all retry attempts on it.
-      final status = await _probeCandidate(candidate.url);
-      if (status != null && (status == 401 || status == 403 || status == 404 || status == 410)) {
-        _failedUrls.putIfAbsent(videoId, () => <String>{}).add(candidate.url);
-        continue;
-      }
-      _failedUrls.putIfAbsent(videoId, () => <String>{});
-      _lastResolvedUrl[videoId] = candidate.url;
+      if (candidate.expired || failed.contains(candidate.url)) continue;
+      _lastUrl[videoId] = candidate.url;
       return candidate.url;
     }
 
-    // Refresh once, but never silently clear the failed-URL blacklist: doing
-    // so can make every retry return the same rejected URL.
-    _candidateCache.remove(videoId);
-    final fresh = await _candidatesFor(videoId);
-    for (final candidate in fresh) {
-      if (_failedUrls[videoId]?.contains(candidate.url) ?? false) continue;
-      if (_isExpired(candidate)) continue;
-      final status = await _probeCandidate(candidate.url);
-      if (status != null && (status == 401 || status == 403 || status == 404 || status == 410)) {
-        _failedUrls.putIfAbsent(videoId, () => <String>{}).add(candidate.url);
-        continue;
-      }
-      _lastResolvedUrl[videoId] = candidate.url;
+    // Refresh once after a rejected URL. If direct extraction still returns
+    // only failed URLs, allow the DA-Tunes title/artist fallback to run.
+    _cache.remove(videoId);
+    candidates = await _extract(videoId, allowSearchFallback: true);
+    for (final candidate in candidates) {
+      if (candidate.expired || (_failed[videoId]?.contains(candidate.url) ?? false)) continue;
+      _lastUrl[videoId] = candidate.url;
       return candidate.url;
     }
-    throw StateError('No new playable YouTube audio stream was found.');
+    throw StateError('DA-Tunes extraction found no new audio-only stream for $videoId.');
   }
 
   Future<void> invalidate(String videoId, {String? failedUrl}) async {
-    final urlToFail = failedUrl ?? _lastResolvedUrl[videoId];
-    if (urlToFail != null && urlToFail.isNotEmpty) {
-      _failedUrls.putIfAbsent(videoId, () => <String>{}).add(urlToFail);
+    final url = failedUrl ?? _lastUrl[videoId];
+    if (url != null && url.isNotEmpty) {
+      _failed.putIfAbsent(videoId, () => <String>{}).add(url);
     }
-    _candidateCache.remove(videoId);
-    try {
-      if (Platform.isAndroid) {
-        await _native.invokeMethod<void>(
-          'invalidate',
-          <String, dynamic>{'videoId': videoId},
-        );
-      }
-    } catch (_) {}
+    _cache.remove(videoId);
   }
 
-  Future<List<_Candidate>> _candidatesFor(String videoId) async {
-    final cached = _candidateCache[videoId];
-    if (cached != null && cached.any((item) => !_isExpired(item))) {
-      return cached.where((item) => !_isExpired(item)).toList();
+  Future<List<_StreamCandidate>> _getCandidates(String videoId) async {
+    final cached = _cache[videoId];
+    if (cached != null && cached.any((item) => !item.expired)) {
+      return cached.where((item) => !item.expired).toList();
     }
-    final pending = _inFlight[videoId];
-    if (pending != null) return pending;
-    final work = _extractCandidates(videoId);
-    _inFlight[videoId] = work;
-    try {
-      return await work;
-    } finally {
-      if (identical(_inFlight[videoId], work)) _inFlight.remove(videoId);
-    }
+    return _extract(videoId, allowSearchFallback: false);
   }
 
-  Future<List<_Candidate>> _extractCandidates(String videoId) async {
-
-    final candidates = <_Candidate>[];
+  Future<List<_StreamCandidate>> _extract(
+    String videoId, {
+    required bool allowSearchFallback,
+  }) async {
+    final result = <_StreamCandidate>[];
     final seen = <String>{};
 
-    Future<void> addCandidate(String? url, {DateTime? expiresAt}) async {
-      if (url == null || url.trim().isEmpty) return;
-      final normalized = url.trim();
-      if (!normalized.startsWith('https://')) return;
-      if (!seen.add(normalized)) return;
-      if (!_looksLikeMediaUrl(normalized)) return;
-      // Do not probe a signed googlevideo URL with a separate HTTP client.
-      // The probe can be rejected due to request identity even when the
-      // platform decoder can play it, and it can consume the signed URL.
-      candidates.add(_Candidate(
-        normalized,
-        expiresAt ?? _expiryFromUrl(normalized),
-      ));
-    }
-
-    // Native NewPipe is the primary Android extractor. It handles
-    // YouTube's signature/SABR changes and owns its short-lived URL cache.
-    if (Platform.isAndroid) {
-      try {
-        final url = await _native
-            .invokeMethod<String>(
-              'resolve',
-              <String, dynamic>{'videoId': videoId},
-            )
-            .timeout(const Duration(seconds: 30));
-        await addCandidate(url);
-      } catch (_) {}
-    }
-
-    // Use several first-party InnerTube playback client profiles, following
-    // the same fallback idea used by modern Android music clients.
-    for (final client in _clients) {
-      final cooldown = _clientCooldownUntil[client.name];
-      if (cooldown != null && cooldown.isAfter(DateTime.now())) continue;
-      try {
-        final response = await _player(videoId, client);
-        if (response == null) continue;
-        final root = jsonDecode(response);
-        if (root is! Map) continue;
-        final streaming = root['streamingData'];
-        if (streaming is! Map) continue;
-
-        final expiresSeconds =
-            int.tryParse(streaming['expiresInSeconds']?.toString() ?? '');
-        final expiry = expiresSeconds == null
-            ? null
-            : DateTime.now().add(Duration(seconds: expiresSeconds));
-
-        final rawAdaptive = streaming['adaptiveFormats'];
-        final rawFormats = streaming['formats'];
-        final formats = <Map>[];
-        if (rawAdaptive is List) {
-          formats.addAll(rawAdaptive.whereType<Map>());
+    Future<void> addManifest(String id) async {
+      for (final client in _clients) {
+        try {
+          final manifest = await _youtube.videos.streamsClient
+              .getManifest(
+                id,
+                ytClients: [client],
+                requireWatchPage: false,
+              )
+              .timeout(const Duration(seconds: 18));
+          final streams = manifest.audioOnly
+              .where((stream) => stream.url.toString().startsWith('https://'))
+              .toList();
+          // Match DA-Tunes: prefer MP4/M4A audio when available, then use
+          // the highest bitrate within that set.
+          var preferred = streams
+              .where((stream) => stream.container.name.toLowerCase() == 'mp4')
+              .toList();
+          if (preferred.isEmpty) preferred = streams;
+          preferred.sort((a, b) => b.bitrate.bitsPerSecond.compareTo(a.bitrate.bitsPerSecond));
+          for (final stream in preferred.take(2)) {
+            final url = stream.url.toString();
+            if (seen.add(url)) {
+              result.add(_StreamCandidate(url, _expiryFromUrl(url)));
+            }
+          }
+          if (result.isNotEmpty) return;
+        } catch (_) {
+          // Try the next client profile.
         }
-        if (rawFormats is List) {
-          formats.addAll(rawFormats.whereType<Map>());
-        }
-        formats.sort((a, b) {
-          final aAudio = (a['mimeType']?.toString() ?? '').startsWith('audio/') ? 1 : 0;
-          final bAudio = (b['mimeType']?.toString() ?? '').startsWith('audio/') ? 1 : 0;
-          if (aAudio != bAudio) return bAudio.compareTo(aAudio);
-          final aRate = int.tryParse(a['bitrate']?.toString() ?? '') ?? 0;
-          final bRate = int.tryParse(b['bitrate']?.toString() ?? '') ?? 0;
-          return bRate.compareTo(aRate);
-        });
-
-        for (final format in formats) {
-          final mime = format['mimeType']?.toString() ?? '';
-          if (!mime.startsWith('audio/')) continue;
-          final url = format['url']?.toString();
-          if (url == null || url.isEmpty) continue;
-          await addCandidate(url, expiresAt: expiry);
-          if (candidates.length >= 3) break;
-        }
-        _clientCooldownUntil.remove(client.name);
-        if (candidates.length >= 3) break;
-      } catch (_) {
-        _clientCooldownUntil[client.name] = DateTime.now().add(_clientCooldown);
       }
     }
 
-    // Final cross-platform fallback.
-    final ytClients = <YoutubeApiClient>[
-      YoutubeApiClient.ios,
-      YoutubeApiClient.safari,
-      YoutubeApiClient.tv,
-      YoutubeApiClient.mediaConnect,
-      YoutubeApiClient.androidSdkless,
-    ];
-    for (final client in ytClients) {
-      try {
-        final manifest = await _youtube.videos.streamsClient
-            .getManifest(
-              videoId,
-              ytClients: <YoutubeApiClient>[client],
-              requireWatchPage: false,
-            )
-            .timeout(const Duration(seconds: 20));
-
-        final streams = manifest.audioOnly
-            .where((stream) => stream.url.toString().startsWith('https://'))
-            .toList()
-          ..sort((a, b) => b.bitrate.bitsPerSecond.compareTo(a.bitrate.bitsPerSecond));
-        for (final stream in streams.take(2)) {
-          await addCandidate(stream.url.toString());
-        }
-        if (candidates.length >= 4) break;
-      } catch (_) {}
+    await addManifest(videoId);
+    if (result.isEmpty && allowSearchFallback) {
+      await _addSearchFallback(videoId, result, seen);
     }
-
-    _candidateCache[videoId] = candidates;
-    return candidates;
+    _cache[videoId] = result;
+    return result;
   }
 
-  Future<String?> _player(String videoId, _PlayerClient client) async {
-    final endpoint =
-        'https://${client.host}/youtubei/v1/player'
-        '?key=$_musicApiKey&prettyPrint=false';
-    final headers = <String, String>{
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'User-Agent': client.userAgent,
-      'Origin': client.origin,
-      'Referer': '${client.origin}/',
-      'X-Youtube-Client-Name': client.id,
-      'X-Youtube-Client-Version': client.version,
-    };
-    final body = <String, dynamic>{
-      'context': <String, dynamic>{
-        'client': <String, dynamic>{
-          'clientName': client.name,
-          'clientVersion': client.version,
-          'hl': 'en',
-          'gl': 'US',
-        },
-      },
-      'videoId': videoId,
-      'contentCheckOk': true,
-      'racyCheckOk': true,
-      'playbackContext': <String, dynamic>{
-        'contentPlaybackContext': <String, dynamic>{
-          'html5Preference': 'HTML5_PREF_WANTS',
-        },
-      },
-    };
-    if (client.name == 'WEB_REMIX' || client.name == 'ANDROID_MUSIC') {
-      body['context']['client']['musicAppInfo'] = <String, dynamic>{
-        'musicActivityMasterSwitch': 'MUSIC_ACTIVITY_MASTER_SWITCH_ENABLED',
-        'musicLocationMasterSwitch': 'MUSIC_LOCATION_MASTER_SWITCH_ENABLED',
-      };
-    }
-    final response = await _http
-        .post(Uri.parse(endpoint), headers: headers, body: jsonEncode(body))
-        .timeout(const Duration(seconds: 15));
-    if (response.statusCode < 200 || response.statusCode >= 300) return null;
-    return response.body;
-  }
-
-  /// Makes a one-byte range request to catch expired/forbidden CDN URLs
-  /// before handing them to the player. Returns null when the probe itself
-  /// cannot establish a status, so transient probe failures don't block play.
-  Future<int?> _probeCandidate(String url) async {
+  Future<void> _addSearchFallback(
+    String originalId,
+    List<_StreamCandidate> output,
+    Set<String> seen,
+  ) async {
     try {
-      final request = http.Request('GET', Uri.parse(url))
-        ..followRedirects = true
-        ..maxRedirects = 5
-        ..headers.addAll(<String, String>{
-          'User-Agent': _browserUa,
-          'Referer': 'https://www.youtube.com/',
-          'Origin': 'https://www.youtube.com',
-          'Accept': '*/*',
-          'Range': 'bytes=0-0',
-        });
-      final response = await _http.send(request).timeout(const Duration(seconds: 8));
-      final status = response.statusCode;
-      await response.stream.listen((_) {}).cancel();
-      return status;
+      final original = await _youtube.videos.get(originalId).timeout(const Duration(seconds: 10));
+      final query = '${original.author} ${original.title}'
+          .replaceAll(RegExp(r'\s+'), ' ')
+          .trim();
+      if (query.isEmpty) return;
+      final results = await _youtube.search.searchContent(query).timeout(const Duration(seconds: 12));
+      final videos = results.whereType<yt.SearchVideo>().toList();
+      final selected = _rankFallback(
+        videos,
+        originalId: originalId,
+        title: original.title,
+        artist: original.author,
+        duration: original.duration ?? Duration.zero,
+      );
+      if (selected == null) return;
+
+      for (final client in _clients) {
+        try {
+          final manifest = await _youtube.videos.streamsClient
+              .getManifest(
+                selected.id.value,
+                ytClients: [client],
+                requireWatchPage: false,
+              )
+              .timeout(const Duration(seconds: 18));
+          var streams = manifest.audioOnly
+              .where((stream) => stream.url.toString().startsWith('https://'))
+              .toList();
+          final mp4 = streams.where((stream) => stream.container.name.toLowerCase() == 'mp4').toList();
+          if (mp4.isNotEmpty) streams = mp4;
+          streams.sort((a, b) => b.bitrate.bitsPerSecond.compareTo(a.bitrate.bitsPerSecond));
+          for (final stream in streams.take(2)) {
+            final url = stream.url.toString();
+            if (seen.add(url)) output.add(_StreamCandidate(url, _expiryFromUrl(url)));
+          }
+          if (output.isNotEmpty) return;
+        } catch (_) {}
+      }
     } catch (_) {
-      return null;
+      // Keep the original extraction error as the final user-visible failure.
     }
   }
 
-  bool _looksLikeMediaUrl(String url) =>
-      url.contains('googlevideo.com') || url.contains('youtube.com');
+  yt.SearchVideo? _rankFallback(
+    List<yt.SearchVideo> candidates, {
+    required String originalId,
+    required String title,
+    required String artist,
+    required Duration duration,
+  }) {
+    final cleanTitle = _normalize(title);
+    final cleanArtist = _normalize(artist.replaceAll(' - Topic', '').replaceAll('VEVO', ''));
+    if (cleanTitle.isEmpty || cleanArtist.isEmpty) return null;
 
-  bool _isExpired(_Candidate candidate) {
-    final expiry = candidate.expiresAt;
-    return expiry != null &&
-        !expiry.isAfter(DateTime.now().add(_cacheSafetyWindow));
+    yt.SearchVideo? best;
+    var bestScore = -999999;
+    for (final candidate in candidates) {
+      if (candidate.id.value == originalId) continue;
+      final candidateTitle = _normalize(candidate.title);
+      final candidateArtist = _normalize(candidate.author.replaceAll(' - Topic', '').replaceAll('VEVO', ''));
+      final artistMatch = candidateArtist == cleanArtist ||
+          candidateArtist.contains(cleanArtist) ||
+          cleanArtist.contains(candidateArtist);
+      final titleMatch = candidateTitle == cleanTitle ||
+          candidateTitle.contains(cleanTitle) ||
+          cleanTitle.contains(candidateTitle);
+      if (!artistMatch || !titleMatch) continue;
+
+      var score = 0;
+      score += candidateArtist == cleanArtist ? 2000 : 1000;
+      score += candidateTitle == cleanTitle ? 2000 : 1000;
+      final candidateDuration = _parseDuration(candidate.duration);
+      final diff = (candidateDuration.inSeconds - duration.inSeconds).abs();
+      if (duration > Duration.zero) {
+        if (diff <= 3) {
+          score += 1200;
+        } else if (diff <= 8) {
+          score += 600;
+        } else if (diff > 30) {
+          score -= 1500;
+        }
+      }
+      final lowerTitle = candidate.title.toLowerCase();
+      if (lowerTitle.contains('remix') && !title.toLowerCase().contains('remix')) score -= 3000;
+      if (lowerTitle.contains('cover') || lowerTitle.contains('karaoke') ||
+          lowerTitle.contains('instrumental') || lowerTitle.contains('fan-made')) {
+        score -= 3000;
+      }
+      if (candidate.author.endsWith(' - Topic')) score += 1500;
+      if (score > bestScore) {
+        bestScore = score;
+        best = candidate;
+      }
+    }
+    return bestScore >= 400 ? best : null;
+  }
+
+  String _normalize(String value) => value
+      .toLowerCase()
+      .replaceAll(RegExp(r'\(.*?\)|\[.*?\]'), '')
+      .replaceAll('&', 'and')
+      .replaceAll(RegExp(r'[^a-z0-9]'), '');
+
+  Duration _parseDuration(String? value) {
+    if (value == null || value.isEmpty) return Duration.zero;
+    final parts = value.split(':').map(int.tryParse).toList();
+    if (parts.any((part) => part == null)) return Duration.zero;
+    if (parts.length == 3) {
+      return Duration(hours: parts[0]!, minutes: parts[1]!, seconds: parts[2]!);
+    }
+    if (parts.length == 2) {
+      return Duration(minutes: parts[0]!, seconds: parts[1]!);
+    }
+    return Duration.zero;
   }
 
   DateTime? _expiryFromUrl(String url) {
     try {
-      final value = int.tryParse(Uri.parse(url).queryParameters['expire'] ?? '');
-      if (value == null) return null;
-      return DateTime.fromMillisecondsSinceEpoch(value * 1000);
+      final seconds = int.tryParse(Uri.parse(url).queryParameters['expire'] ?? '');
+      return seconds == null ? null : DateTime.fromMillisecondsSinceEpoch(seconds * 1000);
     } catch (_) {
       return null;
     }
   }
 
-  Future<void> preload(String videoId) async {
-    try {
-      await resolve(videoId);
-    } catch (_) {}
-  }
-
   Future<void> close() async {
-    _candidateCache.clear();
-    _failedUrls.clear();
-    _lastResolvedUrl.clear();
-    _inFlight.clear();
-    _clientCooldownUntil.clear();
-    _http.close();
+    _cache.clear();
+    _failed.clear();
+    _lastUrl.clear();
     _youtube.close();
   }
 }
 
-class _Candidate {
-  const _Candidate(this.url, this.expiresAt);
+class _StreamCandidate {
+  const _StreamCandidate(this.url, this.expiresAt);
   final String url;
   final DateTime? expiresAt;
-}
-
-class _PlayerClient {
-  const _PlayerClient({
-    required this.name,
-    required this.id,
-    required this.version,
-    required this.host,
-    required this.origin,
-    this.userAgent = YouTubeStreamResolver._browserUa,
-  });
-  final String name;
-  final String id;
-  final String version;
-  final String host;
-  final String origin;
-  final String userAgent;
+  bool get expired => expiresAt != null && !expiresAt!.isAfter(DateTime.now());
 }
