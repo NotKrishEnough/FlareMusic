@@ -277,7 +277,13 @@ class YouTubeStreamResolver {
           .timeout(const Duration(seconds: 10));
       final statusOk = response.statusCode == 200 || response.statusCode == 206;
       final contentType = (response.headers['content-type'] ?? '').toLowerCase();
-      await response.stream.drain();
+      // Consume only the first returned chunk. Some CDNs ignore Range and a
+      // full drain here would download the entire song just to validate it.
+      if (statusOk) {
+        try {
+          await response.stream.first;
+        } catch (_) {}
+      }
       if (!statusOk) return false;
       if (contentType.isEmpty) return true;
       return contentType.startsWith('audio/') ||
