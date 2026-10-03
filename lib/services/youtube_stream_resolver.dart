@@ -186,7 +186,7 @@ class YouTubeStreamResolver {
     }
 
     // Final cross-platform fallback.
-    const ytClients = <YoutubeApiClient>[
+    final ytClients = <YoutubeApiClient>[
       YoutubeApiClient.ios,
       YoutubeApiClient.safari,
       YoutubeApiClient.tv,
@@ -227,7 +227,7 @@ class YouTubeStreamResolver {
       'Accept': 'application/json',
       'User-Agent': client.userAgent,
       'Origin': client.origin,
-      'Referer': client.origin + '/',
+      'Referer': '${client.origin}/',
       'X-Youtube-Client-Name': client.id,
       'X-Youtube-Client-Version': client.version,
     };
