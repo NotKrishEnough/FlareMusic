@@ -91,28 +91,9 @@ class PlaybackController {
         album: 'FlareMusic',
         displayTitle: track.title,
         displaySubtitle: track.artist,
-        // just_audio_background uses the media item's duration for seek
-        // actions. Always provide a non-null duration, even when YouTube's
-        // search result omitted or malformed its length text.
-        duration: _durationFromTrack(track.duration),
         artUri: track.thumbnail.isNotEmpty ? Uri.tryParse(track.thumbnail) : null,
       ),
     );
-  }
-
-  Duration _durationFromTrack(String raw) {
-    final parts = raw.trim().split(':').map(int.tryParse).toList();
-    if (parts.length == 2 && parts[0] != null && parts[1] != null) {
-      return Duration(minutes: parts[0]!, seconds: parts[1]!);
-    }
-    if (parts.length == 3 && parts.every((part) => part != null)) {
-      return Duration(
-        hours: parts[0]!,
-        minutes: parts[1]!,
-        seconds: parts[2]!,
-      );
-    }
-    return Duration.zero;
   }
 
   Future<void> playQueue(
