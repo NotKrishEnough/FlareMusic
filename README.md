@@ -159,4 +159,4 @@ Issues and pull requests are welcome. When reporting a bug, include your device 
 
 ## License
 
-FlareMusic is licensed under the [Apache License 2.0](LICENSE). You may use, modify, and distribute the project under its terms. See the `LICENSE` file for the full license text. Third-party dependencies and assets may be subject to their own licenses.
+FlareMusic is licensed under the [GNU General Public License v3.0](LICENSE) (GPL-3.0-only). You may use, modify, and redistribute the project under the terms of that license. See `LICENSE` for the full text. Third-party dependencies and assets may be subject to their own licenses.
