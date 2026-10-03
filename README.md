@@ -72,6 +72,10 @@ The `Flutter Android` workflow is located at [`.github/workflows/flutter-android
 
 The release workflow is defined in [`.github/workflows/release.yml`](.github/workflows/release.yml). Check that workflow's triggers and inputs before starting a release; the available options may change as development continues. Published builds and release notes are available from the repository's [Releases page](https://github.com/NotKrishEnough/FlareMusic/releases).
 
+## Credits
+
+- [DA-Tunes](https://github.com/VikrantRuhela/DA-Tunes) — credited for its YouTube audio extraction approach, which informed FlareMusic's stream-resolution implementation.
+
 ## Contributing
 
 Issues and pull requests are welcome. When reporting a bug, include your device model, Android version, steps to reproduce, and relevant build or crash logs. Please do not post private account data, session cookies, or other secrets.
