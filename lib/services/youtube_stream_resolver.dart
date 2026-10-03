@@ -83,6 +83,15 @@ class YouTubeStreamResolver {
     for (final candidate in candidates) {
       if (failed.contains(candidate.url)) continue;
       if (_isExpired(candidate)) continue;
+      // Validate the signed URL with the same browser identity used by the
+      // audio source. YouTube can return an apparently valid player response
+      // whose CDN URL is already forbidden; don't hand that URL to just_audio
+      // and waste all retry attempts on it.
+      final status = await _probeCandidate(candidate.url);
+      if (status != null && (status == 401 || status == 403 || status == 404 || status == 410)) {
+        _failedUrls.putIfAbsent(videoId, () => <String>{}).add(candidate.url);
+        continue;
+      }
       _failedUrls.putIfAbsent(videoId, () => <String>{});
       _lastResolvedUrl[videoId] = candidate.url;
       return candidate.url;
@@ -294,6 +303,30 @@ class YouTubeStreamResolver {
         .timeout(const Duration(seconds: 15));
     if (response.statusCode < 200 || response.statusCode >= 300) return null;
     return response.body;
+  }
+
+  /// Makes a one-byte range request to catch expired/forbidden CDN URLs
+  /// before handing them to the player. Returns null when the probe itself
+  /// cannot establish a status, so transient probe failures don't block play.
+  Future<int?> _probeCandidate(String url) async {
+    try {
+      final request = http.Request('GET', Uri.parse(url))
+        ..followRedirects = true
+        ..maxRedirects = 5
+        ..headers.addAll(<String, String>{
+          'User-Agent': _browserUa,
+          'Referer': 'https://www.youtube.com/',
+          'Origin': 'https://www.youtube.com',
+          'Accept': '*/*',
+          'Range': 'bytes=0-0',
+        });
+      final response = await _http.send(request).timeout(const Duration(seconds: 8));
+      final status = response.statusCode;
+      await response.stream.listen((_) {}).cancel();
+      return status;
+    } catch (_) {
+      return null;
+    }
   }
 
   bool _looksLikeMediaUrl(String url) =>
