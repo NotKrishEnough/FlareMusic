@@ -81,12 +81,17 @@ class YouTubeStreamResolver {
       return candidate.url;
     }
 
+    // Refresh once, but never silently clear the failed-URL blacklist: doing
+    // so can make every retry return the same rejected URL.
     _candidateCache.remove(videoId);
-    _failedUrls.remove(videoId);
-    _lastResolvedUrl.remove(videoId);
     final fresh = await _candidatesFor(videoId);
-    if (fresh.isNotEmpty) return fresh.first.url;
-    throw StateError('No playable YouTube audio stream was found.');
+    for (final candidate in fresh) {
+      if (_failedUrls[videoId]?.contains(candidate.url) ?? false) continue;
+      if (_isExpired(candidate)) continue;
+      _lastResolvedUrl[videoId] = candidate.url;
+      return candidate.url;
+    }
+    throw StateError('No new playable YouTube audio stream was found.');
   }
 
   Future<void> invalidate(String videoId, {String? failedUrl}) async {
@@ -94,6 +99,7 @@ class YouTubeStreamResolver {
     if (urlToFail != null && urlToFail.isNotEmpty) {
       _failedUrls.putIfAbsent(videoId, () => <String>{}).add(urlToFail);
     }
+    _candidateCache.remove(videoId);
     try {
       if (Platform.isAndroid) {
         await _native.invokeMethod<void>(
@@ -117,11 +123,27 @@ class YouTubeStreamResolver {
       if (!normalized.startsWith('https://')) return;
       if (!seen.add(normalized)) return;
       if (!_looksLikeMediaUrl(normalized)) return;
-      if (!await _validateUrl(normalized)) return;
+      // Do not probe a signed googlevideo URL with a separate HTTP client.
+      // The probe can be rejected due to request identity even when the
+      // platform decoder can play it, and it can consume the signed URL.
       candidates.add(_Candidate(
         normalized,
         expiresAt ?? _expiryFromUrl(normalized),
       ));
+    }
+
+    // Native NewPipe is the primary Android extractor. It handles
+    // YouTube's signature/SABR changes and owns its short-lived URL cache.
+    if (Platform.isAndroid) {
+      try {
+        final url = await _native
+            .invokeMethod<String>(
+              'resolve',
+              <String, dynamic>{'videoId': videoId},
+            )
+            .timeout(const Duration(seconds: 30));
+        await addCandidate(url);
+      } catch (_) {}
     }
 
     // Use several first-party InnerTube playback client profiles, following
@@ -168,20 +190,6 @@ class YouTubeStreamResolver {
           if (candidates.length >= 3) break;
         }
         if (candidates.length >= 3) break;
-      } catch (_) {}
-    }
-
-    // Native NewPipe remains a separate fallback rather than the only
-    // playback mechanism.
-    if (Platform.isAndroid) {
-      try {
-        final url = await _native
-            .invokeMethod<String>(
-              'resolve',
-              <String, dynamic>{'videoId': videoId},
-            )
-            .timeout(const Duration(seconds: 30));
-        await addCandidate(url);
       } catch (_) {}
     }
 
