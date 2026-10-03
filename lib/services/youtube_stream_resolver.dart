@@ -270,39 +270,6 @@ class YouTubeStreamResolver {
     return response.body;
   }
 
-  Future<bool> _validateUrl(String url) async {
-    try {
-      final request = http.Request('GET', Uri.parse(url));
-      request.headers.addAll(<String, String>{
-        'User-Agent': _browserUa,
-        'Referer': 'https://www.youtube.com/',
-        'Origin': 'https://www.youtube.com',
-        'Accept-Encoding': 'identity',
-        'Range': 'bytes=0-1023',
-      });
-      final response = await _http
-          .send(request)
-          .timeout(const Duration(seconds: 10));
-      final statusOk = response.statusCode == 200 || response.statusCode == 206;
-      final contentType = (response.headers['content-type'] ?? '').toLowerCase();
-      // Consume only the first returned chunk. Some CDNs ignore Range and a
-      // full drain here would download the entire song just to validate it.
-      if (statusOk) {
-        try {
-          await response.stream.first;
-        } catch (_) {}
-      }
-      if (!statusOk) return false;
-      if (contentType.isEmpty) return true;
-      return contentType.startsWith('audio/') ||
-          contentType == 'video/webm' ||
-          contentType == 'video/mp4' ||
-          contentType == 'application/octet-stream';
-    } catch (_) {
-      return false;
-    }
-  }
-
   bool _looksLikeMediaUrl(String url) =>
       url.contains('googlevideo.com') || url.contains('youtube.com');
 
