@@ -104,6 +104,11 @@ class YouTubeStreamResolver {
     for (final candidate in fresh) {
       if (_failedUrls[videoId]?.contains(candidate.url) ?? false) continue;
       if (_isExpired(candidate)) continue;
+      final status = await _probeCandidate(candidate.url);
+      if (status != null && (status == 401 || status == 403 || status == 404 || status == 410)) {
+        _failedUrls.putIfAbsent(videoId, () => <String>{}).add(candidate.url);
+        continue;
+      }
       _lastResolvedUrl[videoId] = candidate.url;
       return candidate.url;
     }
