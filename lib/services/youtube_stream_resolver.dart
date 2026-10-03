@@ -68,6 +68,13 @@ class YouTubeStreamResolver {
   final Map<String, List<_Candidate>> _candidateCache = <String, List<_Candidate>>{};
   final Map<String, Set<String>> _failedUrls = <String, Set<String>>{};
   final Map<String, String> _lastResolvedUrl = <String, String>{};
+  // Avoid duplicate extraction when the player and preloader request the same
+  // track together. Failed clients cool down briefly instead of being retried
+  // for every track in a queue.
+  final Map<String, Future<List<_Candidate>>> _inFlight = {};
+  final Map<String, DateTime> _clientCooldownUntil = {};
+  static const _cacheSafetyWindow = Duration(seconds: 60);
+  static const _clientCooldown = Duration(minutes: 2);
 
   Future<String> resolve(String videoId) async {
     final candidates = await _candidatesFor(videoId);
@@ -112,7 +119,21 @@ class YouTubeStreamResolver {
 
   Future<List<_Candidate>> _candidatesFor(String videoId) async {
     final cached = _candidateCache[videoId];
-    if (cached != null && cached.isNotEmpty) return cached;
+    if (cached != null && cached.any((item) => !_isExpired(item))) {
+      return cached.where((item) => !_isExpired(item)).toList();
+    }
+    final pending = _inFlight[videoId];
+    if (pending != null) return pending;
+    final work = _extractCandidates(videoId);
+    _inFlight[videoId] = work;
+    try {
+      return await work;
+    } finally {
+      if (identical(_inFlight[videoId], work)) _inFlight.remove(videoId);
+    }
+  }
+
+  Future<List<_Candidate>> _extractCandidates(String videoId) async {
 
     final candidates = <_Candidate>[];
     final seen = <String>{};
@@ -149,6 +170,8 @@ class YouTubeStreamResolver {
     // Use several first-party InnerTube playback client profiles, following
     // the same fallback idea used by modern Android music clients.
     for (final client in _clients) {
+      final cooldown = _clientCooldownUntil[client.name];
+      if (cooldown != null && cooldown.isAfter(DateTime.now())) continue;
       try {
         final response = await _player(videoId, client);
         if (response == null) continue;
@@ -189,8 +212,11 @@ class YouTubeStreamResolver {
           await addCandidate(url, expiresAt: expiry);
           if (candidates.length >= 3) break;
         }
+        _clientCooldownUntil.remove(client.name);
         if (candidates.length >= 3) break;
-      } catch (_) {}
+      } catch (_) {
+        _clientCooldownUntil[client.name] = DateTime.now().add(_clientCooldown);
+      }
     }
 
     // Final cross-platform fallback.
@@ -276,7 +302,7 @@ class YouTubeStreamResolver {
   bool _isExpired(_Candidate candidate) {
     final expiry = candidate.expiresAt;
     return expiry != null &&
-        expiry.isBefore(DateTime.now().add(const Duration(seconds: 30)));
+        !expiry.isAfter(DateTime.now().add(_cacheSafetyWindow));
   }
 
   DateTime? _expiryFromUrl(String url) {
@@ -298,6 +324,9 @@ class YouTubeStreamResolver {
   Future<void> close() async {
     _candidateCache.clear();
     _failedUrls.clear();
+    _lastResolvedUrl.clear();
+    _inFlight.clear();
+    _clientCooldownUntil.clear();
     _http.close();
     _youtube.close();
   }
