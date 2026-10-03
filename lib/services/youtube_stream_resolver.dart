@@ -68,6 +68,21 @@ class YouTubeStreamResolver {
     );
   }
 
+  /// Drop both Dart and native extractor caches before a recovery attempt.
+  Future<void> invalidate(String videoId) async {
+    _resolvedCache.remove(videoId);
+    if (Platform.isAndroid) {
+      try {
+        await _native.invokeMethod<void>(
+          'invalidate',
+          <String, dynamic>{'videoId': videoId},
+        );
+      } catch (_) {
+        // Cache invalidation is best-effort on platforms without the bridge.
+      }
+    }
+  }
+
   Future<void> preload(String videoId) async {
     try {
       await resolve(videoId);
