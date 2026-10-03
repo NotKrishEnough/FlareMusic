@@ -157,9 +157,35 @@ class PlaybackController {
     try {
       await resolver.invalidate(track.videoId);
       if (generation != _queueGeneration) return;
-      final refreshed = await _sourceFor(track, resolver.resolve);
-      if (generation != _queueGeneration) return;
-      await player.setAudioSource(refreshed, initialPosition: Duration.zero);
+      final originalQueue = List<OnlineTrack>.of(queue);
+      final originalIndex = index.clamp(0, originalQueue.length - 1);
+      final refreshedSources = <AudioSource>[];
+      final recoveredQueue = <OnlineTrack>[];
+      var recoveredIndex = -1;
+      for (var i = 0; i < originalQueue.length; i++) {
+        if (generation != _queueGeneration) return;
+        final item = originalQueue[i];
+        try {
+          final source = await _sourceFor(item, resolver.resolve);
+          if (i == originalIndex) recoveredIndex = refreshedSources.length;
+          refreshedSources.add(source);
+          recoveredQueue.add(item);
+        } catch (_) {
+          if (i == originalIndex) rethrow;
+        }
+      }
+      if (generation != _queueGeneration || recoveredIndex < 0) return;
+      final rebuiltQueue = ConcatenatingAudioSource(children: refreshedSources);
+      await player.setAudioSource(
+        rebuiltQueue,
+        initialIndex: recoveredIndex,
+        initialPosition: Duration.zero,
+      );
+      queue
+        ..clear()
+        ..addAll(recoveredQueue);
+      index = recoveredIndex;
+      await _persist();
       await player.play();
     } catch (recoveryError) {
       // Keep the original failure and recovery failure visible in logcat.
