@@ -63,6 +63,13 @@ class PlaybackController {
     }
     return AudioSource.uri(
       Uri.parse(url),
+      // YouTube's media CDN may reject ExoPlayer's default request identity.
+      // Use the same browser-style headers used during extraction.
+      headers: const <String, String>{
+        'User-Agent': 'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/125.0.0.0 Mobile Safari/537.36',
+        'Referer': 'https://www.youtube.com/',
+        'Origin': 'https://www.youtube.com',
+      },
       tag: MediaItem(
         id: track.videoId,
         title: track.title,
