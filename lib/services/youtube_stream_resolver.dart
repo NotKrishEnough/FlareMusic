@@ -1,98 +1,342 @@
+import 'dart:async';
+import 'dart:convert';
 import 'dart:io';
+
 import 'package:flutter/services.dart';
+import 'package:http/http.dart' as http;
 import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
-/// Resolves YouTube audio streams. On Android the app first uses the native
-/// NewPipe extractor, which is better suited to current YouTube stream changes.
-/// youtube_explode_dart remains as a cross-platform fallback.
+/// FlareMusic playback resolver.
+///
+/// YouTube media URLs are short-lived playback leases. We therefore use
+/// several InnerTube playback clients, validate URLs before handing them to
+/// the decoder, track failed candidates, and fall back to native extraction.
 class YouTubeStreamResolver {
+  YouTubeStreamResolver({http.Client? client}) : _http = client ?? http.Client();
+
+  final http.Client _http;
   final YoutubeExplode _youtube = YoutubeExplode();
   static const _native = MethodChannel('flare_music/native_resolver');
-  final Map<String, String> _resolvedCache = <String, String>{};
+  static const _musicApiKey = 'AIzaSyC9XL3ZjWddXya6X74dJoCTL-WEYFDNX30';
+  static const _browserUa =
+      'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 '
+      'Chrome/125.0.0.0 Mobile Safari/537.36';
+
+  static const _clients = <_PlayerClient>[
+    _PlayerClient(
+      name: 'WEB_REMIX',
+      id: '67',
+      version: '1.20260202.01.00',
+      host: 'music.youtube.com',
+      origin: 'https://music.youtube.com',
+    ),
+    _PlayerClient(
+      name: 'ANDROID_VR',
+      id: '28',
+      version: '1.65.10',
+      host: 'www.youtube.com',
+      origin: 'https://www.youtube.com',
+      userAgent:
+          'com.google.android.apps.youtube.vr.oculus/1.65.10 '
+          '(Linux; U; Android 14) gzip',
+    ),
+    _PlayerClient(
+      name: 'IOS',
+      id: '5',
+      version: '21.03.2',
+      host: 'www.youtube.com',
+      origin: 'https://www.youtube.com',
+      userAgent:
+          'com.google.ios.youtube/21.03.2 (iPhone16,2; U; CPU iOS 18_3 like Mac OS X)',
+    ),
+    _PlayerClient(
+      name: 'ANDROID_MUSIC',
+      id: '21',
+      version: '5.34.51',
+      host: 'music.youtube.com',
+      origin: 'https://music.youtube.com',
+    ),
+    _PlayerClient(
+      name: 'WEB',
+      id: '1',
+      version: '2.20260205.01.00',
+      host: 'www.youtube.com',
+      origin: 'https://www.youtube.com',
+    ),
+  ];
+
+  final Map<String, List<_Candidate>> _candidateCache = <String, List<_Candidate>>{};
+  final Map<String, Set<String>> _failedUrls = <String, Set<String>>{};
 
   Future<String> resolve(String videoId) async {
-    final cached = _resolvedCache[videoId];
-    if (cached != null && cached.isNotEmpty) return cached;
-    Object? nativeError;
-    if (Platform.isAndroid) {
-      try {
-        final url = await _native
-            .invokeMethod<String>('resolve', <String, dynamic>{'videoId': videoId})
-            .timeout(const Duration(seconds: 30));
-        if (url != null && url.trim().isNotEmpty) {
-          _resolvedCache[videoId] = url;
-          return url;
-        }
-        nativeError = StateError('Native extractor returned an empty stream URL.');
-      } catch (e) {
-        nativeError = e;
-      }
+    final candidates = await _candidatesFor(videoId);
+    final failed = _failedUrls[videoId] ?? <String>{};
+
+    for (final candidate in candidates) {
+      if (failed.contains(candidate.url)) continue;
+      if (_isExpired(candidate)) continue;
+      _failedUrls.putIfAbsent(videoId, () => <String>{});
+      return candidate.url;
     }
 
-    Object? lastError = nativeError;
-    final clients = <List<YoutubeApiClient>>[
-      <YoutubeApiClient>[
-        YoutubeApiClient.ios,
-        YoutubeApiClient.safari,
-        YoutubeApiClient.tv,
-      ],
-      <YoutubeApiClient>[YoutubeApiClient.mediaConnect],
-      <YoutubeApiClient>[YoutubeApiClient.androidSdkless],
-    ];
-
-    for (final ytClients in clients) {
-      try {
-        final manifest = await _youtube.videos.streamsClient
-            .getManifest(videoId, ytClients: ytClients, requireWatchPage: false)
-            .timeout(const Duration(seconds: 25));
-        final candidates = manifest.audioOnly
-            .where((stream) => stream.url.toString().startsWith('https://'))
-            .toList();
-        if (candidates.isEmpty) {
-          throw StateError('No playable audio stream was returned by YouTube.');
-        }
-        final audio = candidates.reduce(
-          (a, b) => a.bitrate.bitsPerSecond >= b.bitrate.bitsPerSecond ? a : b,
-        );
-        final url = audio.url.toString();
-        _resolvedCache[videoId] = url;
-        return url;
-      } catch (e) {
-        lastError = e;
-      }
-    }
-
-    throw Exception(
-      'Could not resolve a playable YouTube audio stream. '
-      '${lastError ?? 'Unknown extractor error.'}',
-    );
+    _candidateCache.remove(videoId);
+    _failedUrls.remove(videoId);
+    final fresh = await _candidatesFor(videoId);
+    if (fresh.isNotEmpty) return fresh.first.url;
+    throw StateError('No playable YouTube audio stream was found.');
   }
 
-  /// Drop both Dart and native extractor caches before a recovery attempt.
-  Future<void> invalidate(String videoId) async {
-    _resolvedCache.remove(videoId);
-    if (Platform.isAndroid) {
-      try {
+  Future<void> invalidate(String videoId, {String? failedUrl}) async {
+    if (failedUrl != null && failedUrl.isNotEmpty) {
+      _failedUrls.putIfAbsent(videoId, () => <String>{}).add(failedUrl);
+    }
+    try {
+      if (Platform.isAndroid) {
         await _native.invokeMethod<void>(
           'invalidate',
           <String, dynamic>{'videoId': videoId},
         );
-      } catch (_) {
-        // Cache invalidation is best-effort on platforms without the bridge.
       }
+    } catch (_) {}
+  }
+
+  Future<List<_Candidate>> _candidatesFor(String videoId) async {
+    final cached = _candidateCache[videoId];
+    if (cached != null && cached.isNotEmpty) return cached;
+
+    final candidates = <_Candidate>[];
+    final seen = <String>{};
+
+    Future<void> addCandidate(String? url, {DateTime? expiresAt}) async {
+      if (url == null || url.trim().isEmpty) return;
+      final normalized = url.trim();
+      if (!normalized.startsWith('https://')) return;
+      if (!seen.add(normalized)) return;
+      if (!_looksLikeMediaUrl(normalized)) return;
+      if (!await _validateUrl(normalized)) return;
+      candidates.add(_Candidate(
+        normalized,
+        expiresAt ?? _expiryFromUrl(normalized),
+      ));
+    }
+
+    // Use several first-party InnerTube playback client profiles, following
+    // the same fallback idea used by modern Android music clients.
+    for (final client in _clients) {
+      try {
+        final response = await _player(videoId, client);
+        if (response == null) continue;
+        final root = jsonDecode(response);
+        if (root is! Map) continue;
+        final streaming = root['streamingData'];
+        if (streaming is! Map) continue;
+
+        final expiresSeconds =
+            int.tryParse(streaming['expiresInSeconds']?.toString() ?? '');
+        final expiry = expiresSeconds == null
+            ? null
+            : DateTime.now().add(Duration(seconds: expiresSeconds));
+
+        final rawAdaptive = streaming['adaptiveFormats'];
+        final rawFormats = streaming['formats'];
+        final formats = <Map>[];
+        if (rawAdaptive is List) {
+          formats.addAll(rawAdaptive.whereType<Map>());
+        }
+        if (rawFormats is List) {
+          formats.addAll(rawFormats.whereType<Map>());
+        }
+        formats.sort((a, b) {
+          final aAudio = (a['mimeType']?.toString() ?? '').startsWith('audio/') ? 1 : 0;
+          final bAudio = (b['mimeType']?.toString() ?? '').startsWith('audio/') ? 1 : 0;
+          if (aAudio != bAudio) return bAudio.compareTo(aAudio);
+          final aRate = int.tryParse(a['bitrate']?.toString() ?? '') ?? 0;
+          final bRate = int.tryParse(b['bitrate']?.toString() ?? '') ?? 0;
+          return bRate.compareTo(aRate);
+        });
+
+        for (final format in formats) {
+          final mime = format['mimeType']?.toString() ?? '';
+          if (!mime.startsWith('audio/')) continue;
+          final url = format['url']?.toString();
+          if (url == null || url.isEmpty) continue;
+          await addCandidate(url, expiresAt: expiry);
+          if (candidates.length >= 3) break;
+        }
+        if (candidates.length >= 3) break;
+      } catch (_) {}
+    }
+
+    // Native NewPipe remains a separate fallback rather than the only
+    // playback mechanism.
+    if (Platform.isAndroid) {
+      try {
+        final url = await _native
+            .invokeMethod<String>(
+              'resolve',
+              <String, dynamic>{'videoId': videoId},
+            )
+            .timeout(const Duration(seconds: 30));
+        await addCandidate(url);
+      } catch (_) {}
+    }
+
+    // Final cross-platform fallback.
+    const ytClients = <YoutubeApiClient>[
+      YoutubeApiClient.ios,
+      YoutubeApiClient.safari,
+      YoutubeApiClient.tv,
+      YoutubeApiClient.mediaConnect,
+      YoutubeApiClient.androidSdkless,
+    ];
+    for (final client in ytClients) {
+      try {
+        final manifest = await _youtube.videos.streamsClient
+            .getManifest(
+              videoId,
+              ytClients: <YoutubeApiClient>[client],
+              requireWatchPage: false,
+            )
+            .timeout(const Duration(seconds: 20));
+
+        final streams = manifest.audioOnly
+            .where((stream) => stream.url.toString().startsWith('https://'))
+            .toList()
+          ..sort((a, b) => b.bitrate.bitsPerSecond.compareTo(a.bitrate.bitsPerSecond));
+        for (final stream in streams.take(2)) {
+          await addCandidate(stream.url.toString());
+        }
+        if (candidates.length >= 4) break;
+      } catch (_) {}
+    }
+
+    _candidateCache[videoId] = candidates;
+    return candidates;
+  }
+
+  Future<String?> _player(String videoId, _PlayerClient client) async {
+    final endpoint =
+        'https://${client.host}/youtubei/v1/player'
+        '?key=$_musicApiKey&prettyPrint=false';
+    final headers = <String, String>{
+      'Content-Type': 'application/json',
+      'Accept': 'application/json',
+      'User-Agent': client.userAgent,
+      'Origin': client.origin,
+      'Referer': client.origin + '/',
+      'X-Youtube-Client-Name': client.id,
+      'X-Youtube-Client-Version': client.version,
+    };
+    final body = <String, dynamic>{
+      'context': <String, dynamic>{
+        'client': <String, dynamic>{
+          'clientName': client.name,
+          'clientVersion': client.version,
+          'hl': 'en',
+          'gl': 'US',
+        },
+      },
+      'videoId': videoId,
+      'contentCheckOk': true,
+      'racyCheckOk': true,
+      'playbackContext': <String, dynamic>{
+        'contentPlaybackContext': <String, dynamic>{
+          'html5Preference': 'HTML5_PREF_WANTS',
+        },
+      },
+    };
+    if (client.name == 'WEB_REMIX' || client.name == 'ANDROID_MUSIC') {
+      body['context']['client']['musicAppInfo'] = <String, dynamic>{
+        'musicActivityMasterSwitch': 'MUSIC_ACTIVITY_MASTER_SWITCH_ENABLED',
+        'musicLocationMasterSwitch': 'MUSIC_LOCATION_MASTER_SWITCH_ENABLED',
+      };
+    }
+    final response = await _http
+        .post(Uri.parse(endpoint), headers: headers, body: jsonEncode(body))
+        .timeout(const Duration(seconds: 15));
+    if (response.statusCode < 200 || response.statusCode >= 300) return null;
+    return response.body;
+  }
+
+  Future<bool> _validateUrl(String url) async {
+    try {
+      final request = http.Request('GET', Uri.parse(url));
+      request.headers.addAll(<String, String>{
+        'User-Agent': _browserUa,
+        'Referer': 'https://www.youtube.com/',
+        'Origin': 'https://www.youtube.com',
+        'Accept-Encoding': 'identity',
+        'Range': 'bytes=0-1023',
+      });
+      final response = await _http
+          .send(request)
+          .timeout(const Duration(seconds: 10));
+      final statusOk = response.statusCode == 200 || response.statusCode == 206;
+      final contentType = (response.headers['content-type'] ?? '').toLowerCase();
+      await response.stream.drain();
+      if (!statusOk) return false;
+      if (contentType.isEmpty) return true;
+      return contentType.startsWith('audio/') ||
+          contentType == 'video/webm' ||
+          contentType == 'video/mp4' ||
+          contentType == 'application/octet-stream';
+    } catch (_) {
+      return false;
+    }
+  }
+
+  bool _looksLikeMediaUrl(String url) =>
+      url.contains('googlevideo.com') || url.contains('youtube.com');
+
+  bool _isExpired(_Candidate candidate) {
+    final expiry = candidate.expiresAt;
+    return expiry != null &&
+        expiry.isBefore(DateTime.now().add(const Duration(seconds: 30)));
+  }
+
+  DateTime? _expiryFromUrl(String url) {
+    try {
+      final value = int.tryParse(Uri.parse(url).queryParameters['expire'] ?? '');
+      if (value == null) return null;
+      return DateTime.fromMillisecondsSinceEpoch(value * 1000);
+    } catch (_) {
+      return null;
     }
   }
 
   Future<void> preload(String videoId) async {
     try {
       await resolve(videoId);
-    } catch (_) {
-      // Prefetch is opportunistic; normal playback still reports the real error.
-    }
+    } catch (_) {}
   }
 
   Future<void> close() async {
-    _resolvedCache.clear();
+    _candidateCache.clear();
+    _failedUrls.clear();
+    _http.close();
     _youtube.close();
   }
+}
+
+class _Candidate {
+  const _Candidate(this.url, this.expiresAt);
+  final String url;
+  final DateTime? expiresAt;
+}
+
+class _PlayerClient {
+  const _PlayerClient({
+    required this.name,
+    required this.id,
+    required this.version,
+    required this.host,
+    required this.origin,
+    this.userAgent = YouTubeStreamResolver._browserUa,
+  });
+  final String name;
+  final String id;
+  final String version;
+  final String host;
+  final String origin;
+  final String userAgent;
 }
