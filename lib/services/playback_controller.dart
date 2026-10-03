@@ -14,6 +14,9 @@ class PlaybackController {
   late final AudioPlayer player;
   bool _initialized = false;
   StreamSubscription<int?>? _currentIndexSubscription;
+  StreamSubscription<PlayerException>? _errorSubscription;
+  final Set<String> _recoveryAttempts = <String>{};
+  bool _recovering = false;
 
   Future<void> initialize() async {
     if (_initialized) return;
@@ -23,6 +26,12 @@ class PlaybackController {
       if (value == null || value < 0 || value >= queue.length) return;
       index = value;
       unawaited(_persist());
+    });
+    // A resolved YouTube URL can expire or become unavailable between
+    // extraction and playback. Refresh it once instead of leaving the player
+    // stuck on just_audio's generic "Source error".
+    _errorSubscription = player.errorStream.listen((error) {
+      unawaited(_recoverCurrentSource(error));
     });
   }
   final YouTubeStreamResolver resolver = YouTubeStreamResolver();
@@ -95,6 +104,7 @@ class PlaybackController {
     // Each new playback request invalidates any queue that is still resolving
     // in the background.
     final generation = ++_queueGeneration;
+    _recoveryAttempts.clear();
     final selected = tracks[startIndex];
     final firstSource = await _sourceFor(selected, resolve);
     final concat = ConcatenatingAudioSource(children: [firstSource]);
@@ -133,6 +143,31 @@ class PlaybackController {
         }
       }
     }());
+  }
+
+  Future<void> _recoverCurrentSource(PlayerException error) async {
+    final track = current;
+    if (!_initialized || _recovering || track == null ||
+        _recoveryAttempts.contains(track.videoId)) {
+      return;
+    }
+    final generation = _queueGeneration;
+    _recoveryAttempts.add(track.videoId);
+    _recovering = true;
+    try {
+      await resolver.invalidate(track.videoId);
+      if (generation != _queueGeneration) return;
+      final refreshed = await _sourceFor(track, resolver.resolve);
+      if (generation != _queueGeneration) return;
+      await player.setAudioSource(refreshed, initialPosition: Duration.zero);
+      await player.play();
+    } catch (recoveryError) {
+      // Keep the original failure and recovery failure visible in logcat.
+      // The UI also listens to errorStream and displays the player exception.
+      print('FlareMusic stream recovery failed: $recoveryError (original: $error)');
+    } finally {
+      _recovering = false;
+    }
   }
 
   Future<void> playSelected(List<OnlineTrack> tracks, int startIndex) => playQueue(tracks, startIndex, resolver.resolve);
@@ -202,6 +237,7 @@ class PlaybackController {
 
   Future<void> dispose() async {
     await _currentIndexSubscription?.cancel();
+    await _errorSubscription?.cancel();
     await resolver.close();
     if (_initialized) await player.dispose();
   }
