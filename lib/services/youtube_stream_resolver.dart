@@ -67,6 +67,7 @@ class YouTubeStreamResolver {
 
   final Map<String, List<_Candidate>> _candidateCache = <String, List<_Candidate>>{};
   final Map<String, Set<String>> _failedUrls = <String, Set<String>>{};
+  final Map<String, String> _lastResolvedUrl = <String, String>{};
 
   Future<String> resolve(String videoId) async {
     final candidates = await _candidatesFor(videoId);
@@ -76,19 +77,22 @@ class YouTubeStreamResolver {
       if (failed.contains(candidate.url)) continue;
       if (_isExpired(candidate)) continue;
       _failedUrls.putIfAbsent(videoId, () => <String>{});
+      _lastResolvedUrl[videoId] = candidate.url;
       return candidate.url;
     }
 
     _candidateCache.remove(videoId);
     _failedUrls.remove(videoId);
+    _lastResolvedUrl.remove(videoId);
     final fresh = await _candidatesFor(videoId);
     if (fresh.isNotEmpty) return fresh.first.url;
     throw StateError('No playable YouTube audio stream was found.');
   }
 
   Future<void> invalidate(String videoId, {String? failedUrl}) async {
-    if (failedUrl != null && failedUrl.isNotEmpty) {
-      _failedUrls.putIfAbsent(videoId, () => <String>{}).add(failedUrl);
+    final urlToFail = failedUrl ?? _lastResolvedUrl[videoId];
+    if (urlToFail != null && urlToFail.isNotEmpty) {
+      _failedUrls.putIfAbsent(videoId, () => <String>{}).add(urlToFail);
     }
     try {
       if (Platform.isAndroid) {
