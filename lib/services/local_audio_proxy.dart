@@ -99,13 +99,13 @@ class LocalAudioProxy {
       await incoming.response.addStream(response);
       await incoming.response.close();
     } catch (error) {
-      if (!incoming.response.headersSent) {
+      try {
         incoming.response.statusCode = HttpStatus.badGateway;
         incoming.response.headers.set(HttpHeaders.contentTypeHeader, 'text/plain; charset=utf-8');
         incoming.response.write('Upstream audio request failed: $error');
         await incoming.response.close();
-      } else {
-        incoming.response.abort(error);
+      } catch (_) {
+        // The client may have disconnected after response headers were sent.
       }
     }
   }
