@@ -202,12 +202,14 @@ jobs:
           p = Path('android/app/src/main/AndroidManifest.xml')
           s = p.read_text()
           permissions = '''
+              <uses-permission android:name="android.permission.INTERNET" />
+              <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
               <uses-permission android:name="android.permission.WAKE_LOCK" />
               <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
               <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
               <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
           '''
-          if 'android.permission.WAKE_LOCK' not in s:
+          if 'android.permission.INTERNET' not in s:
               s = s.replace('<application', permissions + '\n    <application', 1)
           service = '''
                   <service
