@@ -157,28 +157,33 @@ jobs:
                       flutterEngine.dartExecutor.binaryMessenger,
                       "flare_music/native_resolver"
                   ).setMethodCallHandler { call, result ->
-                      if (call.method != "resolve") {
-                          result.notImplemented()
-                          return@setMethodCallHandler
-                      }
                       val videoId = call.argument<String>("videoId")
                       if (videoId.isNullOrBlank()) {
                           result.error("INVALID_ID", "Missing YouTube video ID", null)
                           return@setMethodCallHandler
                       }
-                      executor.execute {
-                          try {
-                              val url = NewPipeAudioResolver.resolve(videoId)
-                              mainHandler.post { result.success(url) }
-                          } catch (e: Exception) {
-                              mainHandler.post {
-                                  result.error(
-                                      "RESOLVE_FAILED",
-                                      e.message ?: "Native YouTube extraction failed",
-                                      null
-                                  )
+                      when (call.method) {
+                          "invalidate" -> {
+                              executor.execute {
+                                  NewPipeAudioResolver.invalidate(videoId)
+                                  mainHandler.post { result.success(null) }
                               }
                           }
+                          "resolve" -> executor.execute {
+                              try {
+                                  val url = NewPipeAudioResolver.resolve(videoId)
+                                  mainHandler.post { result.success(url) }
+                              } catch (e: Exception) {
+                                  mainHandler.post {
+                                      result.error(
+                                          "RESOLVE_FAILED",
+                                          e.message ?: "Native YouTube extraction failed",
+                                          null
+                                      )
+                                  }
+                              }
+                          }
+                          else -> result.notImplemented()
                       }
                   }
               }
@@ -298,6 +303,10 @@ jobs:
                       }
                   }, Localization("en", "US"))
                   initialized = true
+              }
+
+              fun invalidate(videoId: String) {
+                  cache.remove(videoId)
               }
 
               fun resolve(videoId: String): String {
