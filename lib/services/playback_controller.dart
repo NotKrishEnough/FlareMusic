@@ -4,6 +4,7 @@ import 'package:audio_service/audio_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'inner_tube_client.dart';
 import 'youtube_stream_resolver.dart';
+import 'local_audio_proxy.dart';
 
 /// Owns the queue and audio engine for the Flutter app. Stream URLs are
 /// resolved by the caller; YouTube extraction is deliberately not faked here.
@@ -13,6 +14,7 @@ class PlaybackController {
   }
   late final AudioPlayer player;
   bool _initialized = false;
+  final LocalAudioProxy _audioProxy = LocalAudioProxy();
   StreamSubscription<int?>? _currentIndexSubscription;
   StreamSubscription<dynamic>? _errorSubscription;
   final Set<String> _recoveryAttempts = <String>{};
@@ -20,6 +22,7 @@ class PlaybackController {
 
   Future<void> initialize() async {
     if (_initialized) return;
+    await _audioProxy.start();
     player = AudioPlayer(userAgent: 'FlareMusic/1.0 (Android)');
     _initialized = true;
     _currentIndexSubscription = player.currentIndexStream.listen((value) {
@@ -75,8 +78,9 @@ class PlaybackController {
     if (url.trim().isEmpty) {
       throw StateError('Empty audio stream URL for ${track.title}.');
     }
+    final streamUri = _audioProxy.wrap(url);
     return AudioSource.uri(
-      Uri.parse(url),
+      streamUri,
       // YouTube's media CDN may reject ExoPlayer's default request identity.
       // Use the same browser-style headers used during extraction.
       headers: const <String, String>{
@@ -297,6 +301,7 @@ class PlaybackController {
     await _currentIndexSubscription?.cancel();
     await _errorSubscription?.cancel();
     await resolver.close();
+    await _audioProxy.close();
     if (_initialized) await player.dispose();
   }
 }
