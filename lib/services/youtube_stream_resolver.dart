@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:youtube_explode_dart/youtube_explode_dart.dart' as yt;
 
 /// FlareMusic stream resolver using the same extraction order as DA-Tunes:
