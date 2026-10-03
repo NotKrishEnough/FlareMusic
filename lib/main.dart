@@ -256,14 +256,13 @@ class _MusicHomeState extends State<MusicHome> with SingleTickerProviderStateMix
       });
       // Preserve the platform's underlying decoder/network error. The generic
       // "Source error" message hides useful HTTP and extractor diagnostics.
-      _playback.player.errorStream.listen((error) {
-        if (error == null) return;
-        debugPrint('FLARE_AUDIO_ERROR: $error');
-        final cause = error is PlayerException
-            ? 'code=${error.code}, message=${error.message}, index=${error.index}'
-            : error.toString();
-        if (mounted) _showPlaybackError('Audio source failed ($cause)');
-      });
+      _playback.player.playbackEventStream.listen(
+        (_) {},
+        onError: (Object error, StackTrace stackTrace) {
+          debugPrint('FLARE_AUDIO_ERROR: $error');
+          if (mounted) _showPlaybackError('Audio source failed ($error)');
+        },
+      );
       _sequenceSubscription = _playback.player.sequenceStateStream.listen((state) {
         final tag = state?.currentSource?.tag;
         if (!mounted || tag is! MediaItem) return;
