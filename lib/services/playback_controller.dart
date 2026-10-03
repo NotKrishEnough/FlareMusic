@@ -14,7 +14,7 @@ class PlaybackController {
   late final AudioPlayer player;
   bool _initialized = false;
   StreamSubscription<int?>? _currentIndexSubscription;
-  StreamSubscription<PlayerException>? _errorSubscription;
+  StreamSubscription<dynamic>? _errorSubscription;
   final Set<String> _recoveryAttempts = <String>{};
   bool _recovering = false;
 
@@ -30,9 +30,14 @@ class PlaybackController {
     // A resolved YouTube URL can expire or become unavailable between
     // extraction and playback. Refresh it once instead of leaving the player
     // stuck on just_audio's generic "Source error".
-    _errorSubscription = player.errorStream.listen((error) {
-      unawaited(_recoverCurrentSource(error));
-    });
+    _errorSubscription = player.playbackEventStream.listen(
+      (_) {},
+      onError: (Object error, StackTrace stackTrace) {
+        if (error is PlayerException) {
+          unawaited(_recoverCurrentSource(error));
+        }
+      },
+    );
   }
   final YouTubeStreamResolver resolver = YouTubeStreamResolver();
   final List<OnlineTrack> queue = [];
@@ -190,7 +195,7 @@ class PlaybackController {
     } catch (recoveryError) {
       // Keep the original failure and recovery failure visible in logcat.
       // The UI also listens to errorStream and displays the player exception.
-      print('FlareMusic stream recovery failed: $recoveryError (original: $error)');
+      // Recovery failed; the player error is surfaced by the UI listener.
     } finally {
       _recovering = false;
     }
