@@ -482,8 +482,34 @@ class MainActivity : ComponentActivity() {
     }
     BackHandler(enabled = playerExpanded) { playerExpanded = false }
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-    Scaffold(containerColor = Color.Transparent, bottomBar = {
-        Column(Modifier.padding(bottom = 12.dp)) {
+    Box(Modifier.fillMaxSize()) {
+        AnimatedContent(
+            targetState = tab,
+            modifier = Modifier.fillMaxSize().padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
+            label = "page",
+            transitionSpec = {
+                if (FlarePreferences.animations.value) {
+                    (fadeIn(animationSpec = androidx.compose.animation.core.tween(260)) + slideInVertically(animationSpec = androidx.compose.animation.core.spring(dampingRatio = .86f, stiffness = 420f)) { it / 14 }) togetherWith
+                        (fadeOut(animationSpec = androidx.compose.animation.core.tween(150)) + slideOutVertically(animationSpec = androidx.compose.animation.core.tween(180)) { -it / 20 })
+                } else androidx.compose.animation.EnterTransition.None togetherWith androidx.compose.animation.ExitTransition.None
+            }
+        ) { page ->
+            when(page) {
+                "Home" -> HomeScreen(tracks.size, loading, error, Violet) { selectTab("Library") }
+                "Search" -> SearchScreen(query, { query = it }, tracks.filter { it.title.contains(query, true) || it.artist.contains(query, true) }, ::play, onlineResults, searching, ::searchOnline, ::playOnline, { trackToAdd = it }, error)
+                "Library" -> LibraryScreen(tracks, loading, tracks.filter { it.id.toString() in favouriteIds }, youtubePlaylists, googleStatus, playlistLoading, playlistError, selectedPlaylist, selectedPlaylistTracks, selectedPlaylistLoading, selectedPlaylistError, ::openYouTubePlaylist, { selectedPlaylist = null; selectedPlaylistTracks = emptyList() }, { item -> playYouTubePlaylistQueue(item) }, ::play, { selectTab("Search") }, { tracks = emptyList(); loading = true }, onSyncPlaylists, onConnectGoogle)
+                else -> SettingsScreen(amoled, onAmoledChange, googleStatus, youtubePlaylists, playlistLoading, playlistError, onConnectGoogle, onSyncPlaylists, onDisconnectYouTube)
+            }
+        }
+
+        // Overlay the floating player/navigation on top of the page. Scaffold.bottomBar
+        // reserves layout height even when the bar is visually floating, which caused
+        // the large empty strip above the navigation bar.
+        Column(
+            Modifier.align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .padding(bottom = 12.dp)
+        ) {
             if (current != null) {
                 val miniProgress = if (totalDuration > 0) (position.toFloat() / totalDuration.toFloat()).coerceIn(0f, 1f) else 0f
                 val miniColors = MaterialTheme.colorScheme
@@ -558,27 +584,6 @@ class MainActivity : ComponentActivity() {
                         }
                     }
                 }
-            }
-        }
-    }) { padding ->
-        AnimatedContent(
-            targetState = tab,
-            // Let the custom floating navigation sit over the page instead of reserving
-            // an opaque block of space above it. The page only needs the top scaffold inset.
-            modifier = Modifier.padding(top = padding.calculateTopPadding()),
-            label = "page",
-            transitionSpec = {
-                if (FlarePreferences.animations.value) {
-                    (fadeIn(animationSpec = androidx.compose.animation.core.tween(260)) + slideInVertically(animationSpec = androidx.compose.animation.core.spring(dampingRatio = .86f, stiffness = 420f)) { it / 14 }) togetherWith
-                        (fadeOut(animationSpec = androidx.compose.animation.core.tween(150)) + slideOutVertically(animationSpec = androidx.compose.animation.core.tween(180)) { -it / 20 })
-                } else androidx.compose.animation.EnterTransition.None togetherWith androidx.compose.animation.ExitTransition.None
-            }
-        ) { page ->
-            when(page) {
-                "Home" -> HomeScreen(tracks.size, loading, error, Violet) { selectTab("Library") }
-                "Search" -> SearchScreen(query, { query = it }, tracks.filter { it.title.contains(query, true) || it.artist.contains(query, true) }, ::play, onlineResults, searching, ::searchOnline, ::playOnline, { trackToAdd = it }, error)
-                "Library" -> LibraryScreen(tracks, loading, tracks.filter { it.id.toString() in favouriteIds }, youtubePlaylists, googleStatus, playlistLoading, playlistError, selectedPlaylist, selectedPlaylistTracks, selectedPlaylistLoading, selectedPlaylistError, ::openYouTubePlaylist, { selectedPlaylist = null; selectedPlaylistTracks = emptyList() }, { item -> playYouTubePlaylistQueue(item) }, ::play, { selectTab("Search") }, { tracks = emptyList(); loading = true }, onSyncPlaylists, onConnectGoogle)
-                else -> SettingsScreen(amoled, onAmoledChange, googleStatus, youtubePlaylists, playlistLoading, playlistError, onConnectGoogle, onSyncPlaylists, onDisconnectYouTube)
             }
         }
     }
