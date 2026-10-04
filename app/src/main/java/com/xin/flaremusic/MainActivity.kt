@@ -730,6 +730,50 @@ class MainActivity : ComponentActivity() {
                 })
             }
         }
+        Text("PLAYER & NAVIGATION", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(top = 20.dp, bottom = 9.dp))
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surfaceVariant).padding(17.dp)) {
+            Text("Progress bar style", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+            Text("Change how playback progress looks in the full player.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp, bottom = 12.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf("Classic", "Minimal", "Bold").forEachIndexed { index, label ->
+                    val selected = FlarePreferences.progressStyle.intValue == index
+                    Box(
+                        Modifier.weight(1f).clip(RoundedCornerShape(14.dp))
+                            .background(if (selected) Violet.copy(alpha = .18f) else MaterialTheme.colorScheme.background)
+                            .clickable {
+                                FlarePreferences.progressStyle.intValue = index
+                                settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putInt("progress_style", index).apply()
+                            }
+                            .padding(vertical = 12.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(label, color = if (selected) Violet else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, fontSize = 12.sp)
+                    }
+                }
+            }
+            HorizontalDivider(Modifier.padding(vertical = 14.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Mini player", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+                    Text("Show the player card above the navigation bar", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                }
+                Switch(checked = FlarePreferences.showMiniPlayer.value, onCheckedChange = {
+                    FlarePreferences.showMiniPlayer.value = it
+                    settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("show_mini_player", it).apply()
+                })
+            }
+            HorizontalDivider(Modifier.padding(vertical = 14.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Navigation labels", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+                    Text("Show Home, Search, Library and Settings text", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                }
+                Switch(checked = FlarePreferences.showNavLabels.value, onCheckedChange = {
+                    FlarePreferences.showNavLabels.value = it
+                    settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("show_nav_labels", it).apply()
+                })
+            }
+        }
         Text("PLAYER GESTURES", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(top = 20.dp, bottom = 9.dp))
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surfaceVariant).padding(17.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
