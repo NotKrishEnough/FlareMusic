@@ -51,6 +51,7 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.lifecycleScope
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -297,7 +298,7 @@ class MainActivity : ComponentActivity() {
     }
     val expressiveScheme = wallpaperScheme
     val baseDensity = LocalDensity.current
-    val customDensity = baseDensity.copy(fontScale = FlarePreferences.fontScale.floatValue)
+    val customDensity = Density(baseDensity.density, FlarePreferences.fontScale.floatValue)
     CompositionLocalProvider(LocalDensity provides customDensity) {
         MaterialTheme(
             colorScheme = if (amoled && darkMode) expressiveScheme.copy(background = Color.Black, surface = Color.Black, surfaceContainer = Color(0xFF080808)) else expressiveScheme,
@@ -1022,7 +1023,7 @@ class MainActivity : ComponentActivity() {
                 IconButton(onClick = { showQueue = true }) { Icon(Icons.Rounded.QueueMusic, "Queue", tint = MaterialTheme.colorScheme.onSurface) }
             }
             Spacer(Modifier.weight(.65f))
-            Box(Modifier.fillMaxWidth().aspectRatio(1f).padding(horizontal = 8.dp).clip(RoundedCornerShape(radius)).background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.surface))).padding(10.dp)) {
+            Box(Modifier.fillMaxWidth().aspectRatio(1f).padding(horizontal = 8.dp).clip(RoundedCornerShape(30.dp)).background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.surface))).padding(10.dp)) {
                 Artwork(track.artwork, Modifier.fillMaxSize().clip(RoundedCornerShape(23.dp)))
             }
             Spacer(Modifier.weight(.65f))
