@@ -586,39 +586,74 @@ class MainActivity : ComponentActivity() {
                     Spacer(Modifier.height(7.dp))
                 }
             }
-            Box(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
-                Row(
-                    Modifier.fillMaxWidth()
-                        .clip(RoundedCornerShape(if (FlarePreferences.navStyle.intValue == 1) 18.dp else 50.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (FlarePreferences.glassEffects.value) (if (amoled) 0.72f else 0.64f) else 1f))
-                        .padding(horizontal = 6.dp, vertical = if (FlarePreferences.navStyle.intValue == 1) 2.dp else 4.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                BoxWithConstraints(
+                    Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
                 ) {
-                    listOf("Home", "Search", "Library", "Settings").forEach { item ->
-                        val selected = tab == item
-                        Column(
-                            Modifier.weight(1f)
-                                .clip(RoundedCornerShape(50))
-                                .background(if (selected) Violet.copy(alpha = 0.20f) else Color.Transparent)
-                                .clickable { selectTab(item) }
-                                .padding(vertical = 6.dp),
-                            horizontalAlignment = Alignment.CenterHorizontally,
-                            verticalArrangement = Arrangement.Center
-                        ) {
-                            Box(contentAlignment = Alignment.Center) {
-                                if (selected) {
-                                    Box(Modifier.size(34.dp).clip(RoundedCornerShape(50)).background(Violet.copy(alpha = 0.16f)))
-                                }
-                                Icon(
-                                    when(item) { "Home" -> Icons.Rounded.Home; "Search" -> Icons.Rounded.Search; "Library" -> Icons.Rounded.LibraryMusic; else -> Icons.Rounded.Settings },
-                                    contentDescription = item,
-                                    tint = if (selected) Violet else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(21.dp)
+                    val pillWidth = maxWidth.coerceAtMost(520.dp)
+                    val itemWidth = pillWidth / 4
+                    val selectedIndex = listOf("Home", "Search", "Library", "Settings").indexOf(tab).coerceAtLeast(0)
+                    val indicatorX by animateDpAsState(
+                        targetValue = itemWidth * selectedIndex + 8.dp,
+                        animationSpec = tween(300, easing = FastOutSlowInEasing),
+                        label = "navIndicator"
+                    )
+
+                    Box(
+                        Modifier
+                            .width(pillWidth)
+                            .height(54.dp)
+                            .clip(RoundedCornerShape(28.dp))
+                            .background(
+                                MaterialTheme.colorScheme.surface.copy(
+                                    alpha = if (FlarePreferences.glassEffects.value) 0.70f else 0.96f
                                 )
-                            }
-                            if (FlarePreferences.showNavLabels.value) {
-                                Text(item, color = if (selected) Violet else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp), maxLines = 1)
+                            )
+                            .border(
+                                1.dp,
+                                MaterialTheme.colorScheme.outline.copy(alpha = 0.30f),
+                                RoundedCornerShape(28.dp)
+                            )
+                    ) {
+                        // DA-Tunes-style animated selection capsule.
+                        Box(
+                            Modifier
+                                .offset(x = indicatorX, y = 6.dp)
+                                .width(itemWidth - 16.dp)
+                                .height(42.dp)
+                                .clip(RoundedCornerShape(20.dp))
+                                .background(Violet.copy(alpha = 0.15f))
+                        )
+
+                        Row(Modifier.fillMaxSize()) {
+                            listOf(
+                                "Home" to Icons.Rounded.Home,
+                                "Search" to Icons.Rounded.Search,
+                                "Library" to Icons.Rounded.LibraryMusic,
+                                "Settings" to Icons.Rounded.Settings
+                            ).forEach { (item, icon) ->
+                                val selected = tab == item
+                                Box(
+                                    Modifier
+                                        .weight(1f)
+                                        .fillMaxHeight()
+                                        .clickable { selectTab(item) },
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Icon(
+                                        icon,
+                                        contentDescription = item,
+                                        tint = if (selected) Violet
+                                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
+                                        modifier = Modifier.size(if (selected) 23.dp else 22.dp)
+                                    )
+                                }
                             }
                         }
                     }
