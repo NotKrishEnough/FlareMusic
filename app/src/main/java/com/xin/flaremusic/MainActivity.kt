@@ -1035,18 +1035,52 @@ class MainActivity : ComponentActivity() {
                 IconButton(onClick = onToggleFavourite) { Icon(if (isFavourite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, "Favourite", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(25.dp)) }
             }
             Spacer(Modifier.height(22.dp))
-            Slider(
-                value = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f,
-                onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) },
-                colors = SliderDefaults.colors(
-                    thumbColor = if (FlarePreferences.progressStyle.intValue == 1) MaterialTheme.colorScheme.primary.copy(alpha = .45f) else MaterialTheme.colorScheme.primary,
-                    activeTrackColor = if (FlarePreferences.progressStyle.intValue == 2) MaterialTheme.colorScheme.primary.copy(alpha = .78f) else MaterialTheme.colorScheme.primary,
-                    inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 1f),
-                    activeTickColor = Color.Transparent,
-                    inactiveTickColor = Color.Transparent
-                ),
-                modifier = Modifier.padding(vertical = if (FlarePreferences.progressStyle.intValue == 1) 0.dp else 2.dp)
-            )
+            val progressStyle = FlarePreferences.progressStyle.intValue
+            if (progressStyle == 1) {
+                // Minimal: thin line, no visible thumb.
+                Slider(
+                    value = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f,
+                    onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) },
+                    thumb = {},
+                    track = { sliderState ->
+                        SliderDefaults.Track(
+                            sliderState = sliderState,
+                            modifier = Modifier.fillMaxWidth().height(3.dp),
+                            thumbTrackGapSize = 0.dp,
+                            drawStopIndicator = null,
+                            colors = SliderDefaults.colors(
+                                activeTrackColor = MaterialTheme.colorScheme.primary,
+                                inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        )
+                    },
+                    modifier = Modifier.fillMaxWidth().height(20.dp)
+                )
+            } else if (progressStyle == 2) {
+                // Bold: thicker track with a prominent thumb.
+                Slider(
+                    value = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f,
+                    onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) },
+                    colors = SliderDefaults.colors(
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                        inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    modifier = Modifier.fillMaxWidth().height(34.dp)
+                )
+            } else {
+                // Classic: normal Material slider.
+                Slider(
+                    value = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f,
+                    onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) },
+                    colors = SliderDefaults.colors(
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                        inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(formatTime(position), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                 Text(formatTime(duration), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
