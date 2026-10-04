@@ -88,6 +88,12 @@ private object FlarePreferences {
     val swipeToChangeTracks = mutableStateOf(true)
     val showMiniPlayer = mutableStateOf(true)
     val showNavLabels = mutableStateOf(true)
+    val homeLayout = mutableIntStateOf(0) // 0: showcase, 1: compact, 2: stats first
+    val artworkStyle = mutableIntStateOf(0) // 0: crop, 1: fit, 2: soft glass
+    val navStyle = mutableIntStateOf(0) // 0: pill, 1: flat, 2: floating
+    val fontScale = mutableFloatStateOf(1f)
+    val cornerStyle = mutableIntStateOf(0) // 0: rounded, 1: medium, 2: sharp
+    val glassEffects = mutableStateOf(true)
     val accents = listOf(
         Color(0xFFFF694F), Color(0xFF9B8CFF), Color(0xFF35C9A5), Color(0xFFFFB84D),
         Color(0xFF64B5F6), Color(0xFFE879B9), Color(0xFFB0C46A), Color(0xFFB39DDB)
@@ -182,6 +188,12 @@ class MainActivity : ComponentActivity() {
         FlarePreferences.swipeToChangeTracks.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("gesture_tracks", true)
         FlarePreferences.showMiniPlayer.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("show_mini_player", true)
         FlarePreferences.showNavLabels.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("show_nav_labels", true)
+        FlarePreferences.homeLayout.intValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getInt("home_layout", 0).coerceIn(0, 2)
+        FlarePreferences.artworkStyle.intValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getInt("artwork_style", 0).coerceIn(0, 2)
+        FlarePreferences.navStyle.intValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getInt("nav_style", 0).coerceIn(0, 2)
+        FlarePreferences.fontScale.floatValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getFloat("font_scale", 1f).coerceIn(.85f, 1.2f)
+        FlarePreferences.cornerStyle.intValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getInt("corner_style", 0).coerceIn(0, 2)
+        FlarePreferences.glassEffects.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("glass_effects", true)
         val token = SessionToken(this, android.content.ComponentName(this, FlarePlaybackService::class.java))
         controllerFuture = MediaController.Builder(this, token).buildAsync()
         controllerFuture?.addListener({
@@ -280,10 +292,14 @@ class MainActivity : ComponentActivity() {
         }
     }
     val expressiveScheme = wallpaperScheme
-    MaterialTheme(
-        colorScheme = if (amoled && darkMode) expressiveScheme.copy(background = Color.Black, surface = Color.Black, surfaceContainer = Color(0xFF080808)) else expressiveScheme,
-        content = content
-    )
+    val baseDensity = LocalDensity.current
+    val customDensity = baseDensity.copy(fontScale = FlarePreferences.fontScale.floatValue)
+    CompositionLocalProvider(LocalDensity provides customDensity) {
+        MaterialTheme(
+            colorScheme = if (amoled && darkMode) expressiveScheme.copy(background = Color.Black, surface = Color.Black, surfaceContainer = Color(0xFF080808)) else expressiveScheme,
+            content = content
+        )
+    }
 }
 
 @Composable private fun FlareApp(player: Player, scan: suspend () -> List<Track>, amoled: Boolean, googleStatus: String, youtubePlaylists: List<YouTubePlaylist>, playlistLoading: Boolean, playlistError: String, onConnectGoogle: () -> Unit, onSyncPlaylists: () -> Unit, onDisconnectYouTube: () -> Unit, onAmoledChange: (Boolean) -> Unit) {
