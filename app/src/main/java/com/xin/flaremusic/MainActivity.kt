@@ -1082,17 +1082,7 @@ class MainActivity : ComponentActivity() {
             }
         }
         if (loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Violet, trackColor = MaterialTheme.colorScheme.outlineVariant)
-        if (tracks.isEmpty() && !loading) {
-            // Don't mount an empty LazyColumn: it expands into the remaining viewport and
-            // creates a large dead area underneath the YouTube Music playlists.
-            Box(Modifier.fillMaxWidth().padding(vertical = 18.dp), contentAlignment = Alignment.Center) {
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    Icon(Icons.Rounded.LibraryMusic, null, tint = MaterialTheme.colorScheme.outline, modifier = Modifier.size(42.dp))
-                    Text("No local songs yet", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Bold, fontSize = 16.sp, modifier = Modifier.padding(top = 8.dp))
-                    Text("Add audio to your device, then refresh.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp))
-                }
-            }
-        } else if (tracks.isNotEmpty()) {
+        if (tracks.isNotEmpty()) {
             LazyColumn(contentPadding = PaddingValues(bottom = 18.dp)) {
                 items(tracks, key = { it.id }) { TrackRow(it, onClick = { play(it) }) }
             }
