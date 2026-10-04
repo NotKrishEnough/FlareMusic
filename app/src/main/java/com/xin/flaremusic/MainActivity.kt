@@ -813,15 +813,11 @@ class MainActivity : ComponentActivity() {
                 } catch (_: Exception) { null }
                 if (decoded != null) break
             }
-            decoded?.let { image ->
-                // YouTube video thumbnails are 16:9 with the cover centered; crop to square.
-                val side = minOf(image.width, image.height)
-                if (side > 0 && image.width.toFloat() / image.height.toFloat() > 1.15f) {
-                    android.graphics.Bitmap.createBitmap(image, (image.width - side) / 2, 0, side, side)
-                } else if (side > 0 && image.height.toFloat() / image.width.toFloat() > 1.15f) {
-                    android.graphics.Bitmap.createBitmap(image, 0, (image.height - side) / 2, side, side)
-                } else image
-            }
+            // Keep the original high-resolution artwork intact.
+            // Compose handles cropping/fitting at render time, so the bitmap itself is never
+            // permanently cropped (important for YouTube's 16:9 thumbnails).
+            decoded
+
         }
     }
     if (bitmap != null) Image(bitmap = bitmap!!.asImageBitmap(), contentDescription = "Album art", modifier = modifier, contentScale = if (fitArtwork) androidx.compose.ui.layout.ContentScale.Fit else androidx.compose.ui.layout.ContentScale.Crop)
