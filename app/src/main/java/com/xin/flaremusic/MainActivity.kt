@@ -1340,7 +1340,7 @@ private fun GlassAmbientLayer(
     val libraryContext = LocalContext.current
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(horizontal = 18.dp)) {
         Row(Modifier.fillMaxWidth().padding(top = 22.dp, bottom = 18.dp), verticalAlignment = Alignment.CenterVertically) {
-            Column(Modifier.weight(1f)) { Text("Your library", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp, color = MaterialTheme.colorScheme.onSurface); Text(tracks.size.toString() + " songs on this device", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 13.sp, modifier = Modifier.padding(top = 4.dp)) }
+            Column(Modifier.weight(1f)) { Text("Your library", fontSize = 32.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1).sp, color = MaterialTheme.colorScheme.onSurface) }
             IconButton(onClick = refresh) { Icon(Icons.Rounded.Refresh, "Refresh", tint = Violet) }
             IconButton(onClick = search) { Icon(Icons.Rounded.Search, "Search", tint = Violet) }
         }
@@ -1408,11 +1408,6 @@ private fun GlassAmbientLayer(
             }
         }
         if (loading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Violet, trackColor = MaterialTheme.colorScheme.outlineVariant)
-        if (tracks.isNotEmpty()) {
-            LazyColumn(contentPadding = PaddingValues(bottom = 18.dp)) {
-                items(tracks, key = { it.id }) { TrackRow(it, onClick = { play(it) }) }
-            }
-        }
         }
     }
 }
