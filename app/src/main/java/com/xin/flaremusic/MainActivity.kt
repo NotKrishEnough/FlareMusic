@@ -580,7 +580,7 @@ class MainActivity : ComponentActivity() {
                         IconButton(onClick = { if (playing) player.pause() else player.play() }, modifier = Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(miniColors.primary)) {
                             Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = miniColors.onPrimary, modifier = Modifier.size(20.dp))
                         }
-                        IconButton(onClick = { if (player.hasNextMediaItem) player.seekToNextMediaItem() else if (player.mediaItemCount > 1) player.seekTo(0, 0L) }, modifier = Modifier.size(38.dp)) {
+                        IconButton(onClick = { if (player.hasNextMediaItem()) player.seekToNextMediaItem() else if (player.mediaItemCount > 1) player.seekTo(0, 0L) }, modifier = Modifier.size(38.dp)) {
                             Icon(Icons.Rounded.SkipNext, null, tint = miniColors.onSurface, modifier = Modifier.size(23.dp))
                         }
                     }
@@ -699,7 +699,7 @@ class MainActivity : ComponentActivity() {
                 isFavourite = track.id.toString() in favouriteIds, queue = queue,
                 onClose = { playerExpanded = false },
                 onPlayPause = { if (playing) player.pause() else player.play() },
-                onSeek = { player.seekTo(it) }, onPrevious = { if (player.hasPreviousMediaItem) player.seekToPreviousMediaItem() else if (player.mediaItemCount > 1) player.seekTo(player.mediaItemCount - 1, 0L) }, onNext = { if (player.hasNextMediaItem) player.seekToNextMediaItem() else if (player.mediaItemCount > 1) player.seekTo(0, 0L) },
+                onSeek = { player.seekTo(it) }, onPrevious = { if (player.hasPreviousMediaItem()) player.seekToPreviousMediaItem() else if (player.mediaItemCount > 1) player.seekTo(player.mediaItemCount - 1, 0L) }, onNext = { if (player.hasNextMediaItem()) player.seekToNextMediaItem() else if (player.mediaItemCount > 1) player.seekTo(0, 0L) },
                 onToggleFavourite = { toggleFavourite(track) },
                 onPlayQueueItem = { index -> player.seekTo(index, 0L); player.play() },
                 onRemoveQueueItem = { if (it in 0 until player.mediaItemCount) player.removeMediaItem(it) },
