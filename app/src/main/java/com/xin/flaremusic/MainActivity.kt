@@ -612,23 +612,30 @@ private fun GlassAmbientLayer(
                         .clip(miniShape)
                         .clickable { playerExpanded = true }
                 ) {
-                    if (FlarePreferences.glassEffects.value) {
-                        GlassAmbientLayer(
-                            Modifier.matchParentSize(),
-                            artwork = current!!.artwork,
-                            accent = miniColors.primary,
-                            radius = 24f
-                        )
-                    } else {
-                        Box(
-                            Modifier.matchParentSize()
-                                .background(
-                                    Brush.linearGradient(
-                                        listOf(miniColors.surfaceVariant.copy(alpha = .96f), miniColors.primaryContainer.copy(alpha = .48f))
+                    // Keep the mini-player glassy regardless of the global glass toggle.
+                    // The artwork is blurred beneath a translucent tint for a frosted-glass pill.
+                    GlassAmbientLayer(
+                        Modifier.matchParentSize(),
+                        artwork = current!!.artwork,
+                        accent = miniColors.primary,
+                        radius = 22f
+                    )
+                    Box(
+                        Modifier.matchParentSize()
+                            .background(
+                                Brush.linearGradient(
+                                    listOf(
+                                        Color.White.copy(alpha = .12f),
+                                        miniColors.surface.copy(alpha = .10f),
+                                        miniColors.primary.copy(alpha = .10f)
                                     )
                                 )
-                        )
-                    }
+                            )
+                    )
+                    Box(
+                        Modifier.matchParentSize()
+                            .border(1.dp, Color.White.copy(alpha = .22f), miniShape)
+                    ) {}
                     Column(Modifier.fillMaxWidth()) {
                     Row(
                         Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 5.dp),
