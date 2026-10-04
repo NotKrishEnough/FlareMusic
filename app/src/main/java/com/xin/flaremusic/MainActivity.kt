@@ -44,6 +44,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.asComposeRenderEffect
 import androidx.compose.foundation.border
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -274,6 +276,45 @@ class MainActivity : ComponentActivity() {
         list
     }
     override fun onDestroy() { controllerFuture?.let { MediaController.releaseFuture(it) }; super.onDestroy() }
+}
+
+
+private fun Modifier.nativeBlur(radius: Float): Modifier = graphicsLayer {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        renderEffect = android.graphics.RenderEffect
+            .createBlurEffect(radius, radius, android.graphics.Shader.TileMode.CLAMP)
+            .asComposeRenderEffect()
+    }
+}
+
+@Composable
+private fun GlassAmbientLayer(
+    modifier: Modifier = Modifier,
+    artwork: String? = null,
+    accent: Color = MaterialTheme.colorScheme.primary,
+    radius: Float = 26f
+) {
+    Box(modifier.clip(RoundedCornerShape(24.dp))) {
+        if (artwork != null) {
+            Artwork(artwork, Modifier.matchParentSize().nativeBlur(radius))
+        } else {
+            Box(
+                Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.radialGradient(
+                            listOf(accent.copy(alpha = .48f), MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .82f))
+                        )
+                    )
+                    .nativeBlur(radius)
+            )
+        }
+        Box(
+            Modifier
+                .matchParentSize()
+                .background(MaterialTheme.colorScheme.surface.copy(alpha = .46f))
+        )
+    }
 }
 
 @Composable private fun FlareTheme(amoled: Boolean, dynamicColors: Boolean, darkMode: Boolean, content: @Composable () -> Unit) {
@@ -565,15 +606,29 @@ class MainActivity : ComponentActivity() {
                 val miniProgress = if (totalDuration > 0) (position.toFloat() / totalDuration.toFloat()).coerceIn(0f, 1f) else 0f
                 val miniColors = MaterialTheme.colorScheme
                 val miniShape = RoundedCornerShape(24.dp)
-                Column(
+                Box(
                     Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)
                         .clip(miniShape)
-                        .background(Brush.linearGradient(listOf(
-                            miniColors.surfaceVariant.copy(alpha = if (FlarePreferences.glassEffects.value) 0.70f else 0.96f),
-                            miniColors.primaryContainer.copy(alpha = if (FlarePreferences.glassEffects.value) 0.34f else 0.48f)
-                        )))
                         .clickable { playerExpanded = true }
                 ) {
+                    if (FlarePreferences.glassEffects.value) {
+                        GlassAmbientLayer(
+                            Modifier.matchParentSize(),
+                            artwork = current!!.artwork,
+                            accent = miniColors.primary,
+                            radius = 24f
+                        )
+                    } else {
+                        Box(
+                            Modifier.matchParentSize()
+                                .background(
+                                    Brush.linearGradient(
+                                        listOf(miniColors.surfaceVariant.copy(alpha = .96f), miniColors.primaryContainer.copy(alpha = .48f))
+                                    )
+                                )
+                        )
+                    }
+                    Column(Modifier.fillMaxWidth()) {
                     Row(
                         Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -598,6 +653,7 @@ class MainActivity : ComponentActivity() {
                         Box(Modifier.fillMaxWidth(miniProgress).fillMaxHeight().clip(RoundedCornerShape(2.dp)).background(miniColors.primary))
                     }
                     Spacer(Modifier.height(4.dp))
+                    }
                 }
             }
             Box(
@@ -625,9 +681,8 @@ class MainActivity : ComponentActivity() {
                             .height(54.dp)
                             .clip(RoundedCornerShape(28.dp))
                             .background(
-                                MaterialTheme.colorScheme.surface.copy(
-                                    alpha = if (FlarePreferences.glassEffects.value) 0.70f else 0.96f
-                                )
+                                if (FlarePreferences.glassEffects.value) Color.Transparent
+                                else MaterialTheme.colorScheme.surface.copy(alpha = .96f)
                             )
                             .border(
                                 1.dp,
@@ -635,6 +690,30 @@ class MainActivity : ComponentActivity() {
                                 RoundedCornerShape(28.dp)
                             )
                     ) {
+                        if (FlarePreferences.glassEffects.value) {
+                            Box(
+                                Modifier.matchParentSize()
+                                    .clip(RoundedCornerShape(28.dp))
+                            ) {
+                                Box(
+                                    Modifier
+                                        .matchParentSize()
+                                        .background(
+                                            Brush.radialGradient(
+                                                listOf(
+                                                    Violet.copy(alpha = .30f),
+                                                    MaterialTheme.colorScheme.surface.copy(alpha = .70f)
+                                                )
+                                            )
+                                        )
+                                        .nativeBlur(28f)
+                                )
+                                Box(
+                                    Modifier.matchParentSize()
+                                        .background(MaterialTheme.colorScheme.surface.copy(alpha = .38f))
+                                )
+                            }
+                        }
                         // DA-Tunes-style animated selection capsule.
                         Box(
                             Modifier
