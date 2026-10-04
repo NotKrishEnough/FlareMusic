@@ -699,7 +699,7 @@ class MainActivity : ComponentActivity() {
                 isFavourite = track.id.toString() in favouriteIds, queue = queue,
                 onClose = { playerExpanded = false },
                 onPlayPause = { if (playing) player.pause() else player.play() },
-                onSeek = { player.seekTo(it) }, onPrevious = { if (player.hasPreviousMediaItem()) player.seekToPreviousMediaItem() else if (player.mediaItemCount > 1) player.seekTo(player.mediaItemCount - 1, 0L) }, onNext = { if (player.hasNextMediaItem()) player.seekToNextMediaItem() else if (player.mediaItemCount > 1) player.seekTo(0, 0L) },
+                onSeek = { player.seekTo(it) },\n                onPrevious = { if (player.mediaItemCount > 1) { val previousIndex = if (player.currentMediaItemIndex > 0) player.currentMediaItemIndex - 1 else player.mediaItemCount - 1; player.seekTo(previousIndex, 0L); player.play() } },\n                onNext = { if (player.mediaItemCount > 1) { val nextIndex = if (player.currentMediaItemIndex < player.mediaItemCount - 1) player.currentMediaItemIndex + 1 else 0; player.seekTo(nextIndex, 0L); player.play() } },
                 onToggleFavourite = { toggleFavourite(track) },
                 onPlayQueueItem = { index -> player.seekTo(index, 0L); player.play() },
                 onRemoveQueueItem = { if (it in 0 until player.mediaItemCount) player.removeMediaItem(it) },
