@@ -605,9 +605,10 @@ private fun GlassAmbientLayer(
             if (current != null && FlarePreferences.showMiniPlayer.value) {
                 val miniProgress = if (totalDuration > 0) (position.toFloat() / totalDuration.toFloat()).coerceIn(0f, 1f) else 0f
                 val miniColors = MaterialTheme.colorScheme
-                val miniShape = RoundedCornerShape(24.dp)
+                val miniShape = RoundedCornerShape(50.dp)
                 Box(
-                    Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)
+                    Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 3.dp)
+                        .height(64.dp)
                         .clip(miniShape)
                         .clickable { playerExpanded = true }
                 ) {
@@ -630,29 +631,28 @@ private fun GlassAmbientLayer(
                     }
                     Column(Modifier.fillMaxWidth()) {
                     Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp),
+                        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 5.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box {
-                            Artwork(current!!.artwork, Modifier.size(44.dp).clip(RoundedCornerShape(13.dp)))
-                            Box(Modifier.align(Alignment.BottomEnd).padding(3.dp).size(8.dp).clip(RoundedCornerShape(4.dp)).background(miniColors.primary))
+                            Artwork(current!!.artwork, Modifier.size(42.dp).clip(RoundedCornerShape(21.dp)))
+                            Box(Modifier.align(Alignment.BottomEnd).padding(3.dp).size(7.dp).clip(CircleShape).background(miniColors.primary))
                         }
                         Column(Modifier.weight(1f).padding(start = 10.dp, end = 6.dp)) {
-                            Text("NOW PLAYING", color = miniColors.primary, fontWeight = FontWeight.Bold, fontSize = 8.sp, letterSpacing = 1.1.sp, maxLines = 1)
                             Text(current!!.title, color = miniColors.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp))
                             Text(current!!.artist, color = miniColors.onSurfaceVariant, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
                         }
-                        IconButton(onClick = { if (playing) player.pause() else player.play() }, modifier = Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(miniColors.primary)) {
+                        IconButton(onClick = { if (playing) player.pause() else player.play() }, modifier = Modifier.size(36.dp).clip(CircleShape).background(miniColors.primary)) {
                             Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = miniColors.onPrimary, modifier = Modifier.size(20.dp))
                         }
-                        IconButton(onClick = { player.seekToNextMediaItem(); player.play() }, modifier = Modifier.size(38.dp)) {
+                        IconButton(onClick = { player.seekToNextMediaItem(); player.play() }, modifier = Modifier.size(34.dp)) {
                             Icon(Icons.Rounded.SkipNext, null, tint = miniColors.onSurface, modifier = Modifier.size(23.dp))
                         }
                     }
-                    Box(Modifier.fillMaxWidth().padding(horizontal = 10.dp).height(2.dp).clip(RoundedCornerShape(2.dp)).background(miniColors.onSurface.copy(alpha = 0.10f))) {
+                    Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp).height(2.dp).clip(CircleShape).background(miniColors.onSurface.copy(alpha = 0.10f))) {
                         Box(Modifier.fillMaxWidth(miniProgress).fillMaxHeight().clip(RoundedCornerShape(2.dp)).background(miniColors.primary))
                     }
-                    Spacer(Modifier.height(4.dp))
+                    Spacer(Modifier.height(0.dp))
                     }
                 }
             }
