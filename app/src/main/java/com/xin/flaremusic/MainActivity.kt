@@ -851,7 +851,7 @@ class MainActivity : ComponentActivity() {
             }
             Spacer(Modifier.weight(.65f))
             Box(Modifier.fillMaxWidth().aspectRatio(1f).padding(horizontal = 8.dp).clip(RoundedCornerShape(30.dp)).background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.surface))).padding(10.dp)) {
-                Artwork(track.artwork, Modifier.fillMaxSize().clip(RoundedCornerShape(23.dp)), fitArtwork = true)
+                Artwork(track.artwork, Modifier.fillMaxSize().clip(RoundedCornerShape(23.dp)))
             }
             Spacer(Modifier.weight(.65f))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
