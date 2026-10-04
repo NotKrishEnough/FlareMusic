@@ -563,7 +563,9 @@ class MainActivity : ComponentActivity() {
     }) { padding ->
         AnimatedContent(
             targetState = tab,
-            modifier = Modifier.padding(padding),
+            // Let the custom floating navigation sit over the page instead of reserving
+            // an opaque block of space above it. The page only needs the top scaffold inset.
+            modifier = Modifier.padding(top = padding.calculateTopPadding()),
             label = "page",
             transitionSpec = {
                 if (FlarePreferences.animations.value) {
