@@ -580,7 +580,7 @@ class MainActivity : ComponentActivity() {
                         IconButton(onClick = { if (playing) player.pause() else player.play() }, modifier = Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(miniColors.primary)) {
                             Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = miniColors.onPrimary, modifier = Modifier.size(20.dp))
                         }
-                        IconButton(onClick = { if (player.hasNextMediaItem()) player.seekToNextMediaItem() else if (player.mediaItemCount > 1) player.seekTo(0, 0L) }, modifier = Modifier.size(38.dp)) {
+                        IconButton(onClick = { if (player.mediaItemCount > 1) { val nextIndex = if (player.currentMediaItemIndex < player.mediaItemCount - 1) player.currentMediaItemIndex + 1 else 0; player.seekTo(nextIndex, 0L); player.play() } }, modifier = Modifier.size(38.dp)) {
                             Icon(Icons.Rounded.SkipNext, null, tint = miniColors.onSurface, modifier = Modifier.size(23.dp))
                         }
                     }
