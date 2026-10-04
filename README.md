@@ -153,6 +153,10 @@ dotnet publish windows/FlareMusic.Windows/FlareMusic.Windows.csproj -c Release -
 
 Or open **Actions → Windows Desktop** and download the `FlareMusic-Windows-x64` artifact after the workflow completes. Extract the ZIP and run `FlareMusic.exe`.
 
+## Credits
+
+- **Vikrant Ruhela** — creator of [DA-Tunes](https://github.com/VikrantRuhela/DA-Tunes). Thank you for the design inspiration and help with the navigation/UI direction.
+
 ## Contributing
 
 Issues and pull requests are welcome. When reporting a bug, include your device model, Android version, steps to reproduce, and relevant build or crash logs. Please avoid posting private account data, session cookies, or other secrets.
