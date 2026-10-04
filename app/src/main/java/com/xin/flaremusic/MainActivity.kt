@@ -748,6 +748,77 @@ class MainActivity : ComponentActivity() {
                 })
             }
         }
+        Text("INTERFACE", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(top = 20.dp, bottom = 9.dp))
+        Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surfaceVariant).padding(17.dp)) {
+            Text("Home screen layout", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+            Text("Choose how much space the home screen uses.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp, bottom = 12.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                listOf("Showcase", "Compact", "Stats first").forEachIndexed { index, label ->
+                    val selected = FlarePreferences.homeLayout.intValue == index
+                    TextButton(onClick = {
+                        FlarePreferences.homeLayout.intValue = index
+                        settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putInt("home_layout", index).apply()
+                    }, modifier = Modifier.weight(1f)) { Text(label, color = if (selected) Violet else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, fontSize = 11.sp) }
+                }
+            }
+            HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            Text("Player artwork", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+            Text("Crop, fit, or soften artwork presentation.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp, bottom = 8.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                listOf("Crop", "Fit", "Glass").forEachIndexed { index, label ->
+                    val selected = FlarePreferences.artworkStyle.intValue == index
+                    TextButton(onClick = {
+                        FlarePreferences.artworkStyle.intValue = index
+                        settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putInt("artwork_style", index).apply()
+                    }, modifier = Modifier.weight(1f)) { Text(label, color = if (selected) Violet else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, fontSize = 11.sp) }
+                }
+            }
+            HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            Text("Navigation bar style", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+            Text("Change the shape and density of the bottom navigation.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp, bottom = 8.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                listOf("Pill", "Flat", "Slim").forEachIndexed { index, label ->
+                    val selected = FlarePreferences.navStyle.intValue == index
+                    TextButton(onClick = {
+                        FlarePreferences.navStyle.intValue = index
+                        settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putInt("nav_style", index).apply()
+                    }, modifier = Modifier.weight(1f)) { Text(label, color = if (selected) Violet else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, fontSize = 11.sp) }
+                }
+            }
+            HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            Text("Font size", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                listOf("Small" to .85f, "Default" to 1f, "Large" to 1.2f).forEach { (label, scale) ->
+                    val selected = kotlin.math.abs(FlarePreferences.fontScale.floatValue - scale) < .01f
+                    TextButton(onClick = {
+                        FlarePreferences.fontScale.floatValue = scale
+                        settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putFloat("font_scale", scale).apply()
+                    }, modifier = Modifier.weight(1f)) { Text(label, color = if (selected) Violet else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, fontSize = 11.sp) }
+                }
+            }
+            HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            Text("Corner radius", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                listOf("Round", "Medium", "Sharp").forEachIndexed { index, label ->
+                    val selected = FlarePreferences.cornerStyle.intValue == index
+                    TextButton(onClick = {
+                        FlarePreferences.cornerStyle.intValue = index
+                        settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putInt("corner_style", index).apply()
+                    }, modifier = Modifier.weight(1f)) { Text(label, color = if (selected) Violet else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, fontSize = 11.sp) }
+                }
+            }
+            HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("Glass effects", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+                    Text("Use translucent surfaces for a softer glass-like UI", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                }
+                Switch(checked = FlarePreferences.glassEffects.value, onCheckedChange = {
+                    FlarePreferences.glassEffects.value = it
+                    settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("glass_effects", it).apply()
+                })
+            }
+        }
         Text("PLAYER & NAVIGATION", color = Mint, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.8.sp, modifier = Modifier.padding(top = 20.dp, bottom = 9.dp))
         Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(MaterialTheme.colorScheme.surfaceVariant).padding(17.dp)) {
             Text("Progress bar style", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
