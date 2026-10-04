@@ -135,11 +135,23 @@ object YouTubePlaylists {
                                 .ifBlank { navigation?.optString("playlistId").orEmpty() }
                                 .ifBlank { renderer.optString("playlistId") }
                             if (id.isNotBlank() && title.isNotBlank()) {
-                                val thumbnails = renderer.optJSONObject("thumbnail")?.optJSONArray("thumbnails")
-                                // InnerTube usually returns thumbnail sizes from smallest to largest.
-                                val thumbnail = thumbnails
-                                    ?.optJSONObject((thumbnails.length() - 1).coerceAtLeast(0))
-                                    ?.optString("url").orEmpty()
+                                // YouTube Music wraps playlist art differently depending on the
+                                // renderer (musicTwoRowItemRenderer/gridPlaylistRenderer). Prefer the
+                                // largest thumbnail from all known wrappers instead of falling back
+                                // to the FlareMusic placeholder.
+                                val thumbnailObjects = listOfNotNull(
+                                    renderer.optJSONObject("thumbnail"),
+                                    renderer.optJSONObject("thumbnailRenderer")
+                                        ?.optJSONObject("musicThumbnailRenderer")
+                                        ?.optJSONObject("thumbnail"),
+                                    renderer.optJSONObject("thumbnailRenderer")
+                                        ?.optJSONObject("playlistVideoThumbnailRenderer")
+                                        ?.optJSONObject("thumbnail")
+                                )
+                                val thumbnail = thumbnailObjects.asSequence()
+                                    .mapNotNull { it.optJSONArray("thumbnails") }
+                                    .flatMap { array -> (0 until array.length()).asSequence().mapNotNull { array.optJSONObject(it)?.optString("url")?.takeIf(String::isNotBlank) } }
+                                    .lastOrNull().orEmpty()
                                 val subtitle = text(renderer.optJSONObject("subtitle"))
                                 found.add(YouTubePlaylist(id, title, subtitle, 0, thumbnail))
                             }
