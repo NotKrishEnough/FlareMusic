@@ -1042,12 +1042,22 @@ class MainActivity : ComponentActivity() {
         }
         if (playlistError.isNotBlank()) Text(playlistError, color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
         if (youtubePlaylists.isNotEmpty()) {
-            LazyRow(horizontalArrangement = Arrangement.spacedBy(12.dp), contentPadding = PaddingValues(bottom = 14.dp)) {
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
+                contentPadding = PaddingValues(bottom = 14.dp)
+            ) {
                 items(youtubePlaylists, key = { it.id }) { playlist ->
-                    Column(Modifier.width(142.dp).clip(RoundedCornerShape(16.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable { openPlaylist(playlist) }.padding(9.dp)) {
-                        Artwork(playlist.thumbnail, Modifier.fillMaxWidth().height(112.dp).clip(RoundedCornerShape(11.dp)))
-                        Text(playlist.title, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 8.dp))
-                        Text(if (playlist.itemCount > 0) "${playlist.itemCount} tracks" else playlist.description, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Row(
+                        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable { openPlaylist(playlist) }.padding(horizontal = 4.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Artwork(playlist.thumbnail, Modifier.size(72.dp).clip(RoundedCornerShape(14.dp)))
+                        Column(Modifier.weight(1f).padding(start = 14.dp, end = 8.dp)) {
+                            Text(playlist.title, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            Text(if (playlist.itemCount > 0) "${playlist.itemCount} tracks" else playlist.description, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp))
+                        }
+                        Icon(Icons.Rounded.ChevronRight, contentDescription = "Open playlist", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(26.dp))
                     }
                 }
             }
