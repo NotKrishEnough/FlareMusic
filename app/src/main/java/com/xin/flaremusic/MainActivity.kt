@@ -351,7 +351,7 @@ class MainActivity : ComponentActivity() {
                         artist = item.mediaMetadata.artist?.toString() ?: "Unknown artist",
                         album = item.mediaMetadata.albumTitle?.toString() ?: "",
                         uri = item.localConfiguration?.uri ?: Uri.EMPTY,
-                        duration = item.duration.coerceAtLeast(0L),
+                        duration = 0L,
                         artwork = item.mediaMetadata.artworkUri?.toString()
                     )
                 }
