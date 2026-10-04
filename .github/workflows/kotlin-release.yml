@@ -90,7 +90,7 @@ jobs:
           if-no-files-found: error
 
       - name: Publish GitHub release
-        if: github.event_name == 'push'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/kotlin-v')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAG_NAME: ${{ github.ref_name }}
