@@ -86,6 +86,8 @@ private object FlarePreferences {
     val dynamicAccent = mutableStateOf(Color(0xFFFF6B4A))
     val swipeToMinimize = mutableStateOf(true)
     val swipeToChangeTracks = mutableStateOf(true)
+    val showMiniPlayer = mutableStateOf(true)
+    val showNavLabels = mutableStateOf(true)
     val accents = listOf(
         Color(0xFFFF694F), Color(0xFF9B8CFF), Color(0xFF35C9A5), Color(0xFFFFB84D),
         Color(0xFF64B5F6), Color(0xFFE879B9), Color(0xFFB0C46A), Color(0xFFB39DDB)
@@ -178,6 +180,8 @@ class MainActivity : ComponentActivity() {
         FlarePreferences.dynamicColors.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("dynamic_colors", true)
         FlarePreferences.swipeToMinimize.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("gesture_minimize", true)
         FlarePreferences.swipeToChangeTracks.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("gesture_tracks", true)
+        FlarePreferences.showMiniPlayer.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("show_mini_player", true)
+        FlarePreferences.showNavLabels.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("show_nav_labels", true)
         val token = SessionToken(this, android.content.ComponentName(this, FlarePlaybackService::class.java))
         controllerFuture = MediaController.Builder(this, token).buildAsync()
         controllerFuture?.addListener({
@@ -522,7 +526,7 @@ class MainActivity : ComponentActivity() {
                 .fillMaxWidth()
                 .padding(bottom = 12.dp)
         ) {
-            if (current != null) {
+            if (current != null && FlarePreferences.showMiniPlayer.value) {
                 val miniProgress = if (totalDuration > 0) (position.toFloat() / totalDuration.toFloat()).coerceIn(0f, 1f) else 0f
                 val miniColors = MaterialTheme.colorScheme
                 val miniShape = RoundedCornerShape(24.dp)
@@ -592,7 +596,9 @@ class MainActivity : ComponentActivity() {
                                     modifier = Modifier.size(21.dp)
                                 )
                             }
-                            Text(item, color = if (selected) Violet else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp), maxLines = 1)
+                            if (FlarePreferences.showNavLabels.value) {
+                                Text(item, color = if (selected) Violet else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, fontSize = 10.sp, modifier = Modifier.padding(top = 3.dp), maxLines = 1)
+                            }
                         }
                     }
                 }
