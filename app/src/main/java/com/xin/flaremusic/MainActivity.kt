@@ -51,9 +51,6 @@ import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.viewinterop.AndroidView
-import eightbitlab.com.blurview.BlurView
-import eightbitlab.com.blurview.RenderEffectBlur
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -277,31 +274,6 @@ class MainActivity : ComponentActivity() {
         list
     }
     override fun onDestroy() { controllerFuture?.let { MediaController.releaseFuture(it) }; super.onDestroy() }
-}
-
-@Composable
-private fun BackdropBlur(modifier: Modifier = Modifier, radius: Float = 22f, overlay: Color = MaterialTheme.colorScheme.surface.copy(alpha = 0.38f)) {
-    val context = LocalContext.current
-    val activity = context as? ComponentActivity
-    AndroidView(
-        modifier = modifier,
-        factory = { ctx ->
-            BlurView(ctx).apply {
-                if (activity != null) {
-                    val root = activity.window.decorView.findViewById<android.view.ViewGroup>(android.R.id.content)
-                    setupWith(root, RenderEffectBlur())
-                        .setBlurRadius(radius)
-                }
-                setOverlayColor(overlay.value.toInt())
-                isClickable = false
-                isFocusable = false
-            }
-        },
-        update = { blur ->
-            blur.setOverlayColor(overlay.value.toInt())
-            blur.setBlurRadius(radius)
-        }
-    )
 }
 
 @Composable private fun FlareTheme(amoled: Boolean, dynamicColors: Boolean, darkMode: Boolean, content: @Composable () -> Unit) {
@@ -593,16 +565,15 @@ private fun BackdropBlur(modifier: Modifier = Modifier, radius: Float = 22f, ove
                 val miniProgress = if (totalDuration > 0) (position.toFloat() / totalDuration.toFloat()).coerceIn(0f, 1f) else 0f
                 val miniColors = MaterialTheme.colorScheme
                 val miniShape = RoundedCornerShape(24.dp)
-                Box(
+                Column(
                     Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp)
                         .clip(miniShape)
-                        .background(if (FlarePreferences.glassEffects.value) Color.Transparent else miniColors.surfaceVariant)
+                        .background(Brush.linearGradient(listOf(
+                            miniColors.surfaceVariant.copy(alpha = if (FlarePreferences.glassEffects.value) 0.70f else 0.96f),
+                            miniColors.primaryContainer.copy(alpha = if (FlarePreferences.glassEffects.value) 0.34f else 0.48f)
+                        )))
                         .clickable { playerExpanded = true }
                 ) {
-                    if (FlarePreferences.glassEffects.value) {
-                        BackdropBlur(Modifier.matchParentSize().clip(miniShape), radius = 24f, overlay = miniColors.surface.copy(alpha = 0.42f))
-                    }
-                    Column(Modifier.fillMaxWidth()) {
                     Row(
                         Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp),
                         verticalAlignment = Alignment.CenterVertically
@@ -627,7 +598,6 @@ private fun BackdropBlur(modifier: Modifier = Modifier, radius: Float = 22f, ove
                         Box(Modifier.fillMaxWidth(miniProgress).fillMaxHeight().clip(RoundedCornerShape(2.dp)).background(miniColors.primary))
                     }
                     Spacer(Modifier.height(4.dp))
-                    }
                 }
             }
             Box(
@@ -654,16 +624,17 @@ private fun BackdropBlur(modifier: Modifier = Modifier, radius: Float = 22f, ove
                             .width(pillWidth)
                             .height(54.dp)
                             .clip(RoundedCornerShape(28.dp))
-                            .background(if (FlarePreferences.glassEffects.value) Color.Transparent else MaterialTheme.colorScheme.surface)
+                            .background(
+                                MaterialTheme.colorScheme.surface.copy(
+                                    alpha = if (FlarePreferences.glassEffects.value) 0.70f else 0.96f
+                                )
+                            )
                             .border(
                                 1.dp,
                                 MaterialTheme.colorScheme.outline.copy(alpha = 0.30f),
                                 RoundedCornerShape(28.dp)
                             )
                     ) {
-                        if (FlarePreferences.glassEffects.value) {
-                            BackdropBlur(Modifier.matchParentSize().clip(RoundedCornerShape(28.dp)), radius = 28f, overlay = MaterialTheme.colorScheme.surface.copy(alpha = 0.42f))
-                        }
                         // DA-Tunes-style animated selection capsule.
                         Box(
                             Modifier
