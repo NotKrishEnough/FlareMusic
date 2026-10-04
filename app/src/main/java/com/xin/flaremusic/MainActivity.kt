@@ -96,6 +96,7 @@ private object FlarePreferences {
     val fontScale = mutableFloatStateOf(1f)
     val cornerStyle = mutableIntStateOf(0) // 0: rounded, 1: medium, 2: sharp
     val glassEffects = mutableStateOf(true)
+    val playlistStyle = mutableIntStateOf(0) // 0: list, 1: cards, 2: compact
     val accents = listOf(
         Color(0xFFFF694F), Color(0xFF9B8CFF), Color(0xFF35C9A5), Color(0xFFFFB84D),
         Color(0xFF64B5F6), Color(0xFFE879B9), Color(0xFFB0C46A), Color(0xFFB39DDB)
@@ -196,6 +197,7 @@ class MainActivity : ComponentActivity() {
         FlarePreferences.fontScale.floatValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getFloat("font_scale", 1f).coerceIn(.85f, 1.2f)
         FlarePreferences.cornerStyle.intValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getInt("corner_style", 0).coerceIn(0, 2)
         FlarePreferences.glassEffects.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("glass_effects", true)
+        FlarePreferences.playlistStyle.intValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getInt("playlist_style", 0).coerceIn(0, 2)
         val token = SessionToken(this, android.content.ComponentName(this, FlarePlaybackService::class.java))
         controllerFuture = MediaController.Builder(this, token).buildAsync()
         controllerFuture?.addListener({
@@ -786,6 +788,18 @@ class MainActivity : ComponentActivity() {
                 }
             }
             HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
+            Text("Playlist cards", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
+            Text("Choose the density and shape of YouTube Music playlist rows.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp, bottom = 8.dp))
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+                listOf("List", "Cards", "Compact").forEachIndexed { index, label ->
+                    val selected = FlarePreferences.playlistStyle.intValue == index
+                    TextButton(onClick = {
+                        FlarePreferences.playlistStyle.intValue = index
+                        settingsContext.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putInt("playlist_style", index).apply()
+                    }, modifier = Modifier.weight(1f)) { Text(label, color = if (selected) Violet else MaterialTheme.colorScheme.onSurfaceVariant, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium, fontSize = 11.sp) }
+                }
+            }
+            HorizontalDivider(Modifier.padding(vertical = 10.dp), color = MaterialTheme.colorScheme.outlineVariant)
             Text("Font size", color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold)
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(7.dp)) {
                 listOf("Small" to .85f, "Default" to 1f, "Large" to 1.2f).forEach { (label, scale) ->
@@ -1210,10 +1224,14 @@ class MainActivity : ComponentActivity() {
             ) {
                 items(youtubePlaylists, key = { it.id }) { playlist ->
                     Row(
-                        Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).clickable { openPlaylist(playlist) }.padding(horizontal = 4.dp, vertical = 7.dp),
+                        Modifier.fillMaxWidth()
+                            .clip(RoundedCornerShape(if (FlarePreferences.playlistStyle.intValue == 1) 20.dp else 14.dp))
+                            .background(if (FlarePreferences.playlistStyle.intValue == 1) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (FlarePreferences.glassEffects.value) .62f else 1f) else Color.Transparent)
+                            .clickable { openPlaylist(playlist) }
+                            .padding(horizontal = if (FlarePreferences.playlistStyle.intValue == 2) 2.dp else 8.dp, vertical = if (FlarePreferences.playlistStyle.intValue == 2) 4.dp else 7.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Artwork(playlist.thumbnail, Modifier.size(72.dp).clip(RoundedCornerShape(14.dp)))
+                        Artwork(playlist.thumbnail, Modifier.size(if (FlarePreferences.playlistStyle.intValue == 2) 58.dp else 72.dp).clip(RoundedCornerShape(14.dp)))
                         Column(Modifier.weight(1f).padding(start = 14.dp, end = 8.dp)) {
                             Text(playlist.title, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis)
                             Text(if (playlist.itemCount > 0) "${playlist.itemCount} tracks" else playlist.description, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp))
