@@ -1384,9 +1384,11 @@ private fun GlassAmbientLayer(
         if (playlistError.isNotBlank()) Text(playlistError, color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(bottom = 8.dp))
         if (youtubePlaylists.isNotEmpty()) {
             LazyColumn(
-                modifier = Modifier.fillMaxWidth().heightIn(max = 360.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp),
-                contentPadding = PaddingValues(bottom = 14.dp)
+                // Use the remaining library viewport instead of capping the playlist
+                // section at 360dp, which leaves a large empty gap below short lists.
+                modifier = Modifier.fillMaxWidth().weight(1f),
+                verticalArrangement = Arrangement.SpaceEvenly,
+                contentPadding = PaddingValues(top = 8.dp, bottom = 18.dp)
             ) {
                 items(youtubePlaylists, key = { it.id }) { playlist ->
                     Row(
