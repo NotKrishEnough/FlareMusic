@@ -636,20 +636,20 @@ private fun GlassAmbientLayer(
                     ) {
                         Box {
                             Artwork(current!!.artwork, Modifier.size(42.dp).clip(RoundedCornerShape(21.dp)))
-                            Box(Modifier.align(Alignment.BottomEnd).padding(3.dp).size(7.dp).clip(CircleShape).background(miniColors.primary))
+                            Box(Modifier.align(Alignment.BottomEnd).padding(3.dp).size(7.dp).clip(RoundedCornerShape(50.dp)).background(miniColors.primary))
                         }
                         Column(Modifier.weight(1f).padding(start = 10.dp, end = 6.dp)) {
                             Text(current!!.title, color = miniColors.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp))
                             Text(current!!.artist, color = miniColors.onSurfaceVariant, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
                         }
-                        IconButton(onClick = { if (playing) player.pause() else player.play() }, modifier = Modifier.size(36.dp).clip(CircleShape).background(miniColors.primary)) {
+                        IconButton(onClick = { if (playing) player.pause() else player.play() }, modifier = Modifier.size(36.dp).clip(RoundedCornerShape(50.dp)).background(miniColors.primary)) {
                             Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = miniColors.onPrimary, modifier = Modifier.size(20.dp))
                         }
                         IconButton(onClick = { player.seekToNextMediaItem(); player.play() }, modifier = Modifier.size(34.dp)) {
                             Icon(Icons.Rounded.SkipNext, null, tint = miniColors.onSurface, modifier = Modifier.size(23.dp))
                         }
                     }
-                    Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp).height(2.dp).clip(CircleShape).background(miniColors.onSurface.copy(alpha = 0.10f))) {
+                    Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp).height(2.dp).clip(RoundedCornerShape(50.dp)).background(miniColors.onSurface.copy(alpha = 0.10f))) {
                         Box(Modifier.fillMaxWidth(miniProgress).fillMaxHeight().clip(RoundedCornerShape(2.dp)).background(miniColors.primary))
                     }
                     Spacer(Modifier.height(0.dp))
