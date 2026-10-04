@@ -1264,7 +1264,7 @@ class MainActivity : ComponentActivity() {
             }
             if (selectedPlaylistLoading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Violet, trackColor = MaterialTheme.colorScheme.outlineVariant)
             if (selectedPlaylistError.isNotBlank()) Text(selectedPlaylistError, color = MaterialTheme.colorScheme.error, fontSize = 13.sp, modifier = Modifier.padding(vertical = 12.dp))
-            LazyColumn(contentPadding = PaddingValues(bottom = 18.dp)) {
+            LazyColumn(contentPadding = PaddingValues(bottom = 150.dp)) {
                 items(selectedPlaylistTracks, key = { it.videoId }) { item ->
                     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { playPlaylistTrack(item) }.padding(vertical = 8.dp, horizontal = 5.dp), verticalAlignment = Alignment.CenterVertically) {
                         Artwork(item.thumbnail, Modifier.size(52.dp).clip(RoundedCornerShape(12.dp)))
