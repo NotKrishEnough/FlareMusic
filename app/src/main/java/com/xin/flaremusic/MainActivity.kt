@@ -46,6 +46,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -550,8 +552,8 @@ class MainActivity : ComponentActivity() {
                     Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 6.dp)
                         .clip(miniShape)
                         .background(Brush.linearGradient(listOf(
-                            miniColors.surfaceVariant.copy(alpha = 0.96f),
-                            miniColors.primaryContainer.copy(alpha = 0.48f)
+                            miniColors.surfaceVariant.copy(alpha = if (FlarePreferences.glassEffects.value) 0.70f else 0.96f),
+                            miniColors.primaryContainer.copy(alpha = if (FlarePreferences.glassEffects.value) 0.34f else 0.48f)
                         )))
                         .clickable { playerExpanded = true }
                 ) {
@@ -584,9 +586,9 @@ class MainActivity : ComponentActivity() {
             Box(Modifier.fillMaxWidth().padding(horizontal = 24.dp, vertical = 10.dp), contentAlignment = Alignment.Center) {
                 Row(
                     Modifier.fillMaxWidth()
-                        .clip(RoundedCornerShape(50))
-                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (amoled) 0.94f else 0.88f))
-                        .padding(horizontal = 6.dp, vertical = 6.dp),
+                        .clip(RoundedCornerShape(if (FlarePreferences.navStyle.intValue == 1) 18.dp else 50.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (FlarePreferences.glassEffects.value) (if (amoled) 0.72f else 0.64f) else 1f))
+                        .padding(horizontal = 6.dp, vertical = if (FlarePreferences.navStyle.intValue == 1) 3.dp else 6.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -935,7 +937,7 @@ class MainActivity : ComponentActivity() {
                 IconButton(onClick = { showQueue = true }) { Icon(Icons.Rounded.QueueMusic, "Queue", tint = MaterialTheme.colorScheme.onSurface) }
             }
             Spacer(Modifier.weight(.65f))
-            Box(Modifier.fillMaxWidth().aspectRatio(1f).padding(horizontal = 8.dp).clip(RoundedCornerShape(30.dp)).background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.surface))).padding(10.dp)) {
+            Box(Modifier.fillMaxWidth().aspectRatio(1f).padding(horizontal = 8.dp).clip(RoundedCornerShape(radius)).background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.surface))).padding(10.dp)) {
                 Artwork(track.artwork, Modifier.fillMaxSize().clip(RoundedCornerShape(23.dp)))
             }
             Spacer(Modifier.weight(.65f))
@@ -1008,6 +1010,9 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable private fun HomeScreen(count: Int, loading: Boolean, error: String, accent: Color, openLibrary: () -> Unit) {
+ val homeMode = FlarePreferences.homeLayout.intValue
+ val radius = when (FlarePreferences.cornerStyle.intValue) { 1 -> 18.dp; 2 -> 8.dp; else -> 30.dp }
+ val cardRadius = when (FlarePreferences.cornerStyle.intValue) { 1 -> 16.dp; 2 -> 8.dp; else -> 22.dp }
  val colors=MaterialTheme.colorScheme
  Column(Modifier.fillMaxSize().background(colors.background).verticalScroll(rememberScrollState()).padding(horizontal=22.dp)) {
   Row(Modifier.fillMaxWidth().padding(top=25.dp),verticalAlignment=Alignment.CenterVertically) {
@@ -1017,8 +1022,8 @@ class MainActivity : ComponentActivity() {
    }
    Box(Modifier.size(54.dp).clip(RoundedCornerShape(19.dp)).background(accent.copy(alpha=.13f)),contentAlignment=Alignment.Center) { Image(painterResource(R.drawable.ic_flare_logo),contentDescription="FlareMusic",modifier=Modifier.size(38.dp)) }
   }
-  Spacer(Modifier.height(25.dp))
-  Box(Modifier.fillMaxWidth().height(238.dp).clip(RoundedCornerShape(30.dp)).background(Brush.linearGradient(listOf(Color(0xFFFF7658),Color(0xFFB65C91),Color(0xFF6157B9)))).clickable{openLibrary()}) {
+  Spacer(Modifier.height(if (homeMode == 1) 14.dp else 25.dp))
+  if (homeMode != 2) Box(Modifier.fillMaxWidth().height(if (homeMode == 1) 190.dp else 238.dp).clip(RoundedCornerShape(30.dp)).background(Brush.linearGradient(listOf(Color(0xFFFF7658),Color(0xFFB65C91),Color(0xFF6157B9)))).clickable{openLibrary()}) {
    Box(Modifier.align(Alignment.TopEnd).padding(18.dp).size(150.dp).clip(RoundedCornerShape(75.dp)).background(Color.White.copy(alpha=.09f)),contentAlignment=Alignment.Center) { Icon(Icons.Rounded.GraphicEq,null,tint=Color.White.copy(alpha=.9f),modifier=Modifier.size(78.dp)) }
    Column(Modifier.align(Alignment.BottomStart).padding(22.dp)) {
     Text("YOUR MUSIC. YOUR MOMENT.",color=Color.White.copy(alpha=.82f),fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=1.7.sp)
@@ -1033,7 +1038,7 @@ class MainActivity : ComponentActivity() {
   }
   Spacer(Modifier.height(12.dp))
   Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
-   Column(Modifier.weight(1f).clip(RoundedCornerShape(22.dp)).background(colors.surfaceVariant).clickable{openLibrary()}.padding(17.dp)) {
+   Column(Modifier.weight(1f).clip(RoundedCornerShape(cardRadius)).background(colors.surfaceVariant).clickable{openLibrary()}.padding(17.dp)) {
     Box(Modifier.size(40.dp).clip(RoundedCornerShape(14.dp)).background(accent.copy(alpha=.15f)),contentAlignment=Alignment.Center){Icon(Icons.Rounded.MusicNote,null,tint=accent)}
     Text(count.toString(),color=colors.onSurface,fontSize=27.sp,fontWeight=FontWeight.ExtraBold,modifier=Modifier.padding(top=16.dp))
     Text("Songs on device",color=colors.onSurfaceVariant,fontSize=12.sp)
@@ -1046,7 +1051,7 @@ class MainActivity : ComponentActivity() {
   }
   if(error.isNotBlank()) Text(error,color=colors.error,fontSize=12.sp,modifier=Modifier.padding(top=14.dp))
   Spacer(Modifier.height(22.dp))
-  Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(22.dp)).background(colors.surface).clickable{openLibrary()}.padding(16.dp),verticalAlignment=Alignment.CenterVertically) {
+  Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(cardRadius)).background(colors.surface).clickable{openLibrary()}.padding(16.dp),verticalAlignment=Alignment.CenterVertically) {
    Box(Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(accent.copy(alpha=.13f)),contentAlignment=Alignment.Center){Icon(Icons.Rounded.Explore,null,tint=accent,modifier=Modifier.size(25.dp))}
    Column(Modifier.weight(1f).padding(start=13.dp)){Text("Explore your collection",color=colors.onSurface,fontWeight=FontWeight.Bold,fontSize=14.sp);Text("Find a track for right now",color=colors.onSurfaceVariant,fontSize=12.sp,modifier=Modifier.padding(top=3.dp))}
    Icon(Icons.Rounded.ChevronRight,null,tint=colors.onSurfaceVariant)
