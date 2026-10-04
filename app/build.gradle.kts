@@ -22,6 +22,7 @@ android {
     kotlinOptions { jvmTarget = "17" }
 }
 dependencies {
+    implementation("com.github.Dimezis:BlurView:version-2.0.6")
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs_nio:2.1.5")
     implementation("com.github.teamnewpipe:newpipeextractor:0.26.5")
     implementation(platform("androidx.compose:compose-bom:2024.12.01"))
