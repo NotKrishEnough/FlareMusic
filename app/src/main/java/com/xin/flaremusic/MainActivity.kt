@@ -591,7 +591,7 @@ class MainActivity : ComponentActivity() {
                     Modifier.fillMaxWidth()
                         .clip(RoundedCornerShape(if (FlarePreferences.navStyle.intValue == 1) 18.dp else 50.dp))
                         .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = if (FlarePreferences.glassEffects.value) (if (amoled) 0.72f else 0.64f) else 1f))
-                        .padding(horizontal = 6.dp, vertical = if (FlarePreferences.navStyle.intValue == 1) 3.dp else 6.dp),
+                        .padding(horizontal = 6.dp, vertical = if (FlarePreferences.navStyle.intValue == 1) 2.dp else 4.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
@@ -602,7 +602,7 @@ class MainActivity : ComponentActivity() {
                                 .clip(RoundedCornerShape(50))
                                 .background(if (selected) Violet.copy(alpha = 0.20f) else Color.Transparent)
                                 .clickable { selectTab(item) }
-                                .padding(vertical = 9.dp),
+                                .padding(vertical = 6.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center
                         ) {
