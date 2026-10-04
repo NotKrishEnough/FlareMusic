@@ -480,7 +480,19 @@ class MainActivity : ComponentActivity() {
             }
         }
     }
-    BackHandler(enabled = playerExpanded) { playerExpanded = false }
+    // Back/gesture should unwind in-app screens before allowing the activity to close.
+    // Priority: expanded player -> opened playlist -> non-home tab -> exit app.
+    BackHandler(enabled = playerExpanded || selectedPlaylist != null || tab != "Home") {
+        when {
+            playerExpanded -> playerExpanded = false
+            selectedPlaylist != null -> {
+                selectedPlaylist = null
+                selectedPlaylistTracks = emptyList()
+                selectedPlaylistError = ""
+            }
+            tab != "Home" -> selectTab("Home")
+        }
+    }
     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
     Box(Modifier.fillMaxSize()) {
         AnimatedContent(
