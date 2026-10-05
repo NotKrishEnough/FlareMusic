@@ -639,17 +639,31 @@ private fun RenovationChoiceCard(title: String, options: List<String>, selected:
     RenovationCard(Modifier.fillMaxWidth(), MaterialTheme.colorScheme.primary) {
         Column(Modifier.padding(15.dp)) {
             Text(title, fontWeight = FontWeight.SemiBold)
-            LazyRow(
+            // Wrap choices instead of clipping them off-screen on narrow devices.
+            Column(
                 Modifier.padding(top = 11.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                items(options.size) { index ->
-                    val label = options[index]
-                    FilterChip(
-                        selected = selected == index,
-                        onClick = { onSelected(index) },
-                        label = { Text(label, fontSize = 12.sp) }
-                    )
+                options.chunked(2).forEach { rowOptions ->
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        rowOptions.forEach { label ->
+                            val index = options.indexOf(label)
+                            FilterChip(
+                                selected = selected == index,
+                                onClick = { onSelected(index) },
+                                modifier = Modifier.weight(1f),
+                                label = {
+                                    Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.Center) {
+                                        Text(label, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    }
+                                }
+                            )
+                        }
+                        if (rowOptions.size == 1) Spacer(Modifier.weight(1f))
+                    }
                 }
             }
         }
