@@ -669,7 +669,7 @@ private fun GlassAmbientLayer(
                 YouTubePlaylists.createPlaylist(cookies, title)
                 onSyncPlaylists()
             } catch (e: Exception) {
-                playlistError = e.message ?: "Couldn't create playlist."
+                selectedPlaylistError = e.message ?: "Couldn't create playlist."
             }
         }
     }
