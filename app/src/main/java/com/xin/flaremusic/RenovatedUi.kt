@@ -43,7 +43,13 @@ private val RenovationGlassBorder = Color.White.copy(alpha = .13f)
 private fun RenovationCard(
     modifier: Modifier = Modifier,
     accent: Color = MaterialTheme.colorScheme.primary,
-    shape: RoundedCornerShape = RoundedCornerShape(24.dp),
+    shape: RoundedCornerShape = RoundedCornerShape(
+        when (FlarePreferences.cornerStyle.intValue.coerceIn(0, 2)) {
+            0 -> 24.dp
+            1 -> 16.dp
+            else -> 6.dp
+        }
+    ),
     content: @Composable BoxScope.() -> Unit
 ) {
     val surface = MaterialTheme.colorScheme.surface
@@ -63,6 +69,7 @@ private fun RenovationCard(
     )
 }
 
+@Composable
 @Composable
 private fun RenovationArtwork(source: String?, modifier: Modifier = Modifier) {
     val context = LocalContext.current
@@ -90,7 +97,14 @@ private fun RenovationArtwork(source: String?, modifier: Modifier = Modifier) {
         }
     }
     if (bitmap != null) {
-        Image(bitmap!!.asImageBitmap(), "Artwork", modifier, contentScale = ContentScale.Crop)
+        val scale = if (FlarePreferences.artworkStyle.intValue == 1) ContentScale.Fit else ContentScale.Crop
+        if (FlarePreferences.artworkStyle.intValue == 2) {
+            Box(modifier.background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .35f))) {
+                Image(bitmap!!.asImageBitmap(), "Artwork", Modifier.fillMaxSize().padding(6.dp), contentScale = ContentScale.Crop)
+            }
+        } else {
+            Image(bitmap!!.asImageBitmap(), "Artwork", modifier, contentScale = scale)
+        }
     } else {
         Box(modifier.background(MaterialTheme.colorScheme.surfaceVariant), contentAlignment = Alignment.Center) {
             Image(painterResource(R.drawable.ic_flare_logo), "FlareMusic", Modifier.fillMaxSize().padding(10.dp))
@@ -112,7 +126,7 @@ fun RenovatedHomeScreen(count: Int, loading: Boolean, error: String, accent: Col
     CompositionLocalProvider(LocalContentColor provides homeText) {
     LazyColumn(
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 150.dp),
-        verticalArrangement = Arrangement.spacedBy(17.dp)
+        verticalArrangement = Arrangement.spacedBy(if (FlarePreferences.homeLayout.intValue == 1) 10.dp else 17.dp)
     ) {
         item {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -132,7 +146,7 @@ fun RenovatedHomeScreen(count: Int, loading: Boolean, error: String, accent: Col
             }
         }
         item {
-            RenovationCard(Modifier.fillMaxWidth().height(222.dp).clickable { openLibrary() }, accent) {
+            RenovationCard(Modifier.fillMaxWidth().height(if (FlarePreferences.homeLayout.intValue == 1) 160.dp else if (FlarePreferences.homeLayout.intValue == 2) 190.dp else 222.dp).clickable { openLibrary() }, accent) {
                 Box(Modifier.matchParentSize().background(Brush.radialGradient(listOf(accent.copy(alpha = .30f), Color.Transparent), radius = 520f)))
                 Column(Modifier.fillMaxSize().padding(22.dp), verticalArrangement = Arrangement.SpaceBetween) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -346,15 +360,18 @@ fun RenovatedLibraryScreen(
 
 @Composable
 private fun RenovationTrackRow(title: String, artist: String, artwork: String?, duration: String?, onClick: () -> Unit) {
-    RenovationCard(Modifier.fillMaxWidth().clickable { onClick() }, MaterialTheme.colorScheme.primary, RoundedCornerShape(18.dp)) {
-        Row(Modifier.padding(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            RenovationArtwork(artwork, Modifier.size(53.dp).clip(RoundedCornerShape(14.dp)))
-            Column(Modifier.weight(1f).padding(horizontal = 11.dp)) {
+    val compact = FlarePreferences.playlistStyle.intValue == 2
+    val cards = FlarePreferences.playlistStyle.intValue == 1
+    val rowShape = RoundedCornerShape(if (cards) 24.dp else 18.dp)
+    RenovationCard(Modifier.fillMaxWidth().clickable { onClick() }, MaterialTheme.colorScheme.primary, rowShape) {
+        Row(Modifier.padding(if (compact) 5.dp else 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            RenovationArtwork(artwork, Modifier.size(if (compact) 43.dp else if (cards) 64.dp else 53.dp).clip(RoundedCornerShape(if (cards) 18.dp else 14.dp)))
+            Column(Modifier.weight(1f).padding(horizontal = if (compact) 8.dp else 11.dp)) {
                 Text(title, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                Text(artist, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
+                Text(artist, fontSize = if (compact) 11.sp else 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
                 if (!duration.isNullOrBlank()) Text(duration, fontSize = 10.sp, color = MaterialTheme.colorScheme.outline, modifier = Modifier.padding(top = 2.dp))
             }
-            Icon(Icons.Rounded.PlayCircleFilled, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(31.dp).padding(end = 3.dp))
+            Icon(Icons.Rounded.PlayCircleFilled, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(if (compact) 26.dp else if (cards) 34.dp else 31.dp).padding(end = 3.dp))
         }
     }
 }
@@ -683,7 +700,19 @@ fun RenovatedFullPlayer(
                 }
                 IconButton(onClick = onToggleFavourite) { Icon(if (isFavourite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, "Favourite", tint = MaterialTheme.colorScheme.primary) }
             }
-            Slider(value = progress, onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) }, modifier = Modifier.fillMaxWidth().padding(top = 10.dp))
+            if (FlarePreferences.progressStyle.intValue == 1) {
+                Slider(
+                    value = progress,
+                    onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) },
+                    modifier = Modifier.fillMaxWidth().height(24.dp).padding(top = 5.dp)
+                )
+            } else {
+                Slider(
+                    value = progress,
+                    onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) },
+                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp)
+                )
+            }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(formatTime(position), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(formatTime(duration), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
