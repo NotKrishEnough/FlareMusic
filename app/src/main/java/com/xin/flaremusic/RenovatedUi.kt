@@ -700,14 +700,14 @@ fun RenovatedFullPlayer(
                     ) { _, amount -> if (amount.y > 0) dragY += amount.y }
                 }
         ) {
-            // ArchiveTune-inspired player backdrops: artwork blur, dynamic gradient, or dark glass.
+            // Player backdrops: artwork tint, dynamic gradient, or dark glass. Keep the backdrop API-only for broad Compose compatibility.
             when (background) {
                 1 -> {
-                    RenovationArtwork(track.artwork, Modifier.fillMaxSize().blur(42.dp))
+                    RenovationArtwork(track.artwork, Modifier.fillMaxSize())
                     Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .48f)))
                 }
                 2 -> {
-                    RenovationArtwork(track.artwork, Modifier.fillMaxSize().blur(24.dp))
+                    RenovationArtwork(track.artwork, Modifier.fillMaxSize())
                     Box(
                         Modifier.fillMaxSize().background(
                             Brush.verticalGradient(
@@ -721,7 +721,7 @@ fun RenovatedFullPlayer(
                     )
                 }
                 3 -> {
-                    RenovationArtwork(track.artwork, Modifier.fillMaxSize().blur(30.dp))
+                    RenovationArtwork(track.artwork, Modifier.fillMaxSize())
                     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface.copy(alpha = .86f)))
                     Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(MaterialTheme.colorScheme.primary.copy(alpha = .18f), Color.Transparent))))
                 }
