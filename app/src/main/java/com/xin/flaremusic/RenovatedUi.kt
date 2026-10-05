@@ -371,6 +371,8 @@ fun RenovatedSettingsScreen(
     onSync: () -> Unit,
     onDisconnect: () -> Unit
 ) {
+    val context = LocalContext.current
+    val prefs = context.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE)
     val darkMode = FlarePreferences.darkMode.value
     val glassEffects = FlarePreferences.glassEffects.value
     val animations = FlarePreferences.animations.value
@@ -381,16 +383,16 @@ fun RenovatedSettingsScreen(
             FlarePreferences.darkMode.value = it
             context.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("dark_mode", it).apply()
         } }
-        item { RenovationSetting("Glass surfaces", "Frosted navigation, cards and player", Icons.Rounded.BlurOn, glassEffects) {
+        item { RenovationSetting("Glass surfaces", "Frosted navigation, cards and player", Icons.Rounded.BlurCircular, glassEffects) {
             FlarePreferences.glassEffects.value = it
             context.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("glass_effects", it).apply()
         } }
-        item { RenovationSetting("Animations", "Smooth transitions and motion", Icons.Rounded.Animation, animations) {
+        item { RenovationSetting("Animations", "Smooth transitions and motion", Icons.Rounded.AutoAwesome, animations) {
             FlarePreferences.animations.value = it
             context.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("animations", it).apply()
         } }
         item { RenovationSection("AMOLED") }
-        item { RenovationSetting("Pure black", "Use true black backgrounds", Icons.Rounded.Contrast, amoled, onAmoledChange) }
+        item { RenovationSetting("Pure black", "Use true black backgrounds", Icons.Rounded.BrightnessHigh, amoled, onAmoledChange) }
         item { RenovationSection("YOUTUBE MUSIC") }
         item {
             RenovationCard(Modifier.fillMaxWidth(), MaterialTheme.colorScheme.primary) {
