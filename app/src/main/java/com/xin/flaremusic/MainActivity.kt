@@ -704,10 +704,14 @@ private fun GlassAmbientLayer(
             }
         }
     }
-    // Back/gesture should unwind in-app screens before allowing the activity to close.
-    // Priority: expanded player -> opened playlist -> non-home tab -> exit app.
-    BackHandler(enabled = playerExpanded || selectedPlaylist != null || tab != "Home") {
+    // Back/gesture should always close the top-most in-app surface first.
+    // Lyrics is an overlay on top of the player, so it MUST consume Back before
+    // the player itself is minimized.
+    BackHandler(
+        enabled = showLyrics || playerExpanded || selectedPlaylist != null || tab != "Home"
+    ) {
         when {
+            showLyrics -> showLyrics = false
             playerExpanded -> playerExpanded = false
             selectedPlaylist != null -> {
                 selectedPlaylist = null
