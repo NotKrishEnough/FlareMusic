@@ -156,6 +156,7 @@ Or open **Actions → Windows Desktop** and download the `FlareMusic-Windows-x64
 ## Credits
 
 - **Vikrant Ruhela** — creator of [DA-Tunes](https://github.com/VikrantRuhela/DA-Tunes). Thank you for the design inspiration and help with the navigation/UI direction.
+- **Rukamori** — creator/contributor behind [ArchiveTune](https://github.com/Rukamori/ArchiveTune). Thank you for the inspiration and ideas that helped shape FlareMusic's music-player experience.
 
 ## Contributing
 

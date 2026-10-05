@@ -290,4 +290,164 @@ object YouTubePlaylists {
         }
     }
 
+
+    private suspend fun editPlaylist(
+        cookieHeader: String,
+        playlistId: String,
+        actions: org.json.JSONArray
+    ) = withContext(Dispatchers.IO) {
+        val origin = "https://music.youtube.com"
+        val userAgent = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36"
+        val cookies = cookieHeader.split(';').mapNotNull { part ->
+            val item = part.trim()
+            val index = item.indexOf('=')
+            if (index <= 0) null else item.substring(0, index).trim() to item.substring(index + 1).trim()
+        }.toMap()
+        val sapisid = cookies["SAPISID"] ?: cookies["__Secure-3PAPISID"]
+            ?: throw IllegalStateException("YouTube Music session expired. Reconnect your account.")
+        val page = Request.Builder().url(origin).header("Cookie", cookieHeader).header("User-Agent", userAgent).get().build()
+        val (apiKey, clientVersion) = http.newCall(page).execute().use { response ->
+            val html = response.body?.string().orEmpty()
+            if (!response.isSuccessful) throw IllegalStateException("Couldn't load YouTube Music config (HTTP ${response.code}).")
+            val key = Regex("""["']INNERTUBE_API_KEY["']\s*:\s*["']([^"']+)["']""").find(html)?.groupValues?.get(1)
+                ?: throw IllegalStateException("YouTube Music API configuration unavailable.")
+            val version = Regex("""["']INNERTUBE_CLIENT_VERSION["']\s*:\s*["']([^"']+)["']""").find(html)?.groupValues?.get(1)
+                ?: "1.20260304.03.00"
+            key to version
+        }
+        val timestamp = System.currentTimeMillis() / 1000
+        val digest = MessageDigest.getInstance("SHA-1").digest("$timestamp $sapisid $origin".toByteArray())
+            .joinToString("") { "%02x".format(it) }
+        val targetId = playlistId.removePrefix("VL")
+        val body = JSONObject()
+            .put("context", JSONObject().put("client", JSONObject()
+                .put("clientName", "WEB_REMIX").put("clientVersion", clientVersion).put("hl", "en").put("gl", "US")))
+            .put("playlistId", targetId)
+            .put("actions", actions)
+            .toString()
+        val url = okhttp3.HttpUrl.Builder().scheme("https").host("music.youtube.com")
+            .addPathSegments("youtubei/v1/browse/edit_playlist")
+            .addQueryParameter("key", apiKey).addQueryParameter("prettyPrint", "false").build()
+        val request = Request.Builder().url(url)
+            .post(body.toRequestBody("application/json; charset=utf-8".toMediaType()))
+            .header("Cookie", cookieHeader).header("Authorization", "SAPISIDHASH ${timestamp}_$digest")
+            .header("Origin", origin).header("Referer", "$origin/").header("X-Origin", origin)
+            .header("X-YouTube-Client-Name", "67").header("X-YouTube-Client-Version", clientVersion)
+            .header("User-Agent", userAgent).build()
+        http.newCall(request).execute().use { response ->
+            val raw = response.body?.string().orEmpty()
+            if (!response.isSuccessful) throw IllegalStateException("YouTube Music rejected the playlist change (HTTP ${response.code}).")
+            val root = runCatching { JSONObject(raw) }.getOrNull()
+            val status = root?.optString("status").orEmpty()
+            if (status.isNotBlank() && status != "STATUS_SUCCEEDED") {
+                throw IllegalStateException("YouTube Music rejected the playlist change.")
+            }
+        }
+    }
+
+    suspend fun removeFromPlaylist(cookieHeader: String, playlistId: String, videoId: String) {
+        editPlaylist(cookieHeader, playlistId, org.json.JSONArray().put(
+            JSONObject().put("action", "ACTION_REMOVE_VIDEO_BY_VIDEO_ID").put("removedVideoId", videoId)
+        ))
+    }
+
+    suspend fun renamePlaylist(cookieHeader: String, playlistId: String, title: String) {
+        val cleanTitle = title.trim()
+        require(cleanTitle.isNotBlank()) { "Playlist name cannot be empty." }
+        editPlaylist(cookieHeader, playlistId, org.json.JSONArray().put(
+            JSONObject().put("action", "ACTION_SET_PLAYLIST_NAME").put("playlistName", cleanTitle)
+        ))
+    }
+
+    suspend fun createPlaylist(cookieHeader: String, title: String, description: String = ""): String =
+        withContext(Dispatchers.IO) {
+            val origin = "https://music.youtube.com"
+            val userAgent = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36"
+            val cookies = cookieHeader.split(';').mapNotNull { part ->
+                val item = part.trim()
+                val index = item.indexOf('=')
+                if (index <= 0) null else item.substring(0, index).trim() to item.substring(index + 1).trim()
+            }.toMap()
+            val sapisid = cookies["SAPISID"] ?: cookies["__Secure-3PAPISID"]
+                ?: throw IllegalStateException("YouTube Music session expired. Reconnect your account.")
+            val page = Request.Builder().url(origin).header("Cookie", cookieHeader).header("User-Agent", userAgent).get().build()
+            val (apiKey, clientVersion) = http.newCall(page).execute().use { response ->
+                val html = response.body?.string().orEmpty()
+                if (!response.isSuccessful) throw IllegalStateException("Couldn't load YouTube Music config (HTTP ${response.code}).")
+                val key = Regex("""["']INNERTUBE_API_KEY["']\s*:\s*["']([^"']+)["']""").find(html)?.groupValues?.get(1)
+                    ?: throw IllegalStateException("YouTube Music API configuration unavailable.")
+                val version = Regex("""["']INNERTUBE_CLIENT_VERSION["']\s*:\s*["']([^"']+)["']""").find(html)?.groupValues?.get(1)
+                    ?: "1.20260304.03.00"
+                key to version
+            }
+            val timestamp = System.currentTimeMillis() / 1000
+            val digest = MessageDigest.getInstance("SHA-1").digest("$timestamp $sapisid $origin".toByteArray())
+                .joinToString("") { "%02x".format(it) }
+            val body = JSONObject()
+                .put("context", JSONObject().put("client", JSONObject()
+                    .put("clientName", "WEB_REMIX").put("clientVersion", clientVersion).put("hl", "en").put("gl", "US")))
+                .put("title", title.trim())
+                .put("description", description)
+                .put("privacyStatus", "PRIVATE")
+                .toString()
+            val url = okhttp3.HttpUrl.Builder().scheme("https").host("music.youtube.com")
+                .addPathSegments("youtubei/v1/playlist/create")
+                .addQueryParameter("key", apiKey).addQueryParameter("prettyPrint", "false").build()
+            val request = Request.Builder().url(url)
+                .post(body.toRequestBody("application/json; charset=utf-8".toMediaType()))
+                .header("Cookie", cookieHeader).header("Authorization", "SAPISIDHASH ${timestamp}_$digest")
+                .header("Origin", origin).header("Referer", "$origin/").header("X-Origin", origin)
+                .header("X-YouTube-Client-Name", "67").header("X-YouTube-Client-Version", clientVersion)
+                .header("User-Agent", userAgent).build()
+            http.newCall(request).execute().use { response ->
+                val raw = response.body?.string().orEmpty()
+                if (!response.isSuccessful) throw IllegalStateException("Couldn't create playlist (HTTP ${response.code}).")
+                val id = runCatching { JSONObject(raw).optString("playlistId") }.getOrNull().orEmpty()
+                if (id.isBlank()) throw IllegalStateException("YouTube Music did not return the new playlist ID.")
+                id
+            }
+        }
+
+    suspend fun deletePlaylist(cookieHeader: String, playlistId: String) = withContext(Dispatchers.IO) {
+        val origin = "https://music.youtube.com"
+        val userAgent = "Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 Chrome/120.0.0.0 Mobile Safari/537.36"
+        val cookies = cookieHeader.split(';').mapNotNull { part ->
+            val item = part.trim()
+            val index = item.indexOf('=')
+            if (index <= 0) null else item.substring(0, index).trim() to item.substring(index + 1).trim()
+        }.toMap()
+        val sapisid = cookies["SAPISID"] ?: cookies["__Secure-3PAPISID"]
+            ?: throw IllegalStateException("YouTube Music session expired. Reconnect your account.")
+        val page = Request.Builder().url(origin).header("Cookie", cookieHeader).header("User-Agent", userAgent).get().build()
+        val (apiKey, clientVersion) = http.newCall(page).execute().use { response ->
+            val html = response.body?.string().orEmpty()
+            if (!response.isSuccessful) throw IllegalStateException("Couldn't load YouTube Music config (HTTP ${response.code}).")
+            val key = Regex("""["']INNERTUBE_API_KEY["']\s*:\s*["']([^"']+)["']""").find(html)?.groupValues?.get(1)
+                ?: throw IllegalStateException("YouTube Music API configuration unavailable.")
+            val version = Regex("""["']INNERTUBE_CLIENT_VERSION["']\s*:\s*["']([^"']+)["']""").find(html)?.groupValues?.get(1)
+                ?: "1.20260304.03.00"
+            key to version
+        }
+        val timestamp = System.currentTimeMillis() / 1000
+        val digest = MessageDigest.getInstance("SHA-1").digest("$timestamp $sapisid $origin".toByteArray())
+            .joinToString("") { "%02x".format(it) }
+        val body = JSONObject()
+            .put("context", JSONObject().put("client", JSONObject()
+                .put("clientName", "WEB_REMIX").put("clientVersion", clientVersion).put("hl", "en").put("gl", "US")))
+            .put("playlistId", playlistId.removePrefix("VL"))
+            .toString()
+        val url = okhttp3.HttpUrl.Builder().scheme("https").host("music.youtube.com")
+            .addPathSegments("youtubei/v1/playlist/delete")
+            .addQueryParameter("key", apiKey).addQueryParameter("prettyPrint", "false").build()
+        val request = Request.Builder().url(url)
+            .post(body.toRequestBody("application/json; charset=utf-8".toMediaType()))
+            .header("Cookie", cookieHeader).header("Authorization", "SAPISIDHASH ${timestamp}_$digest")
+            .header("Origin", origin).header("Referer", "$origin/").header("X-Origin", origin)
+            .header("X-YouTube-Client-Name", "67").header("X-YouTube-Client-Version", clientVersion)
+            .header("User-Agent", userAgent).build()
+        http.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw IllegalStateException("Couldn't delete playlist (HTTP ${response.code}).")
+        }
+    }
+
 }

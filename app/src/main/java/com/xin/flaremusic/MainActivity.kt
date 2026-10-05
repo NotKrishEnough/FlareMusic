@@ -86,7 +86,7 @@ private val Panel = Color(0xFF19151E)
 private val Violet: Color get() = if (FlarePreferences.dynamicColors.value) FlarePreferences.dynamicAccent.value else FlarePreferences.accents[FlarePreferences.accentIndex.intValue.coerceIn(0, FlarePreferences.accents.lastIndex)]
 private val Mint: Color get() = Violet.copy(alpha = .82f)
 
-private object FlarePreferences {
+object FlarePreferences {
     val progressStyle = mutableIntStateOf(0)
     val darkMode = mutableStateOf(true)
     val accentIndex = mutableIntStateOf(0)
@@ -105,6 +105,9 @@ private object FlarePreferences {
     val cornerStyle = mutableIntStateOf(0) // 0: rounded, 1: medium, 2: sharp
     val glassEffects = mutableStateOf(true)
     val playlistStyle = mutableIntStateOf(0) // 0: list, 1: cards, 2: compact
+    val playerStyle = mutableIntStateOf(0) // 0: classic, 1: immersive, 2: vinyl, 3: minimal
+    val playerBackground = mutableIntStateOf(0) // 0: theme, 1: blur, 2: gradient, 3: dark glass
+    val playerAnimation = mutableIntStateOf(0) // 0: subtle, 1: morph, 2: pulse, 3: ambient
     val accents = listOf(
         Color(0xFFFF694F), Color(0xFF9B8CFF), Color(0xFF35C9A5), Color(0xFFFFB84D),
         Color(0xFF64B5F6), Color(0xFFE879B9), Color(0xFFB0C46A), Color(0xFFB39DDB)
@@ -119,6 +122,7 @@ class MainActivity : ComponentActivity() {
     private var amoledMode by mutableStateOf(false)
     private lateinit var youtubeLoginLauncher: ActivityResultLauncher<Intent>
     private var googleStatus by mutableStateOf("Not connected")
+    private var youtubeAccountName by mutableStateOf<String?>(null)
     private var youtubePlaylists by mutableStateOf(emptyList<YouTubePlaylist>())
     private var playlistLoading by mutableStateOf(false)
     private var playlistError by mutableStateOf("")
@@ -127,13 +131,15 @@ class MainActivity : ComponentActivity() {
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val settings = getSharedPreferences("flare_settings", MODE_PRIVATE)
+        FlarePreferences.darkMode.value = settings.getBoolean("dark_mode", true)
+        FlarePreferences.glassEffects.value = settings.getBoolean("glass_effects", true)
+        FlarePreferences.animations.value = settings.getBoolean("animations", true)
+        amoledMode = settings.getBoolean("amoled", false)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = android.graphics.Color.TRANSPARENT
         window.navigationBarColor = android.graphics.Color.TRANSPARENT
-        WindowCompat.getInsetsController(window, window.decorView).apply {
-            isAppearanceLightStatusBars = false
-            isAppearanceLightNavigationBars = false
-        }
+        // Material theme controls system bar icon contrast; do not force dark-mode icons here.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isStatusBarContrastEnforced = false
             window.isNavigationBarContrastEnforced = false
@@ -148,6 +154,7 @@ class MainActivity : ComponentActivity() {
                     if (valid) {
                         YouTubeSessionStore.save(this@MainActivity, cookieHeader)
                         googleStatus = "Connected to YouTube Music"
+                        youtubeAccountName = YouTubeAccount.fetchDisplayName(cookieHeader)
                         try {
                             youtubePlaylists = YouTubePlaylists.fetchFromMusicSession(cookieHeader)
                             playlistError = if (youtubePlaylists.isEmpty()) "No playlists found in your YouTube Music library." else ""
@@ -170,6 +177,7 @@ class MainActivity : ComponentActivity() {
                 val valid = YouTubeSessionVerifier.verify(savedCookies)
                 if (valid) {
                     googleStatus = "Connected to YouTube Music"
+                    youtubeAccountName = YouTubeAccount.fetchDisplayName(savedCookies)
                     playlistLoading = true
                     playlistError = ""
                     try {
@@ -194,7 +202,7 @@ class MainActivity : ComponentActivity() {
         FlarePreferences.accentIndex.intValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getInt("accent_index", 0).coerceIn(0, FlarePreferences.accents.lastIndex)
         FlarePreferences.animations.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("animations", true)
         FlarePreferences.compact.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("compact", false)
-        FlarePreferences.dynamicColors.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("dynamic_colors", true)
+        FlarePreferences.dynamicColors.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("dynamic_colors", false)
         FlarePreferences.swipeToMinimize.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("gesture_minimize", true)
         FlarePreferences.swipeToChangeTracks.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("gesture_tracks", true)
         FlarePreferences.showMiniPlayer.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("show_mini_player", true)
@@ -206,6 +214,9 @@ class MainActivity : ComponentActivity() {
         FlarePreferences.cornerStyle.intValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getInt("corner_style", 0).coerceIn(0, 2)
         FlarePreferences.glassEffects.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("glass_effects", true)
         FlarePreferences.playlistStyle.intValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getInt("playlist_style", 0).coerceIn(0, 2)
+        FlarePreferences.playerStyle.intValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getInt("player_style", 0).coerceIn(0, 3)
+        FlarePreferences.playerBackground.intValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getInt("player_background", 0).coerceIn(0, 3)
+        FlarePreferences.playerAnimation.intValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getInt("player_animation", 0).coerceIn(0, 3)
         val token = SessionToken(this, android.content.ComponentName(this, FlarePlaybackService::class.java))
         controllerFuture = MediaController.Builder(this, token).buildAsync()
         controllerFuture?.addListener({
@@ -218,7 +229,7 @@ class MainActivity : ComponentActivity() {
     private fun showApp() {
         val activePlayer = player ?: return
         if (ContextCompat.checkSelfPermission(this, audioPermission()) != PackageManager.PERMISSION_GRANTED) return
-        setContent { FlareTheme(amoledMode, FlarePreferences.dynamicColors.value, FlarePreferences.darkMode.value) { FlareApp(activePlayer, ::loadTracks, amoledMode, googleStatus, youtubePlaylists, playlistLoading, playlistError, ::connectGoogle, ::syncYouTubePlaylists, ::disconnectYouTube) { enabled -> amoledMode = enabled; getSharedPreferences("flare_settings", MODE_PRIVATE).edit().putBoolean("amoled", enabled).apply() } } }
+        setContent { FlareTheme(amoledMode, FlarePreferences.dynamicColors.value, FlarePreferences.darkMode.value) { FlareApp(activePlayer, ::loadTracks, amoledMode, googleStatus, youtubeAccountName, youtubePlaylists, playlistLoading, playlistError, ::connectGoogle, ::syncYouTubePlaylists, ::disconnectYouTube) { enabled -> amoledMode = enabled; getSharedPreferences("flare_settings", MODE_PRIVATE).edit().putBoolean("amoled", enabled).apply() } } }
     }
 
     private fun connectGoogle() {
@@ -232,6 +243,7 @@ class MainActivity : ComponentActivity() {
             val savedCookies = YouTubeSessionStore.read(this@MainActivity)
             val valid = !savedCookies.isNullOrBlank() && YouTubeSessionVerifier.verify(savedCookies)
             googleStatus = if (valid) "Connected to YouTube Music" else "Not connected"
+            youtubeAccountName = if (valid) YouTubeAccount.fetchDisplayName(savedCookies!!) else null
             if (valid) {
                 try {
                     youtubePlaylists = YouTubePlaylists.fetchFromMusicSession(savedCookies!!)
@@ -251,6 +263,7 @@ class MainActivity : ComponentActivity() {
     private fun disconnectYouTube() {
         YouTubeSessionStore.clear(this)
         googleStatus = "Not connected"
+        youtubeAccountName = null
         youtubePlaylists = emptyList()
         playlistError = ""
     }
@@ -341,8 +354,34 @@ private fun GlassAmbientLayer(
         if (dynamicColors && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             FlarePreferences.dynamicAccent.value = wallpaperScheme.primary
         }
+        val controller = WindowCompat.getInsetsController((context as ComponentActivity).window, (context as ComponentActivity).window.decorView)
+        controller.isAppearanceLightStatusBars = !darkMode
+        controller.isAppearanceLightNavigationBars = !darkMode
     }
-    val expressiveScheme = wallpaperScheme
+    // Dynamic palettes can occasionally return an unusable dark-mode onSurface
+    // on vendor ROMs. Keep the expressive wallpaper colors, but guarantee readable
+    // foreground colors in both appearances.
+    val expressiveScheme = if (darkMode) {
+        wallpaperScheme.copy(
+            onPrimary = Color.White,
+            onSecondary = Color.White,
+            onTertiary = Color.White,
+            onBackground = Color.White,
+            onSurface = Color.White,
+            onSurfaceVariant = Color(0xFFD7D9E2),
+            outline = Color(0xFF9EA1AD),
+            outlineVariant = Color(0xFF3A3D47)
+        )
+    } else {
+        wallpaperScheme.copy(
+            onBackground = Color(0xFF171821),
+            onSurface = Color(0xFF171821),
+            onSurfaceVariant = Color(0xFF5A5D68),
+            onPrimary = Color.White,
+            onSecondary = Color.White,
+            onTertiary = Color.White
+        )
+    }
     val baseDensity = LocalDensity.current
     val customDensity = Density(baseDensity.density, FlarePreferences.fontScale.floatValue)
     CompositionLocalProvider(LocalDensity provides customDensity) {
@@ -353,7 +392,7 @@ private fun GlassAmbientLayer(
     }
 }
 
-@Composable private fun FlareApp(player: Player, scan: suspend () -> List<Track>, amoled: Boolean, googleStatus: String, youtubePlaylists: List<YouTubePlaylist>, playlistLoading: Boolean, playlistError: String, onConnectGoogle: () -> Unit, onSyncPlaylists: () -> Unit, onDisconnectYouTube: () -> Unit, onAmoledChange: (Boolean) -> Unit) {
+@Composable private fun FlareApp(player: Player, scan: suspend () -> List<Track>, amoled: Boolean, googleStatus: String, youtubeAccountName: String?, youtubePlaylists: List<YouTubePlaylist>, playlistLoading: Boolean, playlistError: String, onConnectGoogle: () -> Unit, onSyncPlaylists: () -> Unit, onDisconnectYouTube: () -> Unit, onAmoledChange: (Boolean) -> Unit) {
     val uiViewModel: FlareUiViewModel = viewModel()
     val tab = uiViewModel.selectedTab
     val selectTab: (String) -> Unit = uiViewModel::selectTab
@@ -372,6 +411,11 @@ private fun GlassAmbientLayer(
     var selectedPlaylistLoading by remember { mutableStateOf(false) }
     var selectedPlaylistError by remember { mutableStateOf("") }
     var searching by remember { mutableStateOf(false) }
+    var playlistSearchResults by remember { mutableStateOf(emptyList<OnlineTrack>()) }
+    var playlistSearchLoading by remember { mutableStateOf(false) }
+    var showLyrics by remember { mutableStateOf(false) }
+    var lyricsLoading by remember { mutableStateOf(false) }
+    var lyrics by remember { mutableStateOf<SyncedLyrics?>(null) }
     var position by remember { mutableLongStateOf(0L) }
     var totalDuration by remember { mutableLongStateOf(0L) }
     val context = LocalContext.current
@@ -382,6 +426,19 @@ private fun GlassAmbientLayer(
     val innerTube = remember { InnerTubeClient() }
     val scope = rememberCoroutineScope()
     LaunchedEffect(player) { while (true) { position = player.currentPosition.coerceAtLeast(0L); totalDuration = player.duration.takeIf { it > 0 } ?: 0L; delay(500) } }
+    LaunchedEffect(current?.id) {
+        val track = current
+        if (track == null) {
+            lyrics = null
+            lyricsLoading = false
+        } else {
+            showLyrics = false
+            lyrics = null
+            lyricsLoading = true
+            lyrics = runCatching { LyricsRepository.fetch(track) }.getOrNull()
+            lyricsLoading = false
+        }
+    }
     LaunchedEffect(Unit) {
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) { playing = isPlaying }
@@ -536,6 +593,93 @@ private fun GlassAmbientLayer(
         }
     }
 
+    fun searchPlaylistSongs(term: String) {
+        if (term.isBlank()) {
+            playlistSearchResults = emptyList()
+            return
+        }
+        scope.launch {
+            playlistSearchLoading = true
+            playlistSearchResults = runCatching { innerTube.search(term) }.getOrDefault(emptyList())
+            playlistSearchLoading = false
+        }
+    }
+
+    fun addOnlineToSelectedPlaylist(result: OnlineTrack) {
+        val playlist = selectedPlaylist ?: return
+        scope.launch {
+            try {
+                val cookies = YouTubeSessionStore.read(context)
+                    ?: throw IllegalStateException("Connect YouTube Music first.")
+                YouTubePlaylists.addToPlaylist(cookies, playlist.id, result.videoId)
+                playlistSearchResults = emptyList()
+                openYouTubePlaylist(playlist)
+                onSyncPlaylists()
+            } catch (e: Exception) {
+                selectedPlaylistError = e.message ?: "Couldn't add song to playlist."
+            }
+        }
+    }
+
+    fun removeFromSelectedPlaylist(item: YouTubePlaylistTrack) {
+        val playlist = selectedPlaylist ?: return
+        scope.launch {
+            try {
+                val cookies = YouTubeSessionStore.read(context)
+                    ?: throw IllegalStateException("Connect YouTube Music first.")
+                YouTubePlaylists.removeFromPlaylist(cookies, playlist.id, item.videoId)
+                selectedPlaylistTracks = selectedPlaylistTracks.filterNot { it.videoId == item.videoId }
+                onSyncPlaylists()
+            } catch (e: Exception) {
+                selectedPlaylistError = e.message ?: "Couldn't remove song from playlist."
+            }
+        }
+    }
+
+    fun renameSelectedPlaylist(title: String) {
+        val playlist = selectedPlaylist ?: return
+        scope.launch {
+            try {
+                val cookies = YouTubeSessionStore.read(context)
+                    ?: throw IllegalStateException("Connect YouTube Music first.")
+                YouTubePlaylists.renamePlaylist(cookies, playlist.id, title)
+                selectedPlaylist = playlist.copy(title = title.trim())
+                onSyncPlaylists()
+            } catch (e: Exception) {
+                selectedPlaylistError = e.message ?: "Couldn't rename playlist."
+            }
+        }
+    }
+
+    fun deleteSelectedPlaylist() {
+        val playlist = selectedPlaylist ?: return
+        scope.launch {
+            try {
+                val cookies = YouTubeSessionStore.read(context)
+                    ?: throw IllegalStateException("Connect YouTube Music first.")
+                YouTubePlaylists.deletePlaylist(cookies, playlist.id)
+                selectedPlaylist = null
+                selectedPlaylistTracks = emptyList()
+                onSyncPlaylists()
+            } catch (e: Exception) {
+                selectedPlaylistError = e.message ?: "Couldn't delete playlist."
+            }
+        }
+    }
+
+    fun createNewPlaylist(title: String) {
+        scope.launch {
+            try {
+                val cookies = YouTubeSessionStore.read(context)
+                    ?: throw IllegalStateException("Connect YouTube Music first.")
+                YouTubePlaylists.createPlaylist(cookies, title)
+                onSyncPlaylists()
+            } catch (e: Exception) {
+                selectedPlaylistError = e.message ?: "Couldn't create playlist."
+            }
+        }
+    }
+
     fun searchOnline(term: String) {
         scope.launch {
             searching = true; error = ""
@@ -561,10 +705,14 @@ private fun GlassAmbientLayer(
             }
         }
     }
-    // Back/gesture should unwind in-app screens before allowing the activity to close.
-    // Priority: expanded player -> opened playlist -> non-home tab -> exit app.
-    BackHandler(enabled = playerExpanded || selectedPlaylist != null || tab != "Home") {
+    // Back/gesture should always close the top-most in-app surface first.
+    // Lyrics is an overlay on top of the player, so it MUST consume Back before
+    // the player itself is minimized.
+    BackHandler(
+        enabled = showLyrics || playerExpanded || selectedPlaylist != null || tab != "Home"
+    ) {
         when {
+            showLyrics -> showLyrics = false
             playerExpanded -> playerExpanded = false
             selectedPlaylist != null -> {
                 selectedPlaylist = null
@@ -588,10 +736,10 @@ private fun GlassAmbientLayer(
             }
         ) { page ->
             when(page) {
-                "Home" -> HomeScreen(tracks.size, loading, error, Violet) { selectTab("Library") }
-                "Search" -> SearchScreen(query, { query = it }, tracks.filter { it.title.contains(query, true) || it.artist.contains(query, true) }, ::play, onlineResults, searching, ::searchOnline, ::playOnline, { trackToAdd = it }, error)
-                "Library" -> LibraryScreen(tracks, loading, tracks.filter { it.id.toString() in favouriteIds }, youtubePlaylists, googleStatus, playlistLoading, playlistError, selectedPlaylist, selectedPlaylistTracks, selectedPlaylistLoading, selectedPlaylistError, ::openYouTubePlaylist, { selectedPlaylist = null; selectedPlaylistTracks = emptyList() }, { item -> playYouTubePlaylistQueue(item) }, ::play, { selectTab("Search") }, { tracks = emptyList(); loading = true }, onSyncPlaylists, onConnectGoogle)
-                else -> SettingsScreen(amoled, onAmoledChange, googleStatus, youtubePlaylists, playlistLoading, playlistError, onConnectGoogle, onSyncPlaylists, onDisconnectYouTube)
+                "Home" -> RenovatedHomeScreen(tracks.size, loading, error, Violet, youtubeAccountName) { selectTab("Library") }
+                "Search" -> RenovatedSearchScreen(query, { query = it }, tracks.filter { it.title.contains(query, true) || it.artist.contains(query, true) }, ::play, onlineResults, searching, { searchOnline(query) }, ::playOnline, { trackToAdd = it }, error)
+                "Library" -> RenovatedLibraryScreen(tracks, loading, tracks.filter { it.id.toString() in favouriteIds }, youtubePlaylists, googleStatus, playlistLoading, playlistError, selectedPlaylist, selectedPlaylistTracks, selectedPlaylistLoading, selectedPlaylistError, ::openYouTubePlaylist, { selectedPlaylist = null; selectedPlaylistTracks = emptyList() }, { item -> playYouTubePlaylistQueue(item) }, ::play, { selectTab("Search") }, { tracks = emptyList(); loading = true }, onSyncPlaylists, onConnectGoogle, ::searchPlaylistSongs, playlistSearchResults, playlistSearchLoading, ::addOnlineToSelectedPlaylist, ::removeFromSelectedPlaylist, ::renameSelectedPlaylist, ::deleteSelectedPlaylist, ::createNewPlaylist)
+                else -> RenovatedSettingsScreen(amoled, onAmoledChange, googleStatus, youtubePlaylists, playlistLoading, playlistError, onConnectGoogle, onSyncPlaylists, onDisconnectYouTube)
             }
         }
 
@@ -609,7 +757,7 @@ private fun GlassAmbientLayer(
                 val miniShape = RoundedCornerShape(50.dp)
                 Box(
                     Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 3.dp)
-                        .height(64.dp)
+                        .height(60.dp)
                         .clip(miniShape)
                         .clickable { playerExpanded = true }
                 ) {
@@ -639,11 +787,11 @@ private fun GlassAmbientLayer(
                     ) {}
                     Column(Modifier.fillMaxWidth()) {
                     Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 5.dp),
+                        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box {
-                            Artwork(current!!.artwork, Modifier.size(42.dp).clip(RoundedCornerShape(21.dp)))
+                            Artwork(current!!.artwork, Modifier.size(40.dp).clip(RoundedCornerShape(20.dp)))
                             Box(Modifier.align(Alignment.BottomEnd).padding(3.dp).size(7.dp).clip(RoundedCornerShape(50.dp)).background(miniColors.primary))
                         }
                         Column(Modifier.weight(1f).padding(start = 10.dp, end = 6.dp)) {
@@ -657,7 +805,7 @@ private fun GlassAmbientLayer(
                             Icon(Icons.Rounded.SkipNext, null, tint = miniColors.onSurface, modifier = Modifier.size(23.dp))
                         }
                     }
-                    Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp).height(2.dp).clip(RoundedCornerShape(50.dp)).background(miniColors.onSurface.copy(alpha = 0.10f))) {
+                    Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp).height(if (FlarePreferences.progressStyle.intValue == 1) 1.dp else if (FlarePreferences.progressStyle.intValue == 2) 4.dp else 2.dp).clip(RoundedCornerShape(50.dp)).background(miniColors.onSurface.copy(alpha = 0.10f))) {
                         Box(Modifier.fillMaxWidth(miniProgress).fillMaxHeight().clip(RoundedCornerShape(2.dp)).background(miniColors.primary))
                     }
                     Spacer(Modifier.height(0.dp))
@@ -667,15 +815,17 @@ private fun GlassAmbientLayer(
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                    .padding(horizontal = if (FlarePreferences.navStyle.intValue == 2) 22.dp else 12.dp, vertical = 4.dp),
                 contentAlignment = Alignment.Center
             ) {
                 BoxWithConstraints(
                     Modifier.fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
-                    val pillWidth = maxWidth.coerceAtMost(520.dp)
+                    val pillWidth = maxWidth.coerceAtMost(if (FlarePreferences.navStyle.intValue == 2) 420.dp else 500.dp)
                     val itemWidth = pillWidth / 4
+                    val navHeight = if (FlarePreferences.navStyle.intValue == 1) 46.dp else if (FlarePreferences.navStyle.intValue == 2) 50.dp else 48.dp
+                    val navRadius = if (FlarePreferences.navStyle.intValue == 1) 16.dp else 24.dp
                     val selectedIndex = listOf("Home", "Search", "Library", "Settings").indexOf(tab).coerceAtLeast(0)
                     val indicatorX by animateDpAsState(
                         targetValue = itemWidth * selectedIndex + 8.dp,
@@ -686,8 +836,8 @@ private fun GlassAmbientLayer(
                     Box(
                         Modifier
                             .width(pillWidth)
-                            .height(54.dp)
-                            .clip(RoundedCornerShape(28.dp))
+                            .height(navHeight)
+                            .clip(RoundedCornerShape(navRadius))
                             .background(
                                 if (FlarePreferences.glassEffects.value) Color.Transparent
                                 else MaterialTheme.colorScheme.surface.copy(alpha = .96f)
@@ -695,13 +845,13 @@ private fun GlassAmbientLayer(
                             .border(
                                 1.dp,
                                 MaterialTheme.colorScheme.outline.copy(alpha = 0.30f),
-                                RoundedCornerShape(28.dp)
+                                RoundedCornerShape(navRadius)
                             )
                     ) {
                         if (FlarePreferences.glassEffects.value) {
                             Box(
                                 Modifier.matchParentSize()
-                                    .clip(RoundedCornerShape(28.dp))
+                                    .clip(RoundedCornerShape(navRadius))
                             ) {
                                 Box(
                                     Modifier
@@ -725,12 +875,12 @@ private fun GlassAmbientLayer(
                         // DA-Tunes-style animated selection capsule.
                         Box(
                             Modifier
-                                .offset(x = indicatorX, y = 6.dp)
+                                .offset(x = indicatorX, y = 3.dp)
                                 .width(itemWidth - 16.dp)
-                                .height(42.dp)
-                                .clip(RoundedCornerShape(20.dp))
+                                .height(navHeight - 6.dp)
+                                .clip(RoundedCornerShape(18.dp))
                                 .background(Brush.linearGradient(listOf(Color.White.copy(alpha = .20f), Violet.copy(alpha = .22f), Color.White.copy(alpha = .08f))))
-                                .border(1.dp, Color.White.copy(alpha = .20f), RoundedCornerShape(20.dp))
+                                .border(1.dp, Color.White.copy(alpha = .20f), RoundedCornerShape(if (FlarePreferences.navStyle.intValue == 1) 12.dp else 20.dp))
                         )
 
                         Row(Modifier.fillMaxSize()) {
@@ -748,13 +898,24 @@ private fun GlassAmbientLayer(
                                         .clickable { selectTab(item) },
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(
-                                        icon,
-                                        contentDescription = item,
-                                        tint = if (selected) Violet
-                                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
-                                        modifier = Modifier.size(if (selected) 23.dp else 22.dp)
-                                    )
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                                        Icon(
+                                            icon,
+                                            contentDescription = item,
+                                            tint = if (selected) Violet
+                                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
+                                            modifier = Modifier.size(if (selected) 21.dp else 20.dp)
+                                        )
+                                        if (FlarePreferences.showNavLabels.value) {
+                                            Text(
+                                                item,
+                                                fontSize = 7.sp,
+                                                lineHeight = 8.sp,
+                                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                                                color = if (selected) Violet else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .72f)
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -793,7 +954,7 @@ private fun GlassAmbientLayer(
     AnimatedVisibility(visible = playerExpanded && current != null, modifier = Modifier.fillMaxSize(), enter = fadeIn() + slideInVertically { it / 6 }, exit = fadeOut() + slideOutVertically { it / 6 }) {
         current?.let { track ->
             val queue = (0 until player.mediaItemCount).mapNotNull { index -> queueTracks[player.getMediaItemAt(index).mediaId] }
-            FullPlayer(track, playing, position, totalDuration,
+            RenovatedFullPlayer(track, playing, position, totalDuration,
                 isFavourite = track.id.toString() in favouriteIds, queue = queue,
                 onClose = { playerExpanded = false },
                 onPlayPause = { if (playing) player.pause() else player.play() },
@@ -801,6 +962,7 @@ private fun GlassAmbientLayer(
                 onPrevious = { player.seekToPreviousMediaItem(); player.play() },
                 onNext = { player.seekToNextMediaItem(); player.play() },
                 onToggleFavourite = { toggleFavourite(track) },
+                onShowLyrics = { showLyrics = true },
                 onPlayQueueItem = { index -> player.seekTo(index, 0L); player.play() },
                 onRemoveQueueItem = { if (it in 0 until player.mediaItemCount) player.removeMediaItem(it) },
                 onClearQueue = { if (player.mediaItemCount > 0) player.clearMediaItems() },
@@ -809,6 +971,23 @@ private fun GlassAmbientLayer(
                 swipeToChangeTracks = FlarePreferences.swipeToChangeTracks.value
             )
         }
+    }
+    if (showLyrics && current != null) {
+        LyricsSheet(
+            track = current!!,
+            lyrics = lyrics,
+            loading = lyricsLoading,
+            positionMs = position,
+            onClose = { showLyrics = false },
+            onSeek = { player.seekTo(it) },
+            onRefresh = {
+                scope.launch {
+                    lyricsLoading = true
+                    lyrics = runCatching { LyricsRepository.fetch(current!!) }.getOrNull()
+                    lyricsLoading = false
+                }
+            }
+        )
     }
     }
 }
