@@ -17,6 +17,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -649,8 +650,8 @@ private fun GlassAmbientLayer(
                             Text(current!!.title, color = miniColors.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 13.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 3.dp))
                             Text(current!!.artist, color = miniColors.onSurfaceVariant, fontSize = 10.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.padding(top = 2.dp))
                         }
-                        IconButton(onClick = { if (playing) player.pause() else player.play() }, modifier = Modifier.size(36.dp).clip(RoundedCornerShape(50.dp)).background(miniColors.primary)) {
-                            Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, null, tint = miniColors.onPrimary, modifier = Modifier.size(20.dp))
+                        Box(Modifier.size(40.dp).clip(RoundedCornerShape(50.dp)).background(miniColors.primary.copy(alpha = .16f)).border(1.dp, miniColors.primary.copy(alpha = .42f), RoundedCornerShape(50.dp)).clickable { if (playing) player.pause() else player.play() }, contentAlignment = Alignment.Center) {
+                            Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (playing) "Pause" else "Play", tint = miniColors.primary, modifier = Modifier.size(21.dp))
                         }
                         IconButton(onClick = { player.seekToNextMediaItem(); player.play() }, modifier = Modifier.size(34.dp)) {
                             Icon(Icons.Rounded.SkipNext, null, tint = miniColors.onSurface, modifier = Modifier.size(23.dp))
@@ -1135,6 +1136,20 @@ private fun GlassAmbientLayer(
     else Box(modifier.background(MaterialTheme.colorScheme.surface), contentAlignment = Alignment.Center) { Image(painterResource(R.drawable.ic_flare_logo), contentDescription = "Album art", modifier = Modifier.fillMaxSize().padding(5.dp), contentScale = androidx.compose.ui.layout.ContentScale.Fit) }
 }
 
+@Composable
+private fun FlarePlayButton(playing: Boolean, onClick: () -> Unit, size: androidx.compose.ui.unit.Dp = 82.dp) {
+    val scale by animateFloatAsState(if (playing) 1.0f else .96f, androidx.compose.animation.core.spring(dampingRatio = .72f, stiffness = 520f), label = "playButtonScale")
+    val accent = MaterialTheme.colorScheme.primary
+    val onAccent = MaterialTheme.colorScheme.onPrimary
+    Box(Modifier.size(size).graphicsLayer { scaleX = scale; scaleY = scale }.clip(RoundedCornerShape(50.dp))
+        .background(Brush.radialGradient(listOf(accent.copy(alpha = .34f), accent.copy(alpha = .08f), Color.Transparent)))
+        .border(1.dp, accent.copy(alpha = .48f), RoundedCornerShape(50.dp)).padding(7.dp)
+        .clip(RoundedCornerShape(50.dp)).background(Brush.linearGradient(listOf(accent.copy(alpha = .96f), accent.copy(alpha = .68f))))
+        .clickable(onClick = onClick), contentAlignment = Alignment.Center) {
+        Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (playing) "Pause" else "Play", tint = onAccent, modifier = Modifier.size(if (playing) size * .42f else size * .48f))
+    }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable private fun FullPlayer(track: Track, playing: Boolean, position: Long, duration: Long, isFavourite: Boolean, queue: List<Track>, onClose: () -> Unit, onPlayPause: () -> Unit, onSeek: (Long) -> Unit, onPrevious: () -> Unit, onNext: () -> Unit, onToggleFavourite: () -> Unit, onPlayQueueItem: (Int) -> Unit, onRemoveQueueItem: (Int) -> Unit, onClearQueue: () -> Unit, onStartSleepTimer: (Int) -> Unit, swipeToMinimize: Boolean, swipeToChangeTracks: Boolean) {
     var showQueue by remember { mutableStateOf(false) }
@@ -1227,9 +1242,7 @@ private fun GlassAmbientLayer(
             Spacer(Modifier.height(14.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onPrevious, modifier = Modifier.size(52.dp)) { Icon(Icons.Rounded.SkipPrevious, "Previous", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(31.dp)) }
-                FilledIconButton(onClick = onPlayPause, modifier = Modifier.size(76.dp), shape = RoundedCornerShape(26.dp), colors = IconButtonDefaults.filledIconButtonColors(containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onSurface)) {
-                    Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, if (playing) "Pause" else "Play", modifier = Modifier.size(38.dp))
-                }
+                FlarePlayButton(playing = playing, onClick = onPlayPause, size = 82.dp)
                 IconButton(onClick = onNext, modifier = Modifier.size(52.dp)) { Icon(Icons.Rounded.SkipNext, "Next", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(31.dp)) }
             }
             Spacer(Modifier.height(8.dp))
