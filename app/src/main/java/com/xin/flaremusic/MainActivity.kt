@@ -694,17 +694,17 @@ private fun GlassAmbientLayer(
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = if (FlarePreferences.navStyle.intValue == 2) 28.dp else 16.dp, vertical = if (FlarePreferences.navStyle.intValue == 2) 6.dp else 10.dp),
+                    .padding(horizontal = if (FlarePreferences.navStyle.intValue == 2) 22.dp else 12.dp, vertical = 4.dp),
                 contentAlignment = Alignment.Center
             ) {
                 BoxWithConstraints(
                     Modifier.fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
-                    val pillWidth = maxWidth.coerceAtMost(if (FlarePreferences.navStyle.intValue == 2) 460.dp else 520.dp)
+                    val pillWidth = maxWidth.coerceAtMost(if (FlarePreferences.navStyle.intValue == 2) 420.dp else 500.dp)
                     val itemWidth = pillWidth / 4
-                    val navHeight = if (FlarePreferences.navStyle.intValue == 1) 50.dp else if (FlarePreferences.navStyle.intValue == 2) 60.dp else 54.dp
-                    val navRadius = if (FlarePreferences.navStyle.intValue == 1) 12.dp else 28.dp
+                    val navHeight = if (FlarePreferences.navStyle.intValue == 1) 46.dp else if (FlarePreferences.navStyle.intValue == 2) 50.dp else 48.dp
+                    val navRadius = if (FlarePreferences.navStyle.intValue == 1) 16.dp else 24.dp
                     val selectedIndex = listOf("Home", "Search", "Library", "Settings").indexOf(tab).coerceAtLeast(0)
                     val indicatorX by animateDpAsState(
                         targetValue = itemWidth * selectedIndex + 8.dp,
@@ -754,10 +754,10 @@ private fun GlassAmbientLayer(
                         // DA-Tunes-style animated selection capsule.
                         Box(
                             Modifier
-                                .offset(x = indicatorX, y = 6.dp)
+                                .offset(x = indicatorX, y = 3.dp)
                                 .width(itemWidth - 16.dp)
-                                .height(42.dp)
-                                .clip(RoundedCornerShape(20.dp))
+                                .height(navHeight - 6.dp)
+                                .clip(RoundedCornerShape(18.dp))
                                 .background(Brush.linearGradient(listOf(Color.White.copy(alpha = .20f), Violet.copy(alpha = .22f), Color.White.copy(alpha = .08f))))
                                 .border(1.dp, Color.White.copy(alpha = .20f), RoundedCornerShape(if (FlarePreferences.navStyle.intValue == 1) 12.dp else 20.dp))
                         )
@@ -783,12 +783,13 @@ private fun GlassAmbientLayer(
                                             contentDescription = item,
                                             tint = if (selected) Violet
                                             else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
-                                            modifier = Modifier.size(if (selected) 23.dp else 22.dp)
+                                            modifier = Modifier.size(if (selected) 21.dp else 20.dp)
                                         )
                                         if (FlarePreferences.showNavLabels.value) {
                                             Text(
                                                 item,
-                                                fontSize = 8.sp,
+                                                fontSize = 7.sp,
+                                                lineHeight = 8.sp,
                                                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                                                 color = if (selected) Violet else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .72f)
                                             )
