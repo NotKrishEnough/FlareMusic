@@ -1280,10 +1280,13 @@ fun RenovatedFullPlayer(
                     Text(formatTime(duration), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
 
-                Spacer(Modifier.weight(1f, fill = true))
+                // Keep playback controls visually attached to the seek area.
+                // A weighted spacer was pushing them to the absolute bottom of
+                // tall screens, creating the large empty gap seen in the player.
+                Spacer(Modifier.height(64.dp))
 
                 Row(
-                    Modifier.fillMaxWidth().padding(top = 9.dp),
+                    Modifier.fillMaxWidth().padding(top = 0.dp),
                     horizontalArrangement = Arrangement.SpaceEvenly,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
