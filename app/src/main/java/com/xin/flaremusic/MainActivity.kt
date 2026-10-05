@@ -194,7 +194,7 @@ class MainActivity : ComponentActivity() {
         FlarePreferences.accentIndex.intValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getInt("accent_index", 0).coerceIn(0, FlarePreferences.accents.lastIndex)
         FlarePreferences.animations.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("animations", true)
         FlarePreferences.compact.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("compact", false)
-        FlarePreferences.dynamicColors.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("dynamic_colors", true)
+        FlarePreferences.dynamicColors.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("dynamic_colors", false)
         FlarePreferences.swipeToMinimize.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("gesture_minimize", true)
         FlarePreferences.swipeToChangeTracks.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("gesture_tracks", true)
         FlarePreferences.showMiniPlayer.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("show_mini_player", true)
@@ -218,7 +218,7 @@ class MainActivity : ComponentActivity() {
     private fun showApp() {
         val activePlayer = player ?: return
         if (ContextCompat.checkSelfPermission(this, audioPermission()) != PackageManager.PERMISSION_GRANTED) return
-        setContent { FlareTheme(amoledMode, FlarePreferences.dynamicColors.value, FlarePreferences.darkMode.value) { FlareApp(activePlayer, ::loadTracks, amoledMode, googleStatus, youtubePlaylists, playlistLoading, playlistError, ::connectGoogle, ::syncYouTubePlaylists, ::disconnectYouTube) { enabled -> amoledMode = enabled; getSharedPreferences("flare_settings", MODE_PRIVATE).edit().putBoolean("amoled", enabled).apply() } } }
+        setContent { FlareTheme(amoledMode) { FlareApp(activePlayer, ::loadTracks, amoledMode, googleStatus, youtubePlaylists, playlistLoading, playlistError, ::connectGoogle, ::syncYouTubePlaylists, ::disconnectYouTube) { enabled -> amoledMode = enabled; getSharedPreferences("flare_settings", MODE_PRIVATE).edit().putBoolean("amoled", enabled).apply() } } }
     }
 
     private fun connectGoogle() {
@@ -318,36 +318,81 @@ private fun GlassAmbientLayer(
     }
 }
 
-@Composable private fun FlareTheme(amoled: Boolean, dynamicColors: Boolean, darkMode: Boolean, content: @Composable () -> Unit) {
+@Composable private fun FlareTheme(amoled: Boolean, content: @Composable () -> Unit) {
     val context = LocalContext.current
-    val systemPalette = if (dynamicColors && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) { if (darkMode) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context) } else null
-    val accent = systemPalette?.primary ?: FlarePreferences.accents[FlarePreferences.accentIndex.intValue.coerceIn(0, FlarePreferences.accents.lastIndex)]
+    val darkMode = FlarePreferences.darkMode.value
+    val dynamicColors = FlarePreferences.dynamicColors.value
+    val accent = FlarePreferences.accents[FlarePreferences.accentIndex.intValue.coerceIn(0, FlarePreferences.accents.lastIndex)]
+    val systemPalette = if (dynamicColors && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+        if (darkMode) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
+    } else null
+    val resolvedAccent = systemPalette?.primary ?: accent
+
     val darkFallback = darkColorScheme(
-        primary = accent, secondary = accent.copy(alpha = .85f), tertiary = Mint,
-        background = Color(0xFF0B0D12), surface = Color(0xFF151922), surfaceVariant = Color(0xFF242B36),
-        onPrimary = Color.White, onSecondary = Color(0xFF101116), onTertiary = Color(0xFF101116),
-        onBackground = Color.White, onSurface = Color.White, onSurfaceVariant = Color(0xFFE1E3EA),
-        inverseSurface = Color(0xFFE1E3EA), inverseOnSurface = Color(0xFF17191F)
+        primary = resolvedAccent,
+        onPrimary = Color.White,
+        secondary = resolvedAccent.copy(alpha = .84f),
+        tertiary = resolvedAccent.copy(alpha = .72f),
+        background = Color(0xFF090A0D),
+        surface = Color(0xFF121419),
+        surfaceVariant = Color(0xFF1C1F26),
+        surfaceContainer = Color(0xFF17191F),
+        surfaceContainerHigh = Color(0xFF20232A),
+        onBackground = Color(0xFFF4F4F6),
+        onSurface = Color(0xFFF4F4F6),
+        onSurfaceVariant = Color(0xFFB8BBC4),
+        outline = Color(0xFF454952),
+        outlineVariant = Color(0xFF30333A),
+        error = Color(0xFFFFB4AB),
+        errorContainer = Color(0xFF5F1412),
+        onError = Color(0xFF690005),
+        onErrorContainer = Color(0xFFFFDAD6)
     )
     val lightFallback = lightColorScheme(
-        primary = accent, secondary = accent.copy(alpha = .85f), tertiary = accent,
-        background = Color(0xFFFFF8F3), surface = Color(0xFFFFFFFF), surfaceVariant = Color(0xFFF2E8E1),
-        onPrimary = Color.White, onSecondary = Color.White, onTertiary = Color.White,
-        onBackground = Color(0xFF171821), onSurface = Color(0xFF171821), onSurfaceVariant = Color(0xFF555966),
-        outlineVariant = Color(0xFFE4D6CC)
+        primary = resolvedAccent,
+        onPrimary = Color.White,
+        secondary = resolvedAccent.copy(alpha = .88f),
+        tertiary = resolvedAccent.copy(alpha = .78f),
+        background = Color(0xFFF8F8FA),
+        surface = Color(0xFFFFFFFF),
+        surfaceVariant = Color(0xFFEDEEF2),
+        surfaceContainer = Color(0xFFF1F1F4),
+        surfaceContainerHigh = Color(0xFFE8E8EC),
+        onBackground = Color(0xFF17181C),
+        onSurface = Color(0xFF17181C),
+        onSurfaceVariant = Color(0xFF5E6068),
+        outline = Color(0xFF777982),
+        outlineVariant = Color(0xFFD9DADF)
     )
-    val wallpaperScheme = systemPalette ?: if (darkMode) darkFallback else lightFallback
+    val scheme = systemPalette ?: if (darkMode) darkFallback else lightFallback
+
     SideEffect {
         if (dynamicColors && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
-            FlarePreferences.dynamicAccent.value = wallpaperScheme.primary
+            FlarePreferences.dynamicAccent.value = scheme.primary
+        }
+        val activity = context as? android.app.Activity
+        activity?.window?.let { window ->
+            WindowCompat.getInsetsController(window, window.decorView).apply {
+                isAppearanceLightStatusBars = !darkMode
+                isAppearanceLightNavigationBars = !darkMode
+            }
         }
     }
-    val expressiveScheme = wallpaperScheme
-    val baseDensity = LocalDensity.current
-    val customDensity = Density(baseDensity.density, FlarePreferences.fontScale.floatValue)
+
+    val customDensity = Density(LocalDensity.current.density, FlarePreferences.fontScale.floatValue)
     CompositionLocalProvider(LocalDensity provides customDensity) {
         MaterialTheme(
-            colorScheme = if (amoled && darkMode) expressiveScheme.copy(background = Color.Black, surface = Color.Black, surfaceContainer = Color(0xFF080808)) else expressiveScheme,
+            colorScheme = if (amoled && darkMode) scheme.copy(
+                background = Color.Black,
+                surface = Color.Black,
+                surfaceContainer = Color(0xFF050505),
+                surfaceContainerHigh = Color(0xFF101010)
+            ) else scheme,
+            typography = Typography(
+                headlineLarge = MaterialTheme.typography.headlineLarge.copy(fontWeight = FontWeight.ExtraBold),
+                titleLarge = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Bold),
+                titleMedium = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.SemiBold)
+            ),
             content = content
         )
     }
@@ -1282,54 +1327,163 @@ private fun FlarePlayButton(playing: Boolean, onClick: () -> Unit, size: android
 }
 
 @Composable private fun HomeScreen(count: Int, loading: Boolean, error: String, accent: Color, openLibrary: () -> Unit) {
- val homeMode = FlarePreferences.homeLayout.intValue
- val radius = when (FlarePreferences.cornerStyle.intValue) { 1 -> 18.dp; 2 -> 8.dp; else -> 30.dp }
- val cardRadius = when (FlarePreferences.cornerStyle.intValue) { 1 -> 16.dp; 2 -> 8.dp; else -> 22.dp }
- val colors=MaterialTheme.colorScheme
- Column(Modifier.fillMaxSize().background(colors.background).verticalScroll(rememberScrollState()).padding(horizontal=22.dp)) {
-  Row(Modifier.fillMaxWidth().padding(top=25.dp),verticalAlignment=Alignment.CenterVertically) {
-   Column(Modifier.weight(1f)) {
-    Text("GOOD EVENING",color=colors.onSurfaceVariant,fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=2.sp)
-    Text("Feel the\nfrequency.",color=colors.onBackground,fontSize=39.sp,lineHeight=42.sp,fontWeight=FontWeight.ExtraBold,letterSpacing=(-1.8).sp,modifier=Modifier.padding(top=8.dp))
-   }
-   Box(Modifier.size(54.dp).clip(RoundedCornerShape(19.dp)).background(accent.copy(alpha=.13f)),contentAlignment=Alignment.Center) { Image(painterResource(R.drawable.ic_flare_logo),contentDescription="FlareMusic",modifier=Modifier.size(38.dp)) }
-  }
-  Spacer(Modifier.height(if (homeMode == 1) 14.dp else 25.dp))
-  if (homeMode != 2) Box(Modifier.fillMaxWidth().height(if (homeMode == 1) 190.dp else 238.dp).clip(RoundedCornerShape(30.dp)).background(Brush.linearGradient(listOf(Color(0xFFFF7658),Color(0xFFB65C91),Color(0xFF6157B9)))).clickable{openLibrary()}) {
-   Box(Modifier.align(Alignment.TopEnd).padding(18.dp).size(150.dp).clip(RoundedCornerShape(75.dp)).background(Color.White.copy(alpha=.09f)),contentAlignment=Alignment.Center) { Icon(Icons.Rounded.GraphicEq,null,tint=Color.White.copy(alpha=.9f),modifier=Modifier.size(78.dp)) }
-   Column(Modifier.align(Alignment.BottomStart).padding(22.dp)) {
-    Text("YOUR MUSIC. YOUR MOMENT.",color=Color.White.copy(alpha=.82f),fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=1.7.sp)
-    Text("Press play.\nDisappear.",color=Color.White,fontSize=31.sp,lineHeight=34.sp,fontWeight=FontWeight.ExtraBold,modifier=Modifier.padding(top=8.dp))
-    Row(Modifier.padding(top=13.dp).clip(RoundedCornerShape(30.dp)).background(Color.White.copy(alpha=.18f)).padding(horizontal=14.dp,vertical=9.dp),verticalAlignment=Alignment.CenterVertically) { Text("Open your music",color=Color.White,fontSize=12.sp,fontWeight=FontWeight.Bold); Spacer(Modifier.width(8.dp)); Icon(Icons.Rounded.ArrowOutward,null,tint=Color.White,modifier=Modifier.size(15.dp)) }
-   }
-  }
-  Spacer(Modifier.height(27.dp))
-  Row(verticalAlignment=Alignment.CenterVertically) {
-   Column(Modifier.weight(1f)) { Text("Your space",color=colors.onBackground,fontSize=23.sp,fontWeight=FontWeight.Bold); Text(if(loading)"Scanning your device…" else "A library made for you",color=colors.onSurfaceVariant,fontSize=13.sp,modifier=Modifier.padding(top=3.dp)) }
-   TextButton(onClick=openLibrary){Text("View all ↗",color=accent,fontWeight=FontWeight.Bold)}
-  }
-  Spacer(Modifier.height(12.dp))
-  Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
-   Column(Modifier.weight(1f).clip(RoundedCornerShape(cardRadius)).background(colors.surfaceVariant).clickable{openLibrary()}.padding(17.dp)) {
-    Box(Modifier.size(40.dp).clip(RoundedCornerShape(14.dp)).background(accent.copy(alpha=.15f)),contentAlignment=Alignment.Center){Icon(Icons.Rounded.MusicNote,null,tint=accent)}
-    Text(count.toString(),color=colors.onSurface,fontSize=27.sp,fontWeight=FontWeight.ExtraBold,modifier=Modifier.padding(top=16.dp))
-    Text("Songs on device",color=colors.onSurfaceVariant,fontSize=12.sp)
-   }
-   Column(Modifier.weight(1f).clip(RoundedCornerShape(22.dp)).background(colors.surfaceVariant.copy(alpha = .42f)).border(1.dp, Color.White.copy(alpha = .13f), RoundedCornerShape(22.dp)).clickable{openLibrary()}.padding(17.dp)) {
-    Box(Modifier.size(40.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFF9D8AF3).copy(alpha=.16f)),contentAlignment=Alignment.Center){Icon(Icons.Rounded.Headphones,null,tint=Color(0xFF9D8AF3))}
-    Text(if(loading)"…" else "Ready",color=colors.onSurface,fontSize=27.sp,fontWeight=FontWeight.ExtraBold,modifier=Modifier.padding(top=16.dp))
-    Text("For your next replay",color=colors.onSurfaceVariant,fontSize=12.sp)
-   }
-  }
-  if(error.isNotBlank()) Text(error,color=colors.error,fontSize=12.sp,modifier=Modifier.padding(top=14.dp))
-  Spacer(Modifier.height(22.dp))
-  Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(cardRadius)).background(colors.surface).clickable{openLibrary()}.padding(16.dp),verticalAlignment=Alignment.CenterVertically) {
-   Box(Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(accent.copy(alpha=.13f)),contentAlignment=Alignment.Center){Icon(Icons.Rounded.Explore,null,tint=accent,modifier=Modifier.size(25.dp))}
-   Column(Modifier.weight(1f).padding(start=13.dp)){Text("Explore your collection",color=colors.onSurface,fontWeight=FontWeight.Bold,fontSize=14.sp);Text("Find a track for right now",color=colors.onSurfaceVariant,fontSize=12.sp,modifier=Modifier.padding(top=3.dp))}
-   Icon(Icons.Rounded.ChevronRight,null,tint=colors.onSurfaceVariant)
-  }
-  Spacer(Modifier.height(18.dp))
- }
+    val colors = MaterialTheme.colorScheme
+    val radius = when (FlarePreferences.cornerStyle.intValue) {
+        1 -> 20.dp
+        2 -> 10.dp
+        else -> 28.dp
+    }
+    Column(
+        Modifier.fillMaxSize()
+            .background(colors.background)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp)
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 24.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "FLAREMUSIC",
+                    color = colors.onSurfaceVariant,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.2.sp
+                )
+                Text(
+                    "Good evening.",
+                    color = colors.onBackground,
+                    fontSize = 32.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = (-1.2).sp,
+                    modifier = Modifier.padding(top = 5.dp)
+                )
+            }
+            Box(
+                Modifier.size(48.dp)
+                    .clip(RoundedCornerShape(17.dp))
+                    .background(accent.copy(alpha = .12f))
+                    .border(1.dp, accent.copy(alpha = .22f), RoundedCornerShape(17.dp)),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painterResource(R.drawable.ic_flare_logo),
+                    contentDescription = "FlareMusic",
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        }
+
+        Text(
+            "Your music",
+            color = colors.onSurface,
+            fontSize = 25.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = (-.5).sp
+        )
+        Text(
+            if (loading) "Getting your library ready…" else "$count songs ready to play",
+            color = colors.onSurfaceVariant,
+            fontSize = 13.sp,
+            modifier = Modifier.padding(top = 4.dp, bottom = 14.dp)
+        )
+
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Column(
+                Modifier.weight(1f)
+                    .clip(RoundedCornerShape(radius))
+                    .background(colors.surfaceContainer)
+                    .border(1.dp, colors.outlineVariant.copy(alpha = .65f), RoundedCornerShape(radius))
+                    .clickable { openLibrary() }
+                    .padding(17.dp)
+            ) {
+                Box(
+                    Modifier.size(42.dp).clip(RoundedCornerShape(14.dp))
+                        .background(accent.copy(alpha = .13f)),
+                    contentAlignment = Alignment.Center
+                ) { Icon(Icons.Rounded.LibraryMusic, null, tint = accent) }
+                Text(
+                    count.toString(),
+                    color = colors.onSurface,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    modifier = Modifier.padding(top = 17.dp)
+                )
+                Text("Songs", color = colors.onSurfaceVariant, fontSize = 12.sp)
+            }
+            Column(
+                Modifier.weight(1f)
+                    .clip(RoundedCornerShape(radius))
+                    .background(colors.surfaceContainer)
+                    .border(1.dp, colors.outlineVariant.copy(alpha = .65f), RoundedCornerShape(radius))
+                    .clickable { openLibrary() }
+                    .padding(17.dp)
+            ) {
+                Box(
+                    Modifier.size(42.dp).clip(RoundedCornerShape(14.dp))
+                        .background(colors.primary.copy(alpha = .13f)),
+                    contentAlignment = Alignment.Center
+                ) { Icon(Icons.Rounded.Headphones, null, tint = colors.primary) }
+                Text(
+                    "Ready",
+                    color = colors.onSurface,
+                    fontSize = 28.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    modifier = Modifier.padding(top = 17.dp)
+                )
+                Text("Now playing", color = colors.onSurfaceVariant, fontSize = 12.sp)
+            }
+        }
+
+        Spacer(Modifier.height(24.dp))
+
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Quick access", color = colors.onSurface, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                Text("Jump straight into your collection", color = colors.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 3.dp))
+            }
+        }
+
+        Spacer(Modifier.height(10.dp))
+
+        listOf(
+            Triple(Icons.Rounded.LibraryMusic, "Library", "Albums, songs and playlists"),
+            Triple(Icons.Rounded.FavoriteBorder, "Favourites", "Your saved tracks"),
+            Triple(Icons.Rounded.Search, "Search music", "Find something new")
+        ).forEach { (icon, title, subtitle) ->
+            Row(
+                Modifier.fillMaxWidth()
+                    .clip(RoundedCornerShape(18.dp))
+                    .background(colors.surfaceContainer.copy(alpha = .72f))
+                    .clickable { openLibrary() }
+                    .padding(horizontal = 15.dp, vertical = 13.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Box(
+                    Modifier.size(44.dp).clip(RoundedCornerShape(14.dp))
+                        .background(accent.copy(alpha = .10f)),
+                    contentAlignment = Alignment.Center
+                ) { Icon(icon, null, tint = accent) }
+                Column(Modifier.weight(1f).padding(start = 13.dp)) {
+                    Text(title, color = colors.onSurface, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Text(subtitle, color = colors.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
+                }
+                Icon(Icons.Rounded.ChevronRight, null, tint = colors.onSurfaceVariant)
+            }
+            Spacer(Modifier.height(8.dp))
+        }
+
+        if (error.isNotBlank()) {
+            Text(
+                error,
+                color = colors.error,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(top = 10.dp, bottom = 18.dp)
+            )
+        }
+        Spacer(Modifier.height(130.dp))
+    }
 }
 @Composable private fun SearchScreen(query: String, onQuery: (String) -> Unit, results: List<Track>, play: (Track) -> Unit, online: List<OnlineTrack>, searching: Boolean, searchOnline: (String) -> Unit, playOnline: (OnlineTrack) -> Unit, addOnline: (OnlineTrack) -> Unit, error: String) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(horizontal = 18.dp)) {
