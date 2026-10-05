@@ -126,6 +126,11 @@ class MainActivity : ComponentActivity() {
     }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val settings = getSharedPreferences("flare_settings", MODE_PRIVATE)
+        FlarePreferences.darkMode.value = settings.getBoolean("dark_mode", true)
+        FlarePreferences.glassEffects.value = settings.getBoolean("glass_effects", true)
+        FlarePreferences.animations.value = settings.getBoolean("animations", true)
+        amoledMode = settings.getBoolean("amoled", false)
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = android.graphics.Color.TRANSPARENT
         window.navigationBarColor = android.graphics.Color.TRANSPARENT
