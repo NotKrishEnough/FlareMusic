@@ -7,8 +7,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectDragGestures
-import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
@@ -627,11 +625,12 @@ private fun RenovationChoiceCard(title: String, options: List<String>, selected:
     RenovationCard(Modifier.fillMaxWidth(), MaterialTheme.colorScheme.primary) {
         Column(Modifier.padding(15.dp)) {
             Text(title, fontWeight = FontWeight.SemiBold)
-            Row(
-                Modifier.padding(top = 11.dp).horizontalScroll(rememberScrollState()),
+            LazyRow(
+                Modifier.padding(top = 11.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp)
             ) {
-                options.forEachIndexed { index, label ->
+                items(options.size) { index ->
+                    val label = options[index]
                     FilterChip(
                         selected = selected == index,
                         onClick = { onSelected(index) },
