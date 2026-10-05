@@ -403,7 +403,7 @@ fun RenovatedLibraryScreen(
                 results = playlistSearchResults,
                 loading = playlistSearchLoading,
                 onSearch = searchPlaylistSongs,
-                onAdd = addOnlineToPlaylist,
+                onAdd = { result -> addOnlineToPlaylist(result); showAddSongs = false },
                 onDismiss = { showAddSongs = false }
             )
         }
@@ -420,7 +420,7 @@ fun RenovatedLibraryScreen(
                 }
                 if (status.startsWith("Connected")) {
                     IconButton(onClick = { showCreate = true }) {
-                        Icon(Icons.Rounded.CreateNewFolder, "Create playlist", tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Rounded.AddCircleOutline, "Create playlist", tint = MaterialTheme.colorScheme.primary)
                     }
                 }
             }
