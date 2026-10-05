@@ -286,7 +286,7 @@ fun RenovatedLibraryScreen(
                 RenovationTrackRow(item.title, item.artist, item.thumbnail, null) { playPlaylistItem(item) }
             }
         }
-        return
+        return@CompositionLocalProvider
     }
 
     var favouritesMode by remember { mutableStateOf(false) }
