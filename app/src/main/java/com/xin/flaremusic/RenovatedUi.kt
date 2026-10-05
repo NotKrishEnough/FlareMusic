@@ -104,6 +104,9 @@ private fun RenovationHeader(title: String, subtitle: String) {
 
 @Composable
 fun RenovatedHomeScreen(count: Int, loading: Boolean, error: String, accent: Color, openLibrary: () -> Unit) {
+    // Some vendor dynamic palettes can report a black onSurface even while the
+    // app is visibly using a dark surface. Keep the renovated home readable.
+    val homeText = if (FlarePreferences.darkMode.value) Color.White else MaterialTheme.colorScheme.onSurface
     LazyColumn(
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 150.dp),
         verticalArrangement = Arrangement.spacedBy(17.dp)
@@ -112,7 +115,7 @@ fun RenovatedHomeScreen(count: Int, loading: Boolean, error: String, accent: Col
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("FLAREMUSIC", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.3.sp)
-                    Text("Made for the way\nyou listen.", fontSize = 37.sp, lineHeight = 39.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1.7).sp, modifier = Modifier.padding(top = 7.dp))
+                    Text("Made for the way\nyou listen.", color = homeText, fontSize = 37.sp, lineHeight = 39.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1.7).sp, modifier = Modifier.padding(top = 7.dp))
                     Text(
                         if (loading) "Scanning your library…" else if (error.isNotBlank()) error else count.toString() + " songs ready",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -131,13 +134,13 @@ fun RenovatedHomeScreen(count: Int, loading: Boolean, error: String, accent: Col
                 Column(Modifier.fillMaxSize().padding(22.dp), verticalArrangement = Arrangement.SpaceBetween) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         Box(Modifier.clip(RoundedCornerShape(50.dp)).background(Color.White.copy(alpha = .10f)).padding(horizontal = 11.dp, vertical = 6.dp)) {
-                            Text("YOUR MUSIC", fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
+                            Text("YOUR MUSIC", color = homeText, fontSize = 9.sp, fontWeight = FontWeight.Bold, letterSpacing = 1.4.sp)
                         }
                         Spacer(Modifier.weight(1f))
-                        Icon(Icons.Rounded.ArrowOutward, null)
+                        Icon(Icons.Rounded.ArrowOutward, null, tint = homeText)
                     }
                     Column {
-                        Text("Press play.\nDisappear.", fontSize = 31.sp, lineHeight = 34.sp, fontWeight = FontWeight.ExtraBold)
+                        Text("Press play.\nDisappear.", color = homeText, fontSize = 31.sp, lineHeight = 34.sp, fontWeight = FontWeight.ExtraBold)
                         Text("Everything you listen to, in one calm space.", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 8.dp))
                     }
                 }
@@ -151,14 +154,14 @@ fun RenovatedHomeScreen(count: Int, loading: Boolean, error: String, accent: Col
                 RenovationCard(Modifier.weight(1f).clickable { openLibrary() }, accent) {
                     Column(Modifier.padding(17.dp)) {
                         Icon(Icons.Rounded.MusicNote, null, tint = accent)
-                        Text("Songs", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 21.dp))
+                        Text("Songs", color = homeText, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 21.dp))
                         Text(count.toString() + " tracks", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
                 RenovationCard(Modifier.weight(1f).clickable { openLibrary() }, accent) {
                     Column(Modifier.padding(17.dp)) {
                         Icon(Icons.Rounded.Favorite, null, tint = accent)
-                        Text("Favourites", fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 21.dp))
+                        Text("Favourites", color = homeText, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 21.dp))
                         Text("Saved for later", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                 }
