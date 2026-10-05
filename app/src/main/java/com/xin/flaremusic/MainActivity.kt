@@ -405,6 +405,11 @@ private fun GlassAmbientLayer(
     var selectedPlaylistLoading by remember { mutableStateOf(false) }
     var selectedPlaylistError by remember { mutableStateOf("") }
     var searching by remember { mutableStateOf(false) }
+    var playlistSearchResults by remember { mutableStateOf(emptyList<OnlineTrack>()) }
+    var playlistSearchLoading by remember { mutableStateOf(false) }
+    var showLyrics by remember { mutableStateOf(false) }
+    var lyricsLoading by remember { mutableStateOf(false) }
+    var lyrics by remember { mutableStateOf<SyncedLyrics?>(null) }
     var position by remember { mutableLongStateOf(0L) }
     var totalDuration by remember { mutableLongStateOf(0L) }
     val context = LocalContext.current
@@ -415,6 +420,19 @@ private fun GlassAmbientLayer(
     val innerTube = remember { InnerTubeClient() }
     val scope = rememberCoroutineScope()
     LaunchedEffect(player) { while (true) { position = player.currentPosition.coerceAtLeast(0L); totalDuration = player.duration.takeIf { it > 0 } ?: 0L; delay(500) } }
+    LaunchedEffect(current?.id) {
+        val track = current
+        if (track == null) {
+            lyrics = null
+            lyricsLoading = false
+        } else {
+            showLyrics = false
+            lyrics = null
+            lyricsLoading = true
+            lyrics = runCatching { LyricsRepository.fetch(track) }.getOrNull()
+            lyricsLoading = false
+        }
+    }
     LaunchedEffect(Unit) {
         player.addListener(object : Player.Listener {
             override fun onIsPlayingChanged(isPlaying: Boolean) { playing = isPlaying }
@@ -569,6 +587,93 @@ private fun GlassAmbientLayer(
         }
     }
 
+    fun searchPlaylistSongs(term: String) {
+        if (term.isBlank()) {
+            playlistSearchResults = emptyList()
+            return
+        }
+        scope.launch {
+            playlistSearchLoading = true
+            playlistSearchResults = runCatching { innerTube.search(term) }.getOrDefault(emptyList())
+            playlistSearchLoading = false
+        }
+    }
+
+    fun addOnlineToSelectedPlaylist(result: OnlineTrack) {
+        val playlist = selectedPlaylist ?: return
+        scope.launch {
+            try {
+                val cookies = YouTubeSessionStore.read(context)
+                    ?: throw IllegalStateException("Connect YouTube Music first.")
+                YouTubePlaylists.addToPlaylist(cookies, playlist.id, result.videoId)
+                playlistSearchResults = emptyList()
+                openYouTubePlaylist(playlist)
+                onSyncPlaylists()
+            } catch (e: Exception) {
+                selectedPlaylistError = e.message ?: "Couldn't add song to playlist."
+            }
+        }
+    }
+
+    fun removeFromSelectedPlaylist(item: YouTubePlaylistTrack) {
+        val playlist = selectedPlaylist ?: return
+        scope.launch {
+            try {
+                val cookies = YouTubeSessionStore.read(context)
+                    ?: throw IllegalStateException("Connect YouTube Music first.")
+                YouTubePlaylists.removeFromPlaylist(cookies, playlist.id, item.videoId)
+                selectedPlaylistTracks = selectedPlaylistTracks.filterNot { it.videoId == item.videoId }
+                onSyncPlaylists()
+            } catch (e: Exception) {
+                selectedPlaylistError = e.message ?: "Couldn't remove song from playlist."
+            }
+        }
+    }
+
+    fun renameSelectedPlaylist(title: String) {
+        val playlist = selectedPlaylist ?: return
+        scope.launch {
+            try {
+                val cookies = YouTubeSessionStore.read(context)
+                    ?: throw IllegalStateException("Connect YouTube Music first.")
+                YouTubePlaylists.renamePlaylist(cookies, playlist.id, title)
+                selectedPlaylist = playlist.copy(title = title.trim())
+                onSyncPlaylists()
+            } catch (e: Exception) {
+                selectedPlaylistError = e.message ?: "Couldn't rename playlist."
+            }
+        }
+    }
+
+    fun deleteSelectedPlaylist() {
+        val playlist = selectedPlaylist ?: return
+        scope.launch {
+            try {
+                val cookies = YouTubeSessionStore.read(context)
+                    ?: throw IllegalStateException("Connect YouTube Music first.")
+                YouTubePlaylists.deletePlaylist(cookies, playlist.id)
+                selectedPlaylist = null
+                selectedPlaylistTracks = emptyList()
+                onSyncPlaylists()
+            } catch (e: Exception) {
+                selectedPlaylistError = e.message ?: "Couldn't delete playlist."
+            }
+        }
+    }
+
+    fun createNewPlaylist(title: String) {
+        scope.launch {
+            try {
+                val cookies = YouTubeSessionStore.read(context)
+                    ?: throw IllegalStateException("Connect YouTube Music first.")
+                YouTubePlaylists.createPlaylist(cookies, title)
+                onSyncPlaylists()
+            } catch (e: Exception) {
+                playlistError = e.message ?: "Couldn't create playlist."
+            }
+        }
+    }
+
     fun searchOnline(term: String) {
         scope.launch {
             searching = true; error = ""
@@ -623,7 +728,7 @@ private fun GlassAmbientLayer(
             when(page) {
                 "Home" -> RenovatedHomeScreen(tracks.size, loading, error, Violet) { selectTab("Library") }
                 "Search" -> RenovatedSearchScreen(query, { query = it }, tracks.filter { it.title.contains(query, true) || it.artist.contains(query, true) }, ::play, onlineResults, searching, { searchOnline(query) }, ::playOnline, { trackToAdd = it }, error)
-                "Library" -> RenovatedLibraryScreen(tracks, loading, tracks.filter { it.id.toString() in favouriteIds }, youtubePlaylists, googleStatus, playlistLoading, playlistError, selectedPlaylist, selectedPlaylistTracks, selectedPlaylistLoading, selectedPlaylistError, ::openYouTubePlaylist, { selectedPlaylist = null; selectedPlaylistTracks = emptyList() }, { item -> playYouTubePlaylistQueue(item) }, ::play, { selectTab("Search") }, { tracks = emptyList(); loading = true }, onSyncPlaylists, onConnectGoogle)
+                "Library" -> RenovatedLibraryScreen(tracks, loading, tracks.filter { it.id.toString() in favouriteIds }, youtubePlaylists, googleStatus, playlistLoading, playlistError, selectedPlaylist, selectedPlaylistTracks, selectedPlaylistLoading, selectedPlaylistError, ::openYouTubePlaylist, { selectedPlaylist = null; selectedPlaylistTracks = emptyList() }, { item -> playYouTubePlaylistQueue(item) }, ::play, { selectTab("Search") }, { tracks = emptyList(); loading = true }, onSyncPlaylists, onConnectGoogle, ::searchPlaylistSongs, playlistSearchResults, playlistSearchLoading, ::addOnlineToSelectedPlaylist, ::removeFromSelectedPlaylist, ::renameSelectedPlaylist, ::deleteSelectedPlaylist, ::createNewPlaylist)
                 else -> RenovatedSettingsScreen(amoled, onAmoledChange, googleStatus, youtubePlaylists, playlistLoading, playlistError, onConnectGoogle, onSyncPlaylists, onDisconnectYouTube)
             }
         }
@@ -847,6 +952,7 @@ private fun GlassAmbientLayer(
                 onPrevious = { player.seekToPreviousMediaItem(); player.play() },
                 onNext = { player.seekToNextMediaItem(); player.play() },
                 onToggleFavourite = { toggleFavourite(track) },
+                onShowLyrics = { showLyrics = true },
                 onPlayQueueItem = { index -> player.seekTo(index, 0L); player.play() },
                 onRemoveQueueItem = { if (it in 0 until player.mediaItemCount) player.removeMediaItem(it) },
                 onClearQueue = { if (player.mediaItemCount > 0) player.clearMediaItems() },
@@ -855,6 +961,23 @@ private fun GlassAmbientLayer(
                 swipeToChangeTracks = FlarePreferences.swipeToChangeTracks.value
             )
         }
+    }
+    if (showLyrics && current != null) {
+        LyricsSheet(
+            track = current!!,
+            lyrics = lyrics,
+            loading = lyricsLoading,
+            positionMs = position,
+            onClose = { showLyrics = false },
+            onSeek = { player.seekTo(it) },
+            onRefresh = {
+                scope.launch {
+                    lyricsLoading = true
+                    lyrics = runCatching { LyricsRepository.fetch(current!!) }.getOrNull()
+                    lyricsLoading = false
+                }
+            }
+        )
     }
     }
 }
