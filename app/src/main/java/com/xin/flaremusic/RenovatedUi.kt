@@ -3,6 +3,7 @@ package com.xin.flaremusic
 import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
@@ -27,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -721,139 +723,309 @@ fun RenovatedFullPlayer(
         val animationStyle = FlarePreferences.playerAnimation.intValue.coerceIn(0, 3)
         val animationsEnabled = FlarePreferences.animations.value
         val infinite = rememberInfiniteTransition(label = "playerAnimations")
-        val ambient = if (animationsEnabled && animationStyle != 0) infinite.animateFloat(0f, 1f, infiniteRepeatable(tween(if (animationStyle == 3) 4200 else 2600), RepeatMode.Reverse), label = "ambient").value else 0f
-        val pulse = if (animationsEnabled && animationStyle == 2) infinite.animateFloat(.97f, 1.03f, infiniteRepeatable(tween(1200), RepeatMode.Reverse), label = "pulse").value else 1f
+        val motion = if (animationsEnabled && animationStyle != 0) {
+            infinite.animateFloat(
+                0f, 1f,
+                infiniteRepeatable(
+                    tween(if (animationStyle == 3) 5000 else 2800),
+                    RepeatMode.Reverse
+                ),
+                label = "playerMotion"
+            ).value
+        } else 0f
+        val pulse = if (animationsEnabled && animationStyle == 2) {
+            infinite.animateFloat(
+                .985f, 1.015f,
+                infiniteRepeatable(tween(1400), RepeatMode.Reverse),
+                label = "playerPulse"
+            ).value
+        } else 1f
 
         Box(
             Modifier.fillMaxSize()
                 .pointerInput(swipeToMinimize) {
                     detectDragGestures(
-                        onDragEnd = { if (swipeToMinimize && dragY > 120f) onClose(); dragY = 0f },
+                        onDragEnd = {
+                            if (swipeToMinimize && dragY > 120f) onClose()
+                            dragY = 0f
+                        },
                         onDragCancel = { dragY = 0f }
                     ) { _, amount -> if (amount.y > 0) dragY += amount.y }
                 }
         ) {
-            // Player backdrops: artwork tint, dynamic gradient, or dark glass. Keep the backdrop API-only for broad Compose compatibility.
+            // Background is independent from player layout so changing a style
+            // never changes the backdrop geometry.
             when (background) {
+                0 -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
                 1 -> {
-                    RenovationArtwork(track.artwork, Modifier.fillMaxSize())
-                    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .48f)))
+                    RenovationArtwork(
+                        track.artwork,
+                        Modifier.fillMaxSize().graphicsLayer {
+                            scaleX = 1.18f
+                            scaleY = 1.18f
+                        }
+                    )
+                    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .58f)))
+                    Box(
+                        Modifier.fillMaxSize().background(
+                            Brush.verticalGradient(
+                                listOf(Color.Black.copy(.22f), Color.Black.copy(.72f))
+                            )
+                        )
+                    )
                 }
                 2 -> {
-                    RenovationArtwork(track.artwork, Modifier.fillMaxSize())
                     Box(
                         Modifier.fillMaxSize().background(
                             Brush.verticalGradient(
                                 listOf(
-                                    MaterialTheme.colorScheme.primary.copy(alpha = .40f),
-                                    MaterialTheme.colorScheme.background.copy(alpha = .88f),
+                                    MaterialTheme.colorScheme.primary.copy(alpha = .32f),
+                                    MaterialTheme.colorScheme.background.copy(alpha = .96f),
                                     MaterialTheme.colorScheme.background
                                 )
                             )
                         )
                     )
+                    RenovationArtwork(
+                        track.artwork,
+                        Modifier.fillMaxSize().graphicsLayer {
+                            alpha = .16f
+                            scaleX = 1.08f
+                            scaleY = 1.08f
+                        }
+                    )
                 }
-                3 -> {
-                    RenovationArtwork(track.artwork, Modifier.fillMaxSize())
-                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface.copy(alpha = .86f)))
-                    Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(MaterialTheme.colorScheme.primary.copy(alpha = .18f), Color.Transparent))))
+                else -> {
+                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
+                    RenovationArtwork(
+                        track.artwork,
+                        Modifier.fillMaxSize().graphicsLayer {
+                            alpha = .12f
+                            scaleX = 1.06f
+                            scaleY = 1.06f
+                        }
+                    )
+                    Box(
+                        Modifier.fillMaxSize().background(
+                            Brush.radialGradient(
+                                listOf(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = .16f),
+                                    Color.Transparent
+                                )
+                            )
+                        )
+                    )
                 }
-                else -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
             }
 
+            // One compact, shared chrome. The four player styles only control
+            // the artwork/content arrangement below.
             Column(
-                Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
-                    .padding(horizontal = 22.dp, vertical = 10.dp),
+                Modifier.fillMaxSize()
+                    .statusBarsPadding()
+                    .navigationBarsPadding()
+                    .padding(horizontal = 20.dp, vertical = 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onClose) { Icon(Icons.Rounded.KeyboardArrowDown, "Minimize", modifier = Modifier.size(31.dp)) }
+                Row(
+                    Modifier.fillMaxWidth().height(48.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onClose, modifier = Modifier.size(44.dp)) {
+                        Icon(Icons.Rounded.KeyboardArrowDown, "Minimize", Modifier.size(29.dp))
+                    }
                     Spacer(Modifier.weight(1f))
-                    Text("NOW PLAYING", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.1.sp, color = MaterialTheme.colorScheme.primary)
+                    Text(
+                        "NOW PLAYING",
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        letterSpacing = 2.sp,
+                        color = MaterialTheme.colorScheme.primary
+                    )
                     Spacer(Modifier.weight(1f))
-                    IconButton(onClick = { showQueue = true }) { Icon(Icons.Rounded.QueueMusic, "Queue") }
+                    IconButton(onClick = { showQueue = true }, modifier = Modifier.size(44.dp)) {
+                        Icon(Icons.Rounded.QueueMusic, "Queue", Modifier.size(24.dp))
+                    }
                 }
 
-                if (style == 1) {
-                    Spacer(Modifier.height(12.dp))
-                    RenovationArtwork(track.artwork, Modifier.fillMaxWidth(.90f).aspectRatio(1f).graphicsLayer { val s = if (animationStyle == 1 && animationsEnabled) 1f + ambient * .035f else pulse; scaleX = s; scaleY = s; rotationZ = if (animationStyle == 1 && animationsEnabled) (ambient - .5f) * 1.2f else 0f }.clip(RoundedCornerShape(34.dp)))
-                    Spacer(Modifier.height(18.dp))
-                } else if (style == 2) {
-                    Spacer(Modifier.height(18.dp))
-                    RenovationArtwork(track.artwork, Modifier.fillMaxWidth(.72f).aspectRatio(1f).graphicsLayer { scaleX = pulse; scaleY = pulse }.clip(androidx.compose.foundation.shape.CircleShape))
-                    Spacer(Modifier.height(18.dp))
-                } else if (style == 3) {
-                    Spacer(Modifier.height(24.dp))
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        RenovationArtwork(track.artwork, Modifier.size(132.dp).clip(RoundedCornerShape(28.dp)))
-                        Column(Modifier.weight(1f).padding(start = 18.dp)) {
-                            Text(track.title, fontSize = 21.sp, fontWeight = FontWeight.ExtraBold, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                            Text(track.artist, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 5.dp), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                when (style) {
+                    0 -> {
+                        Spacer(Modifier.height(12.dp))
+                        Box(
+                            Modifier.fillMaxWidth().widthIn(max = 350.dp).aspectRatio(1f)
+                                .graphicsLayer {
+                                    val scale = if (animationStyle == 1 && animationsEnabled) 1f + motion * .012f else pulse
+                                    scaleX = scale
+                                    scaleY = scale
+                                }
+                                .clip(RoundedCornerShape(30.dp))
+                                .border(1.dp, RenovationGlassBorder, RoundedCornerShape(30.dp))
+                                .padding(6.dp)
+                        ) {
+                            RenovationArtwork(track.artwork, Modifier.fillMaxSize().clip(RoundedCornerShape(24.dp)))
                         }
+                        Spacer(Modifier.height(16.dp))
                     }
-                    Spacer(Modifier.height(20.dp))
-                } else {
-                    Spacer(Modifier.height(20.dp))
-                    Box(
-                        Modifier.fillMaxWidth().widthIn(max = 360.dp).aspectRatio(1f)
-                            .padding(horizontal = 8.dp).clip(RoundedCornerShape(30.dp))
-                            .border(1.dp, RenovationGlassBorder, RoundedCornerShape(30.dp)).padding(7.dp)
-                    ) { RenovationArtwork(track.artwork, Modifier.fillMaxSize().clip(RoundedCornerShape(24.dp))) }
-                    Spacer(Modifier.height(22.dp))
-                }
-
-                if (style != 3) {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        Column(Modifier.weight(1f)) {
-                            Text(track.title, fontSize = if (style == 2) 21.sp else 22.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(track.artist, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+                    1 -> {
+                        Spacer(Modifier.height(4.dp))
+                        RenovationArtwork(
+                            track.artwork,
+                            Modifier.fillMaxWidth(.88f).widthIn(max = 360.dp).aspectRatio(1f)
+                                .graphicsLayer {
+                                    val scale = if (animationStyle == 1 && animationsEnabled) 1f + motion * .02f else pulse
+                                    scaleX = scale
+                                    scaleY = scale
+                                    translationY = if (animationStyle == 3 && animationsEnabled) (motion - .5f) * 8f else 0f
+                                }
+                                .clip(RoundedCornerShape(36.dp))
+                        )
+                        Spacer(Modifier.height(14.dp))
+                    }
+                    2 -> {
+                        Spacer(Modifier.height(8.dp))
+                        Box(
+                            Modifier.fillMaxWidth(.72f).widthIn(max = 285.dp).aspectRatio(1f)
+                                .graphicsLayer { scaleX = pulse; scaleY = pulse }
+                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                .border(1.dp, RenovationGlassBorder, androidx.compose.foundation.shape.CircleShape)
+                                .padding(5.dp)
+                        ) {
+                            RenovationArtwork(track.artwork, Modifier.fillMaxSize().clip(androidx.compose.foundation.shape.CircleShape))
                         }
-                        IconButton(onClick = onToggleFavourite) { Icon(if (isFavourite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, "Favourite", tint = MaterialTheme.colorScheme.primary) }
+                        Spacer(Modifier.height(14.dp))
                     }
-                } else {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        IconButton(onClick = onToggleFavourite) { Icon(if (isFavourite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, "Favourite", tint = MaterialTheme.colorScheme.primary) }
+                    else -> {
+                        Spacer(Modifier.height(14.dp))
+                        Row(
+                            Modifier.fillMaxWidth()
+                                .clip(RoundedCornerShape(26.dp))
+                                .background(Color.Black.copy(alpha = .10f))
+                                .padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RenovationArtwork(
+                                track.artwork,
+                                Modifier.size(116.dp)
+                                    .graphicsLayer { scaleX = pulse; scaleY = pulse }
+                                    .clip(RoundedCornerShape(22.dp))
+                            )
+                            Column(
+                                Modifier.weight(1f).padding(horizontal = 16.dp)
+                            ) {
+                                Text(track.title, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                                Text(
+                                    track.artist,
+                                    fontSize = 13.sp,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.padding(top = 5.dp),
+                                    maxLines = 2,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
+                        }
+                        Spacer(Modifier.height(16.dp))
                     }
                 }
 
-                if (FlarePreferences.progressStyle.intValue == 1) {
-                    Slider(value = progress, onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) }, modifier = Modifier.fillMaxWidth().height(24.dp).padding(top = 5.dp))
-                } else {
-                    Slider(value = progress, onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) }, modifier = Modifier.fillMaxWidth().padding(top = 10.dp))
+                Row(
+                    Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text(
+                            track.title,
+                            fontSize = if (style == 2) 21.sp else 22.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        Text(
+                            track.artist,
+                            fontSize = 14.sp,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(top = 3.dp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    IconButton(onClick = onToggleFavourite, modifier = Modifier.size(44.dp)) {
+                        Icon(
+                            if (isFavourite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                            "Favourite",
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                    }
                 }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+
+                Spacer(Modifier.height(4.dp))
+                Slider(
+                    value = progress,
+                    onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) },
+                    modifier = Modifier.fillMaxWidth().height(if (FlarePreferences.progressStyle.intValue == 1) 24.dp else 32.dp)
+                )
+                Row(
+                    Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween
+                ) {
                     Text(formatTime(position), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(formatTime(duration), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                Row(Modifier.fillMaxWidth().padding(top = 13.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = onPrevious, modifier = Modifier.size(52.dp)) { Icon(Icons.Rounded.SkipPrevious, "Previous", modifier = Modifier.size(31.dp)) }
+
+                Row(
+                    Modifier.fillMaxWidth().padding(top = 9.dp),
+                    horizontalArrangement = Arrangement.SpaceEvenly,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    IconButton(onClick = onPrevious, modifier = Modifier.size(52.dp)) {
+                        Icon(Icons.Rounded.SkipPrevious, "Previous", Modifier.size(30.dp))
+                    }
                     FilledIconButton(
                         onClick = onPlayPause,
-                        modifier = Modifier.size(if (style == 2) 74.dp else 68.dp),
-                        shape = if (style == 2) androidx.compose.foundation.shape.CircleShape else RoundedCornerShape(23.dp)
-                    ) { Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play", modifier = Modifier.size(34.dp)) }
-                    IconButton(onClick = onNext, modifier = Modifier.size(52.dp)) { Icon(Icons.Rounded.SkipNext, "Next", modifier = Modifier.size(31.dp)) }
+                        modifier = Modifier.size(if (style == 2) 72.dp else 66.dp),
+                        shape = if (style == 2) androidx.compose.foundation.shape.CircleShape else RoundedCornerShape(22.dp)
+                    ) {
+                        Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play", Modifier.size(33.dp))
+                    }
+                    IconButton(onClick = onNext, modifier = Modifier.size(52.dp)) {
+                        Icon(Icons.Rounded.SkipNext, "Next", Modifier.size(30.dp))
+                    }
                 }
-                Spacer(Modifier.height(8.dp))
-                Text("Swipe down to minimize", fontSize = 10.sp, color = MaterialTheme.colorScheme.outline.copy(alpha = .72f))
+
+                Spacer(Modifier.height(3.dp))
+                Text("Swipe down to minimize", fontSize = 10.sp, color = MaterialTheme.colorScheme.outline.copy(alpha = .65f))
             }
 
             if (showQueue) {
-                AlertDialog(onDismissRequest = { showQueue = false }, title = { Text("Queue") }, text = {
-                    if (queue.isEmpty()) Text("The queue is empty.") else LazyColumn(Modifier.heightIn(max = 430.dp)) {
-                        items(queue.size) { index ->
-                            val item = queue[index]
-                            Row(Modifier.fillMaxWidth().clickable { onPlayQueueItem(index); showQueue = false }.padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
-                                RenovationArtwork(item.artwork, Modifier.size(43.dp).clip(RoundedCornerShape(10.dp)))
-                                Column(Modifier.weight(1f).padding(horizontal = 9.dp)) {
-                                    Text(item.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                    Text(item.artist, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                AlertDialog(
+                    onDismissRequest = { showQueue = false },
+                    title = { Text("Queue") },
+                    text = {
+                        if (queue.isEmpty()) Text("The queue is empty.")
+                        else LazyColumn(Modifier.heightIn(max = 430.dp)) {
+                            items(queue.size) { index ->
+                                val item = queue[index]
+                                Row(
+                                    Modifier.fillMaxWidth().clickable {
+                                        onPlayQueueItem(index)
+                                        showQueue = false
+                                    }.padding(vertical = 7.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    RenovationArtwork(item.artwork, Modifier.size(43.dp).clip(RoundedCornerShape(10.dp)))
+                                    Column(Modifier.weight(1f).padding(horizontal = 9.dp)) {
+                                        Text(item.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                        Text(item.artist, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                    IconButton(onClick = { onRemoveQueueItem(index) }) {
+                                        Icon(Icons.Rounded.Close, "Remove")
+                                    }
                                 }
-                                IconButton(onClick = { onRemoveQueueItem(index) }) { Icon(Icons.Rounded.Close, "Remove") }
                             }
                         }
-                    }
-                }, confirmButton = { TextButton(onClick = { showQueue = false }) { Text("Done") } }, dismissButton = { TextButton(onClick = onClearQueue) { Text("Clear") } })
+                    },
+                    confirmButton = { TextButton(onClick = { showQueue = false }) { Text("Done") } },
+                    dismissButton = { TextButton(onClick = onClearQueue) { Text("Clear") } }
+                )
             }
         }
     }
