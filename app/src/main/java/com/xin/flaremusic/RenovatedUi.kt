@@ -123,7 +123,7 @@ private fun RenovationHeader(title: String, subtitle: String) {
 }
 
 @Composable
-fun RenovatedHomeScreen(count: Int, loading: Boolean, error: String, accent: Color, openLibrary: () -> Unit) {
+fun RenovatedHomeScreen(count: Int, loading: Boolean, error: String, accent: Color, accountName: String?, openLibrary: () -> Unit) {
     // Establish an explicit readable foreground so bare Text/Icon composables do not
     // inherit the platform's black LocalContentColor on dark glass surfaces.
     val homeText = if (FlarePreferences.darkMode.value) Color.White else MaterialTheme.colorScheme.onSurface
@@ -136,7 +136,7 @@ fun RenovatedHomeScreen(count: Int, loading: Boolean, error: String, accent: Col
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("FLAREMUSIC", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.3.sp)
-                    Text("Made for the way\nyou listen.", color = homeText, fontSize = 37.sp, lineHeight = 39.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1.7).sp, modifier = Modifier.padding(top = 7.dp))
+                    Text(if (accountName.isNullOrBlank()) "Made for the way\nyou listen." else "Welcome, $accountName", color = homeText, fontSize = 37.sp, lineHeight = 39.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1.7).sp, modifier = Modifier.padding(top = 7.dp))
                     Text(
                         if (loading) "Scanning your library…" else if (error.isNotBlank()) error else count.toString() + " songs ready",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
