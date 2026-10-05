@@ -371,25 +371,23 @@ fun RenovatedSettingsScreen(
     onSync: () -> Unit,
     onDisconnect: () -> Unit
 ) {
-    val context = LocalContext.current
-    val prefs = context.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE)
-    var darkMode by remember { mutableStateOf(prefs.getBoolean("dark_mode", true)) }
-    var glassEffects by remember { mutableStateOf(prefs.getBoolean("glass_effects", true)) }
-    var animations by remember { mutableStateOf(prefs.getBoolean("animations", true)) }
+    val darkMode = FlarePreferences.darkMode.value
+    val glassEffects = FlarePreferences.glassEffects.value
+    val animations = FlarePreferences.animations.value
     LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 150.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item { RenovationHeader("Settings", "A cleaner FlareMusic, your way.") }
         item { RenovationSection("APPEARANCE") }
         item { RenovationSetting("Dark appearance", "Cinematic dark surfaces", Icons.Rounded.DarkMode, darkMode) {
-            darkMode = it
-            prefs.edit().putBoolean("dark_mode", it).apply()
+            FlarePreferences.darkMode.value = it
+            context.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("dark_mode", it).apply()
         } }
         item { RenovationSetting("Glass surfaces", "Frosted navigation, cards and player", Icons.Rounded.BlurOn, glassEffects) {
-            glassEffects = it
-            prefs.edit().putBoolean("glass_effects", it).apply()
+            FlarePreferences.glassEffects.value = it
+            context.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("glass_effects", it).apply()
         } }
         item { RenovationSetting("Animations", "Smooth transitions and motion", Icons.Rounded.Animation, animations) {
-            animations = it
-            prefs.edit().putBoolean("animations", it).apply()
+            FlarePreferences.animations.value = it
+            context.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("animations", it).apply()
         } }
         item { RenovationSection("AMOLED") }
         item { RenovationSetting("Pure black", "Use true black backgrounds", Icons.Rounded.Contrast, amoled, onAmoledChange) }
