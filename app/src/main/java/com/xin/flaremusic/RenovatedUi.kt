@@ -1185,13 +1185,16 @@ fun RenovatedFullPlayer(
                     2 -> {
                         Spacer(Modifier.height(8.dp))
                         Box(
-                            Modifier.fillMaxWidth(.72f).widthIn(max = 285.dp).aspectRatio(1f)
+                            Modifier.fillMaxWidth(.86f).widthIn(max = 350.dp).aspectRatio(1f)
                                 .graphicsLayer { scaleX = pulse; scaleY = pulse }
-                                .clip(androidx.compose.foundation.shape.CircleShape)
-                                .border(1.dp, RenovationGlassBorder, androidx.compose.foundation.shape.CircleShape)
+                                .clip(RoundedCornerShape(30.dp))
+                                .border(1.dp, RenovationGlassBorder, RoundedCornerShape(30.dp))
                                 .padding(5.dp)
                         ) {
-                            RenovationArtwork(track.artwork, Modifier.fillMaxSize().clip(androidx.compose.foundation.shape.CircleShape))
+                            RenovationArtwork(
+                                track.artwork,
+                                Modifier.fillMaxSize().clip(RoundedCornerShape(24.dp))
+                            )
                         }
                         Spacer(Modifier.height(14.dp))
                     }
@@ -1271,6 +1274,8 @@ fun RenovatedFullPlayer(
                     Text(formatTime(position), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Text(formatTime(duration), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+
+                Spacer(Modifier.weight(1f, fill = true))
 
                 Row(
                     Modifier.fillMaxWidth().padding(top = 9.dp),
