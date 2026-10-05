@@ -623,7 +623,7 @@ private fun GlassAmbientLayer(
     Box(Modifier.fillMaxSize()) {
         AnimatedContent(
             targetState = tab,
-            modifier = Modifier.fillMaxSize().padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()),
+            modifier = Modifier.fillMaxSize().padding(top = WindowInsets.statusBars.asPaddingValues().calculateTopPadding(), bottom = 156.dp),
             label = "page",
             transitionSpec = {
                 if (FlarePreferences.animations.value) {
@@ -1530,7 +1530,7 @@ private fun FlarePlayButton(playing: Boolean, onClick: () -> Unit, size: android
             }
             if (selectedPlaylistLoading) LinearProgressIndicator(Modifier.fillMaxWidth(), color = Violet, trackColor = MaterialTheme.colorScheme.outlineVariant)
             if (selectedPlaylistError.isNotBlank()) Text(selectedPlaylistError, color = MaterialTheme.colorScheme.error, fontSize = 13.sp, modifier = Modifier.padding(vertical = 12.dp))
-            LazyColumn(contentPadding = PaddingValues(bottom = 150.dp)) {
+            LazyColumn(contentPadding = PaddingValues(bottom = 24.dp)) {
                 items(selectedPlaylistTracks, key = { it.videoId }) { item ->
                     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).clickable { playPlaylistTrack(item) }.padding(vertical = 8.dp, horizontal = 5.dp), verticalAlignment = Alignment.CenterVertically) {
                         Artwork(item.thumbnail, Modifier.size(52.dp).clip(RoundedCornerShape(12.dp)))
