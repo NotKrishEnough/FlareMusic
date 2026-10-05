@@ -487,6 +487,26 @@ fun RenovatedSettingsScreen(
             }
             item {
                 RenovationChoiceCard(
+                    "Full player style",
+                    listOf("Classic", "Immersive", "Vinyl", "Minimal"),
+                    FlarePreferences.playerStyle.intValue
+                ) { v ->
+                    FlarePreferences.playerStyle.intValue = v
+                    save("player_style", v)
+                }
+            }
+            item {
+                RenovationChoiceCard(
+                    "Player background",
+                    listOf("Theme", "Artwork blur", "Gradient", "Dark glass"),
+                    FlarePreferences.playerBackground.intValue
+                ) { v ->
+                    FlarePreferences.playerBackground.intValue = v
+                    save("player_background", v)
+                }
+            }
+            item {
+                RenovationChoiceCard(
                     "Progress bar",
                     listOf("Classic", "Thin", "Glow"),
                     FlarePreferences.progressStyle.intValue
