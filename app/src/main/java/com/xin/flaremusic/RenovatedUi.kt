@@ -884,7 +884,7 @@ private fun RenovationSetting(title: String, subtitle: String, icon: androidx.co
 }
 
 @Composable
-private fun LyricsSheet(
+fun LyricsSheet(
     track: Track,
     lyrics: SyncedLyrics?,
     loading: Boolean,
@@ -945,7 +945,7 @@ private fun LyricsSheet(
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.Center
                 ) {
-                    Icon(Icons.Rounded.SubtitlesOff, null, modifier = Modifier.size(44.dp), tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Rounded.Subtitles, null, modifier = Modifier.size(44.dp), tint = MaterialTheme.colorScheme.primary)
                     Text("Synced lyrics not found", fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(top = 14.dp))
                     Text(
                         "ArchiveTune-style providers will retry when you refresh.",
