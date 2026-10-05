@@ -346,7 +346,30 @@ private fun GlassAmbientLayer(
         controller.isAppearanceLightStatusBars = !darkMode
         controller.isAppearanceLightNavigationBars = !darkMode
     }
-    val expressiveScheme = wallpaperScheme
+    // Dynamic palettes can occasionally return an unusable dark-mode onSurface
+    // on vendor ROMs. Keep the expressive wallpaper colors, but guarantee readable
+    // foreground colors in both appearances.
+    val expressiveScheme = if (darkMode) {
+        wallpaperScheme.copy(
+            onPrimary = Color.White,
+            onSecondary = Color.White,
+            onTertiary = Color.White,
+            onBackground = Color.White,
+            onSurface = Color.White,
+            onSurfaceVariant = Color(0xFFD7D9E2),
+            outline = Color(0xFF9EA1AD),
+            outlineVariant = Color(0xFF3A3D47)
+        )
+    } else {
+        wallpaperScheme.copy(
+            onBackground = Color(0xFF171821),
+            onSurface = Color(0xFF171821),
+            onSurfaceVariant = Color(0xFF5A5D68),
+            onPrimary = Color.White,
+            onSecondary = Color.White,
+            onTertiary = Color.White
+        )
+    }
     val baseDensity = LocalDensity.current
     val customDensity = Density(baseDensity.density, FlarePreferences.fontScale.floatValue)
     CompositionLocalProvider(LocalDensity provides customDensity) {
@@ -613,7 +636,7 @@ private fun GlassAmbientLayer(
                 val miniShape = RoundedCornerShape(50.dp)
                 Box(
                     Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 3.dp)
-                        .height(64.dp)
+                        .height(60.dp)
                         .clip(miniShape)
                         .clickable { playerExpanded = true }
                 ) {
@@ -643,11 +666,11 @@ private fun GlassAmbientLayer(
                     ) {}
                     Column(Modifier.fillMaxWidth()) {
                     Row(
-                        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 5.dp),
+                        Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Box {
-                            Artwork(current!!.artwork, Modifier.size(42.dp).clip(RoundedCornerShape(21.dp)))
+                            Artwork(current!!.artwork, Modifier.size(40.dp).clip(RoundedCornerShape(20.dp)))
                             Box(Modifier.align(Alignment.BottomEnd).padding(3.dp).size(7.dp).clip(RoundedCornerShape(50.dp)).background(miniColors.primary))
                         }
                         Column(Modifier.weight(1f).padding(start = 10.dp, end = 6.dp)) {
