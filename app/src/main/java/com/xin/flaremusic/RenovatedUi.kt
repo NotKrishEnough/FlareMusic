@@ -884,6 +884,113 @@ private fun RenovationSetting(title: String, subtitle: String, icon: androidx.co
 }
 
 @Composable
+private fun LyricsSheet(
+    track: Track,
+    lyrics: SyncedLyrics?,
+    loading: Boolean,
+    positionMs: Long,
+    onClose: () -> Unit,
+    onSeek: (Long) -> Unit,
+    onRefresh: () -> Unit
+) {
+    val listState = rememberLazyListState()
+    val activeIndex = lyrics?.lines?.indexOfLast { it.startMs <= positionMs } ?: -1
+
+    LaunchedEffect(activeIndex, lyrics?.lines?.size) {
+        if (activeIndex >= 0) {
+            listState.animateScrollToItem((activeIndex - 2).coerceAtLeast(0))
+        }
+    }
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        Column(
+            Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+        ) {
+            Row(
+                Modifier.fillMaxWidth().height(58.dp).padding(horizontal = 10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onClose) {
+                    Icon(Icons.Rounded.ArrowBack, "Close lyrics")
+                }
+                Column(Modifier.weight(1f)) {
+                    Text("Lyrics", fontWeight = FontWeight.ExtraBold, fontSize = 20.sp)
+                    Text(
+                        track.title + " · " + track.artist,
+                        fontSize = 11.sp,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                IconButton(onClick = onRefresh) {
+                    Icon(Icons.Rounded.Refresh, "Refresh lyrics")
+                }
+            }
+
+            if (loading) {
+                LinearProgressIndicator(Modifier.fillMaxWidth())
+            }
+
+            if (!loading && lyrics == null) {
+                Column(
+                    Modifier.fillMaxSize().padding(horizontal = 28.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center
+                ) {
+                    Icon(Icons.Rounded.SubtitlesOff, null, modifier = Modifier.size(44.dp), tint = MaterialTheme.colorScheme.primary)
+                    Text("Synced lyrics not found", fontWeight = FontWeight.Bold, fontSize = 18.sp, modifier = Modifier.padding(top = 14.dp))
+                    Text(
+                        "ArchiveTune-style providers will retry when you refresh.",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        fontSize = 12.sp,
+                        modifier = Modifier.padding(top = 5.dp)
+                    )
+                    TextButton(onClick = onRefresh) { Text("Try again") }
+                }
+            } else if (lyrics != null) {
+                Text(
+                    lyrics.source,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.6.sp,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp)
+                )
+                LazyColumn(
+                    state = listState,
+                    modifier = Modifier.fillMaxSize(),
+                    contentPadding = PaddingValues(horizontal = 24.dp, vertical = 34.dp),
+                    verticalArrangement = Arrangement.spacedBy(17.dp)
+                ) {
+                    items(lyrics.lines.size) { index ->
+                        val line = lyrics.lines[index]
+                        val active = index == activeIndex
+                        Text(
+                            line.text,
+                            fontSize = if (active) 25.sp else 20.sp,
+                            lineHeight = if (active) 31.sp else 27.sp,
+                            fontWeight = if (active) FontWeight.ExtraBold else FontWeight.SemiBold,
+                            color = if (active) MaterialTheme.colorScheme.onBackground else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .72f),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { onSeek(line.startMs) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
 fun RenovatedFullPlayer(
     track: Track,
     playing: Boolean,
@@ -897,6 +1004,7 @@ fun RenovatedFullPlayer(
     onPrevious: () -> Unit,
     onNext: () -> Unit,
     onToggleFavourite: () -> Unit,
+    onShowLyrics: () -> Unit,
     onPlayQueueItem: (Int) -> Unit,
     onRemoveQueueItem: (Int) -> Unit,
     onClearQueue: () -> Unit,
@@ -1025,6 +1133,9 @@ fun RenovatedFullPlayer(
                         Icon(Icons.Rounded.KeyboardArrowDown, "Minimize", Modifier.size(29.dp))
                     }
                     Spacer(Modifier.weight(1f))
+                    IconButton(onClick = onShowLyrics, modifier = Modifier.size(42.dp)) {
+                        Icon(Icons.Rounded.Subtitles, "Lyrics", Modifier.size(23.dp))
+                    }
                     Text(
                         "NOW PLAYING",
                         fontSize = 10.sp,
