@@ -195,7 +195,7 @@ class MainActivity : ComponentActivity() {
         FlarePreferences.accentIndex.intValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getInt("accent_index", 0).coerceIn(0, FlarePreferences.accents.lastIndex)
         FlarePreferences.animations.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("animations", true)
         FlarePreferences.compact.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("compact", false)
-        FlarePreferences.dynamicColors.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("dynamic_colors", true)
+        FlarePreferences.dynamicColors.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("dynamic_colors", false)
         FlarePreferences.swipeToMinimize.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("gesture_minimize", true)
         FlarePreferences.swipeToChangeTracks.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("gesture_tracks", true)
         FlarePreferences.showMiniPlayer.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("show_mini_player", true)
@@ -684,7 +684,7 @@ private fun GlassAmbientLayer(
                             Icon(Icons.Rounded.SkipNext, null, tint = miniColors.onSurface, modifier = Modifier.size(23.dp))
                         }
                     }
-                    Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp).height(2.dp).clip(RoundedCornerShape(50.dp)).background(miniColors.onSurface.copy(alpha = 0.10f))) {
+                    Box(Modifier.fillMaxWidth().padding(horizontal = 14.dp).height(if (FlarePreferences.progressStyle.intValue == 1) 1.dp else if (FlarePreferences.progressStyle.intValue == 2) 4.dp else 2.dp).clip(RoundedCornerShape(50.dp)).background(miniColors.onSurface.copy(alpha = 0.10f))) {
                         Box(Modifier.fillMaxWidth(miniProgress).fillMaxHeight().clip(RoundedCornerShape(2.dp)).background(miniColors.primary))
                     }
                     Spacer(Modifier.height(0.dp))
@@ -694,15 +694,17 @@ private fun GlassAmbientLayer(
             Box(
                 Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
+                    .padding(horizontal = if (FlarePreferences.navStyle.intValue == 2) 28.dp else 16.dp, vertical = if (FlarePreferences.navStyle.intValue == 2) 6.dp else 10.dp),
                 contentAlignment = Alignment.Center
             ) {
                 BoxWithConstraints(
                     Modifier.fillMaxWidth(),
                     contentAlignment = Alignment.Center
                 ) {
-                    val pillWidth = maxWidth.coerceAtMost(520.dp)
+                    val pillWidth = maxWidth.coerceAtMost(if (FlarePreferences.navStyle.intValue == 2) 460.dp else 520.dp)
                     val itemWidth = pillWidth / 4
+                    val navHeight = if (FlarePreferences.navStyle.intValue == 1) 50.dp else if (FlarePreferences.navStyle.intValue == 2) 60.dp else 54.dp
+                    val navRadius = if (FlarePreferences.navStyle.intValue == 1) 12.dp else 28.dp
                     val selectedIndex = listOf("Home", "Search", "Library", "Settings").indexOf(tab).coerceAtLeast(0)
                     val indicatorX by animateDpAsState(
                         targetValue = itemWidth * selectedIndex + 8.dp,
@@ -713,8 +715,8 @@ private fun GlassAmbientLayer(
                     Box(
                         Modifier
                             .width(pillWidth)
-                            .height(54.dp)
-                            .clip(RoundedCornerShape(28.dp))
+                            .height(navHeight)
+                            .clip(RoundedCornerShape(navRadius))
                             .background(
                                 if (FlarePreferences.glassEffects.value) Color.Transparent
                                 else MaterialTheme.colorScheme.surface.copy(alpha = .96f)
@@ -722,13 +724,13 @@ private fun GlassAmbientLayer(
                             .border(
                                 1.dp,
                                 MaterialTheme.colorScheme.outline.copy(alpha = 0.30f),
-                                RoundedCornerShape(28.dp)
+                                RoundedCornerShape(navRadius)
                             )
                     ) {
                         if (FlarePreferences.glassEffects.value) {
                             Box(
                                 Modifier.matchParentSize()
-                                    .clip(RoundedCornerShape(28.dp))
+                                    .clip(RoundedCornerShape(navRadius))
                             ) {
                                 Box(
                                     Modifier
@@ -757,7 +759,7 @@ private fun GlassAmbientLayer(
                                 .height(42.dp)
                                 .clip(RoundedCornerShape(20.dp))
                                 .background(Brush.linearGradient(listOf(Color.White.copy(alpha = .20f), Violet.copy(alpha = .22f), Color.White.copy(alpha = .08f))))
-                                .border(1.dp, Color.White.copy(alpha = .20f), RoundedCornerShape(20.dp))
+                                .border(1.dp, Color.White.copy(alpha = .20f), RoundedCornerShape(if (FlarePreferences.navStyle.intValue == 1) 12.dp else 20.dp))
                         )
 
                         Row(Modifier.fillMaxSize()) {
@@ -775,13 +777,23 @@ private fun GlassAmbientLayer(
                                         .clickable { selectTab(item) },
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(
-                                        icon,
-                                        contentDescription = item,
-                                        tint = if (selected) Violet
-                                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
-                                        modifier = Modifier.size(if (selected) 23.dp else 22.dp)
-                                    )
+                                    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                                        Icon(
+                                            icon,
+                                            contentDescription = item,
+                                            tint = if (selected) Violet
+                                            else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
+                                            modifier = Modifier.size(if (selected) 23.dp else 22.dp)
+                                        )
+                                        if (FlarePreferences.showNavLabels.value) {
+                                            Text(
+                                                item,
+                                                fontSize = 8.sp,
+                                                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
+                                                color = if (selected) Violet else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = .72f)
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
