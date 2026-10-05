@@ -104,9 +104,10 @@ private fun RenovationHeader(title: String, subtitle: String) {
 
 @Composable
 fun RenovatedHomeScreen(count: Int, loading: Boolean, error: String, accent: Color, openLibrary: () -> Unit) {
-    // Some vendor dynamic palettes can report a black onSurface even while the
-    // app is visibly using a dark surface. Keep the renovated home readable.
+    // Establish an explicit readable foreground so bare Text/Icon composables do not
+    // inherit the platform's black LocalContentColor on dark glass surfaces.
     val homeText = if (FlarePreferences.darkMode.value) Color.White else MaterialTheme.colorScheme.onSurface
+    CompositionLocalProvider(LocalContentColor provides homeText) {
     LazyColumn(
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 150.dp),
         verticalArrangement = Arrangement.spacedBy(17.dp)
@@ -168,6 +169,7 @@ fun RenovatedHomeScreen(count: Int, loading: Boolean, error: String, accent: Col
             }
         }
     }
+    }
 }
 
 @Composable
@@ -183,6 +185,7 @@ fun RenovatedSearchScreen(
     onAdd: (OnlineTrack) -> Unit,
     error: String
 ) {
+    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
     Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         RenovationHeader("Search", "YouTube + YouTube Music")
         RenovationSearchField(query, onQuery, { onSearch() })
@@ -204,6 +207,7 @@ fun RenovatedSearchScreen(
                 item { RenovationEmpty("Search millions of tracks", "Type a song, artist or album above.") }
             }
         }
+    }
     }
 }
 
@@ -254,6 +258,7 @@ fun RenovatedLibraryScreen(
     sync: () -> Unit,
     connect: () -> Unit
 ) {
+    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
     if (selectedPlaylist != null) {
         LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 150.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item {
@@ -334,6 +339,7 @@ fun RenovatedLibraryScreen(
             }
         }
     }
+    }
 }
 
 @Composable
@@ -374,6 +380,7 @@ fun RenovatedSettingsScreen(
     onSync: () -> Unit,
     onDisconnect: () -> Unit
 ) {
+    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE)
     val darkMode = FlarePreferences.darkMode.value
@@ -440,6 +447,7 @@ fun RenovatedSettingsScreen(
             }
         }
     }
+    }
 }
 
 @Composable
@@ -484,6 +492,7 @@ fun RenovatedFullPlayer(
     swipeToMinimize: Boolean,
     swipeToChangeTracks: Boolean
 ) {
+    CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
     var dragY by remember { mutableFloatStateOf(0f) }
     var showQueue by remember { mutableStateOf(false) }
     val progress = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
@@ -550,6 +559,7 @@ fun RenovatedFullPlayer(
                 }
             }, confirmButton = { TextButton(onClick = { showQueue = false }) { Text("Done") } }, dismissButton = { TextButton(onClick = onClearQueue) { Text("Clear") } })
         }
+    }
     }
 }
 
