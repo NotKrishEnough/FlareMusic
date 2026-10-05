@@ -112,7 +112,7 @@ fun RenovatedHomeScreen(count: Int, loading: Boolean, error: String, accent: Col
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("FLAREMUSIC", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.3.sp)
-                    Text("Made for the way\\nyou listen.", fontSize = 37.sp, lineHeight = 39.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1.7).sp, modifier = Modifier.padding(top = 7.dp))
+                    Text("Made for the way\nyou listen.", fontSize = 37.sp, lineHeight = 39.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1.7).sp, modifier = Modifier.padding(top = 7.dp))
                     Text(
                         if (loading) "Scanning your library…" else if (error.isNotBlank()) error else count.toString() + " songs ready",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
@@ -418,12 +418,20 @@ fun RenovatedSettingsScreen(
         item { RenovationSection("ACCENT") }
         item {
             RenovationCard(Modifier.fillMaxWidth(), MaterialTheme.colorScheme.primary) {
-                LazyRow(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(1) { index ->
-                        val selected = 0 == index
-                        Box(Modifier.size(if (selected) 42.dp else 35.dp).clip(RoundedCornerShape(50.dp)).background(MaterialTheme.colorScheme.primary).border(if (selected) 3.dp else 0.dp, Color.White, RoundedCornerShape(50.dp)).clickable {
-                            prefs.edit().putInt("accent_index", index).apply()
-                        })
+                LazyRow(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                    items(FlarePreferences.accents.size) { index ->
+                        val selected = FlarePreferences.accentIndex.intValue == index
+                        Box(
+                            Modifier
+                                .size(if (selected) 42.dp else 36.dp)
+                                .clip(RoundedCornerShape(50.dp))
+                                .background(FlarePreferences.accents[index])
+                                .border(if (selected) 3.dp else 0.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .9f), RoundedCornerShape(50.dp))
+                                .clickable {
+                                    FlarePreferences.accentIndex.intValue = index
+                                    prefs.edit().putInt("accent_index", index).apply()
+                                }
+                        )
                     }
                 }
             }
