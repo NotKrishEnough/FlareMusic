@@ -2,6 +2,10 @@ package com.xin.flaremusic
 
 import android.graphics.BitmapFactory
 import android.net.Uri
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -505,6 +509,16 @@ fun RenovatedSettingsScreen(
             }
             item {
                 RenovationChoiceCard(
+                    "Player animation",
+                    listOf("Subtle", "Morph", "Pulse", "Ambient"),
+                    FlarePreferences.playerAnimation.intValue
+                ) { v ->
+                    FlarePreferences.playerAnimation.intValue = v
+                    save("player_animation", v)
+                }
+            }
+            item {
+                RenovationChoiceCard(
                     "Progress bar",
                     listOf("Classic", "Thin", "Glow"),
                     FlarePreferences.progressStyle.intValue
@@ -690,6 +704,11 @@ fun RenovatedFullPlayer(
         val progress = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
         val style = FlarePreferences.playerStyle.intValue.coerceIn(0, 3)
         val background = FlarePreferences.playerBackground.intValue.coerceIn(0, 3)
+        val animationStyle = FlarePreferences.playerAnimation.intValue.coerceIn(0, 3)
+        val animationsEnabled = FlarePreferences.animations.value
+        val infinite = rememberInfiniteTransition(label = "playerAnimations")
+        val ambient = if (animationsEnabled && animationStyle != 0) infinite.animateFloat(0f, 1f, infiniteRepeatable(tween(if (animationStyle == 3) 4200 else 2600), RepeatMode.Reverse), label = "ambient").value else 0f
+        val pulse = if (animationsEnabled && animationStyle == 2) infinite.animateFloat(.97f, 1.03f, infiniteRepeatable(tween(1200), RepeatMode.Reverse), label = "pulse").value else 1f
 
         Box(
             Modifier.fillMaxSize()
@@ -743,11 +762,11 @@ fun RenovatedFullPlayer(
 
                 if (style == 1) {
                     Spacer(Modifier.height(12.dp))
-                    RenovationArtwork(track.artwork, Modifier.fillMaxWidth(.90f).aspectRatio(1f).clip(RoundedCornerShape(34.dp)))
+                    RenovationArtwork(track.artwork, Modifier.fillMaxWidth(.90f).aspectRatio(1f).graphicsLayer { val s = if (animationStyle == 1 && animationsEnabled) 1f + ambient * .035f else pulse; scaleX = s; scaleY = s; rotationZ = if (animationStyle == 1 && animationsEnabled) (ambient - .5f) * 1.2f else 0f }.clip(RoundedCornerShape(34.dp)))
                     Spacer(Modifier.height(18.dp))
                 } else if (style == 2) {
                     Spacer(Modifier.height(18.dp))
-                    RenovationArtwork(track.artwork, Modifier.fillMaxWidth(.72f).aspectRatio(1f).clip(androidx.compose.foundation.shape.CircleShape))
+                    RenovationArtwork(track.artwork, Modifier.fillMaxWidth(.72f).aspectRatio(1f).graphicsLayer { scaleX = pulse; scaleY = pulse }.clip(androidx.compose.foundation.shape.CircleShape))
                     Spacer(Modifier.height(18.dp))
                 } else if (style == 3) {
                     Spacer(Modifier.height(24.dp))
