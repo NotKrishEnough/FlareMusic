@@ -70,7 +70,6 @@ private fun RenovationCard(
 }
 
 @Composable
-@Composable
 private fun RenovationArtwork(source: String?, modifier: Modifier = Modifier) {
     val context = LocalContext.current
     var bitmap by remember(source) { mutableStateOf<android.graphics.Bitmap?>(null) }
