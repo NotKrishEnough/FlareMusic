@@ -121,6 +121,7 @@ class MainActivity : ComponentActivity() {
     private var amoledMode by mutableStateOf(false)
     private lateinit var youtubeLoginLauncher: ActivityResultLauncher<Intent>
     private var googleStatus by mutableStateOf("Not connected")
+    private var youtubeAccountName by mutableStateOf<String?>(null)
     private var youtubePlaylists by mutableStateOf(emptyList<YouTubePlaylist>())
     private var playlistLoading by mutableStateOf(false)
     private var playlistError by mutableStateOf("")
@@ -152,6 +153,7 @@ class MainActivity : ComponentActivity() {
                     if (valid) {
                         YouTubeSessionStore.save(this@MainActivity, cookieHeader)
                         googleStatus = "Connected to YouTube Music"
+                        youtubeAccountName = YouTubeAccount.fetchDisplayName(cookieHeader)
                         try {
                             youtubePlaylists = YouTubePlaylists.fetchFromMusicSession(cookieHeader)
                             playlistError = if (youtubePlaylists.isEmpty()) "No playlists found in your YouTube Music library." else ""
@@ -174,6 +176,7 @@ class MainActivity : ComponentActivity() {
                 val valid = YouTubeSessionVerifier.verify(savedCookies)
                 if (valid) {
                     googleStatus = "Connected to YouTube Music"
+                    youtubeAccountName = YouTubeAccount.fetchDisplayName(savedCookies)
                     playlistLoading = true
                     playlistError = ""
                     try {
@@ -225,7 +228,7 @@ class MainActivity : ComponentActivity() {
     private fun showApp() {
         val activePlayer = player ?: return
         if (ContextCompat.checkSelfPermission(this, audioPermission()) != PackageManager.PERMISSION_GRANTED) return
-        setContent { FlareTheme(amoledMode, FlarePreferences.dynamicColors.value, FlarePreferences.darkMode.value) { FlareApp(activePlayer, ::loadTracks, amoledMode, googleStatus, youtubePlaylists, playlistLoading, playlistError, ::connectGoogle, ::syncYouTubePlaylists, ::disconnectYouTube) { enabled -> amoledMode = enabled; getSharedPreferences("flare_settings", MODE_PRIVATE).edit().putBoolean("amoled", enabled).apply() } } }
+        setContent { FlareTheme(amoledMode, FlarePreferences.dynamicColors.value, FlarePreferences.darkMode.value) { FlareApp(activePlayer, ::loadTracks, amoledMode, googleStatus, youtubeAccountName, youtubePlaylists, playlistLoading, playlistError, ::connectGoogle, ::syncYouTubePlaylists, ::disconnectYouTube) { enabled -> amoledMode = enabled; getSharedPreferences("flare_settings", MODE_PRIVATE).edit().putBoolean("amoled", enabled).apply() } } }
     }
 
     private fun connectGoogle() {
@@ -239,6 +242,7 @@ class MainActivity : ComponentActivity() {
             val savedCookies = YouTubeSessionStore.read(this@MainActivity)
             val valid = !savedCookies.isNullOrBlank() && YouTubeSessionVerifier.verify(savedCookies)
             googleStatus = if (valid) "Connected to YouTube Music" else "Not connected"
+            youtubeAccountName = if (valid) YouTubeAccount.fetchDisplayName(savedCookies!!) else null
             if (valid) {
                 try {
                     youtubePlaylists = YouTubePlaylists.fetchFromMusicSession(savedCookies!!)
@@ -258,6 +262,7 @@ class MainActivity : ComponentActivity() {
     private fun disconnectYouTube() {
         YouTubeSessionStore.clear(this)
         googleStatus = "Not connected"
+        youtubeAccountName = null
         youtubePlaylists = emptyList()
         playlistError = ""
     }
@@ -386,7 +391,7 @@ private fun GlassAmbientLayer(
     }
 }
 
-@Composable private fun FlareApp(player: Player, scan: suspend () -> List<Track>, amoled: Boolean, googleStatus: String, youtubePlaylists: List<YouTubePlaylist>, playlistLoading: Boolean, playlistError: String, onConnectGoogle: () -> Unit, onSyncPlaylists: () -> Unit, onDisconnectYouTube: () -> Unit, onAmoledChange: (Boolean) -> Unit) {
+@Composable private fun FlareApp(player: Player, scan: suspend () -> List<Track>, amoled: Boolean, googleStatus: String, youtubeAccountName: String?, youtubePlaylists: List<YouTubePlaylist>, playlistLoading: Boolean, playlistError: String, onConnectGoogle: () -> Unit, onSyncPlaylists: () -> Unit, onDisconnectYouTube: () -> Unit, onAmoledChange: (Boolean) -> Unit) {
     val uiViewModel: FlareUiViewModel = viewModel()
     val tab = uiViewModel.selectedTab
     val selectTab: (String) -> Unit = uiViewModel::selectTab
@@ -726,7 +731,7 @@ private fun GlassAmbientLayer(
             }
         ) { page ->
             when(page) {
-                "Home" -> RenovatedHomeScreen(tracks.size, loading, error, Violet) { selectTab("Library") }
+                "Home" -> RenovatedHomeScreen(tracks.size, loading, error, Violet, youtubeAccountName) { selectTab("Library") }
                 "Search" -> RenovatedSearchScreen(query, { query = it }, tracks.filter { it.title.contains(query, true) || it.artist.contains(query, true) }, ::play, onlineResults, searching, { searchOnline(query) }, ::playOnline, { trackToAdd = it }, error)
                 "Library" -> RenovatedLibraryScreen(tracks, loading, tracks.filter { it.id.toString() in favouriteIds }, youtubePlaylists, googleStatus, playlistLoading, playlistError, selectedPlaylist, selectedPlaylistTracks, selectedPlaylistLoading, selectedPlaylistError, ::openYouTubePlaylist, { selectedPlaylist = null; selectedPlaylistTracks = emptyList() }, { item -> playYouTubePlaylistQueue(item) }, ::play, { selectTab("Search") }, { tracks = emptyList(); loading = true }, onSyncPlaylists, onConnectGoogle, ::searchPlaylistSongs, playlistSearchResults, playlistSearchLoading, ::addOnlineToSelectedPlaylist, ::removeFromSelectedPlaylist, ::renameSelectedPlaylist, ::deleteSelectedPlaylist, ::createNewPlaylist)
                 else -> RenovatedSettingsScreen(amoled, onAmoledChange, googleStatus, youtubePlaylists, playlistLoading, playlistError, onConnectGoogle, onSyncPlaylists, onDisconnectYouTube)
