@@ -687,14 +687,23 @@ fun RenovatedFullPlayer(
                 Spacer(Modifier.weight(1f))
                 IconButton(onClick = { showQueue = true }) { Icon(Icons.Rounded.QueueMusic, "Queue") }
             }
-            Spacer(Modifier.weight(.35f))
-            Box(Modifier.fillMaxWidth().aspectRatio(1f).padding(horizontal = 5.dp).clip(RoundedCornerShape(32.dp)).border(1.dp, RenovationGlassBorder, RoundedCornerShape(32.dp)).padding(8.dp)) {
-                RenovationArtwork(track.artwork, Modifier.fillMaxSize().clip(RoundedCornerShape(25.dp)))
+            Spacer(Modifier.height(20.dp))
+            Box(
+                Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 360.dp)
+                    .aspectRatio(1f)
+                    .padding(horizontal = 8.dp)
+                    .clip(RoundedCornerShape(30.dp))
+                    .border(1.dp, RenovationGlassBorder, RoundedCornerShape(30.dp))
+                    .padding(7.dp)
+            ) {
+                RenovationArtwork(track.artwork, Modifier.fillMaxSize().clip(RoundedCornerShape(24.dp)))
             }
-            Spacer(Modifier.weight(.34f))
+            Spacer(Modifier.height(22.dp))
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
-                    Text(track.title, fontSize = 24.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(track.title, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     Text(track.artist, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
                 }
                 IconButton(onClick = onToggleFavourite) { Icon(if (isFavourite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, "Favourite", tint = MaterialTheme.colorScheme.primary) }
@@ -716,16 +725,16 @@ fun RenovatedFullPlayer(
                 Text(formatTime(position), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 Text(formatTime(duration), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-            Row(Modifier.fillMaxWidth().padding(top = 9.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().padding(top = 13.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onPrevious, modifier = Modifier.size(52.dp)) { Icon(Icons.Rounded.SkipPrevious, "Previous", modifier = Modifier.size(31.dp)) }
-                FilledIconButton(onClick = onPlayPause, modifier = Modifier.size(74.dp), shape = RoundedCornerShape(25.dp)) {
-                    Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play", modifier = Modifier.size(38.dp))
+                FilledIconButton(onClick = onPlayPause, modifier = Modifier.size(68.dp), shape = RoundedCornerShape(23.dp)) {
+                    Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play", modifier = Modifier.size(34.dp))
                 }
                 IconButton(onClick = onNext, modifier = Modifier.size(52.dp)) { Icon(Icons.Rounded.SkipNext, "Next", modifier = Modifier.size(31.dp)) }
             }
-            Spacer(Modifier.height(12.dp))
-            Text("Swipe down to minimize", fontSize = 10.sp, color = MaterialTheme.colorScheme.outline)
-            Spacer(Modifier.weight(.18f))
+            Spacer(Modifier.height(9.dp))
+            Text("Swipe down to minimize", fontSize = 10.sp, color = MaterialTheme.colorScheme.outline.copy(alpha = .72f))
+            Spacer(Modifier.height(8.dp))
         }
         if (showQueue) {
             AlertDialog(onDismissRequest = { showQueue = false }, title = { Text("Queue") }, text = {
