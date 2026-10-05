@@ -37,8 +37,10 @@ object LyricsRepository {
         val durationSeconds = (track.duration / 1000L).toInt().takeIf { it > 0 }
         val results = coroutineScope {
             val better = async { runCatching { fetchBetterLyrics(track, durationSeconds) }.getOrNull() }
-            val lrc = async { runCatching { fetchLrcLib(track, durationSeconds) }.getOrNull() }
-            listOf(better.await(), lrc.await()).filterNotNull()
+            val kugou = async { runCatching { fetchBetterLyricsKugou(track, durationSeconds) }.getOrNull() }
+            val lrc = async { runCatching { fetchLrcLib(track, null) }.getOrNull() }
+            val search = async { runCatching { searchLrcLib(track) }.getOrNull() }
+            listOf(better.await(), kugou.await(), lrc.await(), search.await()).filterNotNull()
         }
 
         val best = results.maxByOrNull { it.lines.size }?.takeIf { it.lines.isNotEmpty() }
@@ -49,7 +51,7 @@ object LyricsRepository {
     private fun fetchBetterLyrics(track: Track, duration: Int?): SyncedLyrics? {
         val url = okhttp3.HttpUrl.Builder()
             .scheme("https")
-            .host("lyrics-api.boidu.dev")
+            .host("api.betterlyrics.org")
             .addPathSegments("getLyrics")
             .addQueryParameter("s", track.title)
             .addQueryParameter("a", track.artist)
@@ -72,6 +74,33 @@ object LyricsRepository {
                 ?: return null
             val lines = parseTtml(ttml)
             return lines.takeIf { it.size >= 2 }?.let { SyncedLyrics("BetterLyrics", it) }
+        }
+    }
+
+    private fun fetchBetterLyricsKugou(track: Track, duration: Int?): SyncedLyrics? {
+        val url = okhttp3.HttpUrl.Builder()
+            .scheme("https")
+            .host("api.betterlyrics.org")
+            .addPathSegments("kugou/getLyrics")
+            .addQueryParameter("s", track.title)
+            .addQueryParameter("a", track.artist)
+            .apply { if (duration != null) addQueryParameter("d", duration.toString()) }
+            .apply { if (track.album.isNotBlank()) addQueryParameter("al", track.album) }
+            .build()
+
+        val request = Request.Builder()
+            .url(url)
+            .header("Accept", "application/json")
+            .header("User-Agent", "FlareMusic/1.0")
+            .get()
+            .build()
+
+        http.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) return null
+            val json = JSONObject(response.body?.string().orEmpty())
+            val lrc = json.optString("lyrics").takeIf { it.isNotBlank() } ?: return null
+            val lines = parseLrc(lrc)
+            return lines.takeIf { it.size >= 2 }?.let { SyncedLyrics("BetterLyrics • Kugou", it) }
         }
     }
 
@@ -99,6 +128,36 @@ object LyricsRepository {
             val synced = json.optString("syncedLyrics").takeIf { it.isNotBlank() } ?: return null
             val lines = parseLrc(synced)
             return lines.takeIf { it.size >= 2 }?.let { SyncedLyrics("LRCLIB", it) }
+        }
+    }
+
+    private fun searchLrcLib(track: Track): SyncedLyrics? {
+        val url = okhttp3.HttpUrl.Builder()
+            .scheme("https")
+            .host("lrclib.net")
+            .addPathSegments("api/search")
+            .addQueryParameter("track_name", track.title)
+            .addQueryParameter("artist_name", track.artist)
+            .addQueryParameter("q", track.title)
+            .build()
+
+        val request = Request.Builder()
+            .url(url)
+            .header("Accept", "application/json")
+            .header("User-Agent", "FlareMusic/1.0 (Android)")
+            .get()
+            .build()
+
+        http.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) return null
+            val array = org.json.JSONArray(response.body?.string().orEmpty())
+            for (i in 0 until array.length()) {
+                val item = array.optJSONObject(i) ?: continue
+                val synced = item.optString("syncedLyrics").takeIf { it.isNotBlank() } ?: continue
+                val lines = parseLrc(synced)
+                if (lines.size >= 2) return SyncedLyrics("LRCLIB • Search", lines)
+            }
+            return null
         }
     }
 
