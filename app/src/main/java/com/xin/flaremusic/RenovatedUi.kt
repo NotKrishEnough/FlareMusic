@@ -103,7 +103,7 @@ private fun RenovationHeader(title: String, subtitle: String) {
 }
 
 @Composable
-private fun RenovatedHomeScreen(count: Int, loading: Boolean, error: String, accent: Color, openLibrary: () -> Unit) {
+fun RenovatedHomeScreen(count: Int, loading: Boolean, error: String, accent: Color, openLibrary: () -> Unit) {
     LazyColumn(
         contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 150.dp),
         verticalArrangement = Arrangement.spacedBy(17.dp)
@@ -168,7 +168,7 @@ private fun RenovatedHomeScreen(count: Int, loading: Boolean, error: String, acc
 }
 
 @Composable
-private fun RenovatedSearchScreen(
+fun RenovatedSearchScreen(
     query: String,
     onQuery: (String) -> Unit,
     localResults: List<Track>,
@@ -230,7 +230,7 @@ private fun RenovationSearchField(query: String, onQuery: (String) -> Unit, onSe
 }
 
 @Composable
-private fun RenovatedLibraryScreen(
+fun RenovatedLibraryScreen(
     tracks: List<Track>,
     loading: Boolean,
     favourites: List<Track>,
@@ -360,7 +360,7 @@ private fun RenovationEmpty(title: String, subtitle: String) {
 }
 
 @Composable
-private fun RenovatedSettingsScreen(
+fun RenovatedSettingsScreen(
     amoled: Boolean,
     onAmoledChange: (Boolean) -> Unit,
     googleStatus: String,
@@ -376,15 +376,15 @@ private fun RenovatedSettingsScreen(
     LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 150.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item { RenovationHeader("Settings", "A cleaner FlareMusic, your way.") }
         item { RenovationSection("APPEARANCE") }
-        item { RenovationSetting("Dark appearance", "Cinematic dark surfaces", Icons.Rounded.DarkMode, FlarePreferences.darkMode.value) {
+        item { RenovationSetting("Dark appearance", "Cinematic dark surfaces", Icons.Rounded.DarkMode, androidx.compose.runtime.mutableStateOf(prefs.getBoolean("dark_mode", true)).value) {
             FlarePreferences.darkMode.value = it
             prefs.edit().putBoolean("dark_mode", it).apply()
         } }
-        item { RenovationSetting("Glass surfaces", "Frosted navigation, cards and player", Icons.Rounded.BlurOn, FlarePreferences.glassEffects.value) {
+        item { RenovationSetting("Glass surfaces", "Frosted navigation, cards and player", Icons.Rounded.BlurOn, androidx.compose.runtime.mutableStateOf(prefs.getBoolean("glass_effects", true)).value) {
             FlarePreferences.glassEffects.value = it
             prefs.edit().putBoolean("glass_effects", it).apply()
         } }
-        item { RenovationSetting("Animations", "Smooth transitions and motion", Icons.Rounded.Animation, FlarePreferences.animations.value) {
+        item { RenovationSetting("Animations", "Smooth transitions and motion", Icons.Rounded.Animation, androidx.compose.runtime.mutableStateOf(prefs.getBoolean("animations", true)).value) {
             FlarePreferences.animations.value = it
             prefs.edit().putBoolean("animations", it).apply()
         } }
@@ -416,9 +416,9 @@ private fun RenovatedSettingsScreen(
         item {
             RenovationCard(Modifier.fillMaxWidth(), MaterialTheme.colorScheme.primary) {
                 LazyRow(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    items(FlarePreferences.accents.size) { index ->
-                        val selected = FlarePreferences.accentIndex.intValue == index
-                        Box(Modifier.size(if (selected) 42.dp else 35.dp).clip(RoundedCornerShape(50.dp)).background(FlarePreferences.accents[index]).border(if (selected) 3.dp else 0.dp, Color.White, RoundedCornerShape(50.dp)).clickable {
+                    items(1) { index ->
+                        val selected = 0 == index
+                        Box(Modifier.size(if (selected) 42.dp else 35.dp).clip(RoundedCornerShape(50.dp)).background(MaterialTheme.colorScheme.primary).border(if (selected) 3.dp else 0.dp, Color.White, RoundedCornerShape(50.dp)).clickable {
                             FlarePreferences.accentIndex.intValue = index
                             prefs.edit().putInt("accent_index", index).apply()
                         })
@@ -451,7 +451,7 @@ private fun RenovationSetting(title: String, subtitle: String, icon: androidx.co
 }
 
 @Composable
-private fun RenovatedFullPlayer(
+fun RenovatedFullPlayer(
     track: Track,
     playing: Boolean,
     position: Long,
