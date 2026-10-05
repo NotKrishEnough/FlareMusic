@@ -666,94 +666,144 @@ fun RenovatedFullPlayer(
     swipeToChangeTracks: Boolean
 ) {
     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
-    var dragY by remember { mutableFloatStateOf(0f) }
-    var showQueue by remember { mutableStateOf(false) }
-    val progress = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
-    Box(
-        Modifier.fillMaxSize().pointerInput(swipeToMinimize) {
-            detectDragGestures(
-                onDragEnd = { if (swipeToMinimize && dragY > 120f) onClose(); dragY = 0f },
-                onDragCancel = { dragY = 0f }
-            ) { _, amount -> if (amount.y > 0) dragY += amount.y }
-        }.background(
-            Brush.verticalGradient(listOf(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.background, MaterialTheme.colorScheme.background))
-        )
-    ) {
-        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 22.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onClose) { Icon(Icons.Rounded.KeyboardArrowDown, "Minimize", modifier = Modifier.size(31.dp)) }
-                Spacer(Modifier.weight(1f))
-                Text("NOW PLAYING", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.1.sp, color = MaterialTheme.colorScheme.primary)
-                Spacer(Modifier.weight(1f))
-                IconButton(onClick = { showQueue = true }) { Icon(Icons.Rounded.QueueMusic, "Queue") }
+        var dragY by remember { mutableFloatStateOf(0f) }
+        var showQueue by remember { mutableStateOf(false) }
+        val progress = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
+        val style = FlarePreferences.playerStyle.intValue.coerceIn(0, 3)
+        val background = FlarePreferences.playerBackground.intValue.coerceIn(0, 3)
+
+        Box(
+            Modifier.fillMaxSize()
+                .pointerInput(swipeToMinimize) {
+                    detectDragGestures(
+                        onDragEnd = { if (swipeToMinimize && dragY > 120f) onClose(); dragY = 0f },
+                        onDragCancel = { dragY = 0f }
+                    ) { _, amount -> if (amount.y > 0) dragY += amount.y }
+                }
+        ) {
+            // ArchiveTune-inspired player backdrops: artwork blur, dynamic gradient, or dark glass.
+            when (background) {
+                1 -> {
+                    RenovationArtwork(track.artwork, Modifier.fillMaxSize().blur(42.dp))
+                    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .48f)))
+                }
+                2 -> {
+                    RenovationArtwork(track.artwork, Modifier.fillMaxSize().blur(24.dp))
+                    Box(
+                        Modifier.fillMaxSize().background(
+                            Brush.verticalGradient(
+                                listOf(
+                                    MaterialTheme.colorScheme.primary.copy(alpha = .40f),
+                                    MaterialTheme.colorScheme.background.copy(alpha = .88f),
+                                    MaterialTheme.colorScheme.background
+                                )
+                            )
+                        )
+                    )
+                }
+                3 -> {
+                    RenovationArtwork(track.artwork, Modifier.fillMaxSize().blur(30.dp))
+                    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.surface.copy(alpha = .86f)))
+                    Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(MaterialTheme.colorScheme.primary.copy(alpha = .18f), Color.Transparent))))
+                }
+                else -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
             }
-            Spacer(Modifier.height(20.dp))
-            Box(
-                Modifier
-                    .fillMaxWidth()
-                    .widthIn(max = 360.dp)
-                    .aspectRatio(1f)
-                    .padding(horizontal = 8.dp)
-                    .clip(RoundedCornerShape(30.dp))
-                    .border(1.dp, RenovationGlassBorder, RoundedCornerShape(30.dp))
-                    .padding(7.dp)
+
+            Column(
+                Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding()
+                    .padding(horizontal = 22.dp, vertical = 10.dp),
+                horizontalAlignment = Alignment.CenterHorizontally
             ) {
-                RenovationArtwork(track.artwork, Modifier.fillMaxSize().clip(RoundedCornerShape(24.dp)))
-            }
-            Spacer(Modifier.height(22.dp))
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(track.title, fontSize = 22.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(track.artist, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onClose) { Icon(Icons.Rounded.KeyboardArrowDown, "Minimize", modifier = Modifier.size(31.dp)) }
+                    Spacer(Modifier.weight(1f))
+                    Text("NOW PLAYING", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.1.sp, color = MaterialTheme.colorScheme.primary)
+                    Spacer(Modifier.weight(1f))
+                    IconButton(onClick = { showQueue = true }) { Icon(Icons.Rounded.QueueMusic, "Queue") }
                 }
-                IconButton(onClick = onToggleFavourite) { Icon(if (isFavourite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, "Favourite", tint = MaterialTheme.colorScheme.primary) }
-            }
-            if (FlarePreferences.progressStyle.intValue == 1) {
-                Slider(
-                    value = progress,
-                    onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) },
-                    modifier = Modifier.fillMaxWidth().height(24.dp).padding(top = 5.dp)
-                )
-            } else {
-                Slider(
-                    value = progress,
-                    onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) },
-                    modifier = Modifier.fillMaxWidth().padding(top = 10.dp)
-                )
-            }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                Text(formatTime(position), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                Text(formatTime(duration), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            }
-            Row(Modifier.fillMaxWidth().padding(top = 13.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onPrevious, modifier = Modifier.size(52.dp)) { Icon(Icons.Rounded.SkipPrevious, "Previous", modifier = Modifier.size(31.dp)) }
-                FilledIconButton(onClick = onPlayPause, modifier = Modifier.size(68.dp), shape = RoundedCornerShape(23.dp)) {
-                    Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play", modifier = Modifier.size(34.dp))
-                }
-                IconButton(onClick = onNext, modifier = Modifier.size(52.dp)) { Icon(Icons.Rounded.SkipNext, "Next", modifier = Modifier.size(31.dp)) }
-            }
-            Spacer(Modifier.height(9.dp))
-            Text("Swipe down to minimize", fontSize = 10.sp, color = MaterialTheme.colorScheme.outline.copy(alpha = .72f))
-            Spacer(Modifier.height(8.dp))
-        }
-        if (showQueue) {
-            AlertDialog(onDismissRequest = { showQueue = false }, title = { Text("Queue") }, text = {
-                if (queue.isEmpty()) Text("The queue is empty.") else LazyColumn(Modifier.heightIn(max = 430.dp)) {
-                    items(queue.size) { index ->
-                        val item = queue[index]
-                        Row(Modifier.fillMaxWidth().clickable { onPlayQueueItem(index); showQueue = false }.padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
-                            RenovationArtwork(item.artwork, Modifier.size(43.dp).clip(RoundedCornerShape(10.dp)))
-                            Column(Modifier.weight(1f).padding(horizontal = 9.dp)) {
-                                Text(item.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                                Text(item.artist, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                            }
-                            IconButton(onClick = { onRemoveQueueItem(index) }) { Icon(Icons.Rounded.Close, "Remove") }
+
+                if (style == 1) {
+                    Spacer(Modifier.height(12.dp))
+                    RenovationArtwork(track.artwork, Modifier.fillMaxWidth(.90f).aspectRatio(1f).clip(RoundedCornerShape(34.dp)))
+                    Spacer(Modifier.height(18.dp))
+                } else if (style == 2) {
+                    Spacer(Modifier.height(18.dp))
+                    RenovationArtwork(track.artwork, Modifier.fillMaxWidth(.72f).aspectRatio(1f).clip(androidx.compose.foundation.shape.CircleShape))
+                    Spacer(Modifier.height(18.dp))
+                } else if (style == 3) {
+                    Spacer(Modifier.height(24.dp))
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        RenovationArtwork(track.artwork, Modifier.size(132.dp).clip(RoundedCornerShape(28.dp)))
+                        Column(Modifier.weight(1f).padding(start = 18.dp)) {
+                            Text(track.title, fontSize = 21.sp, fontWeight = FontWeight.ExtraBold, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                            Text(track.artist, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 5.dp), maxLines = 2, overflow = TextOverflow.Ellipsis)
                         }
                     }
+                    Spacer(Modifier.height(20.dp))
+                } else {
+                    Spacer(Modifier.height(20.dp))
+                    Box(
+                        Modifier.fillMaxWidth().widthIn(max = 360.dp).aspectRatio(1f)
+                            .padding(horizontal = 8.dp).clip(RoundedCornerShape(30.dp))
+                            .border(1.dp, RenovationGlassBorder, RoundedCornerShape(30.dp)).padding(7.dp)
+                    ) { RenovationArtwork(track.artwork, Modifier.fillMaxSize().clip(RoundedCornerShape(24.dp))) }
+                    Spacer(Modifier.height(22.dp))
                 }
-            }, confirmButton = { TextButton(onClick = { showQueue = false }) { Text("Done") } }, dismissButton = { TextButton(onClick = onClearQueue) { Text("Clear") } })
+
+                if (style != 3) {
+                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(track.title, fontSize = if (style == 2) 21.sp else 22.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(track.artist, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 4.dp))
+                        }
+                        IconButton(onClick = onToggleFavourite) { Icon(if (isFavourite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, "Favourite", tint = MaterialTheme.colorScheme.primary) }
+                    }
+                } else {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
+                        IconButton(onClick = onToggleFavourite) { Icon(if (isFavourite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, "Favourite", tint = MaterialTheme.colorScheme.primary) }
+                    }
+                }
+
+                if (FlarePreferences.progressStyle.intValue == 1) {
+                    Slider(value = progress, onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) }, modifier = Modifier.fillMaxWidth().height(24.dp).padding(top = 5.dp))
+                } else {
+                    Slider(value = progress, onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) }, modifier = Modifier.fillMaxWidth().padding(top = 10.dp))
+                }
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                    Text(formatTime(position), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    Text(formatTime(duration), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Row(Modifier.fillMaxWidth().padding(top = 13.dp), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = onPrevious, modifier = Modifier.size(52.dp)) { Icon(Icons.Rounded.SkipPrevious, "Previous", modifier = Modifier.size(31.dp)) }
+                    FilledIconButton(
+                        onClick = onPlayPause,
+                        modifier = Modifier.size(if (style == 2) 74.dp else 68.dp),
+                        shape = if (style == 2) androidx.compose.foundation.shape.CircleShape else RoundedCornerShape(23.dp)
+                    ) { Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play", modifier = Modifier.size(34.dp)) }
+                    IconButton(onClick = onNext, modifier = Modifier.size(52.dp)) { Icon(Icons.Rounded.SkipNext, "Next", modifier = Modifier.size(31.dp)) }
+                }
+                Spacer(Modifier.height(8.dp))
+                Text("Swipe down to minimize", fontSize = 10.sp, color = MaterialTheme.colorScheme.outline.copy(alpha = .72f))
+            }
+
+            if (showQueue) {
+                AlertDialog(onDismissRequest = { showQueue = false }, title = { Text("Queue") }, text = {
+                    if (queue.isEmpty()) Text("The queue is empty.") else LazyColumn(Modifier.heightIn(max = 430.dp)) {
+                        items(queue.size) { index ->
+                            val item = queue[index]
+                            Row(Modifier.fillMaxWidth().clickable { onPlayQueueItem(index); showQueue = false }.padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically) {
+                                RenovationArtwork(item.artwork, Modifier.size(43.dp).clip(RoundedCornerShape(10.dp)))
+                                Column(Modifier.weight(1f).padding(horizontal = 9.dp)) {
+                                    Text(item.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                    Text(item.artist, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                }
+                                IconButton(onClick = { onRemoveQueueItem(index) }) { Icon(Icons.Rounded.Close, "Remove") }
+                            }
+                        }
+                    }
+                }, confirmButton = { TextButton(onClick = { showQueue = false }) { Text("Done") } }, dismissButton = { TextButton(onClick = onClearQueue) { Text("Clear") } })
+            }
         }
-    }
     }
 }
 
