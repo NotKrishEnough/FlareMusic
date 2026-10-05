@@ -81,12 +81,17 @@ private fun RenovationArtwork(source: String?, modifier: Modifier = Modifier) {
     LaunchedEffect(source) {
         bitmap = withContext(Dispatchers.IO) {
             if (source.isNullOrBlank()) return@withContext null
+            // YouTube often hands us hqdefault (480x360). Never use that first
+            // in the full player: prefer the largest available thumbnail, then fall
+            // back through the supplied URL. This keeps the player artwork sharp
+            // while the UI itself remains a strict 1:1 square.
             val candidates = buildList {
-                add(source)
                 if (source.contains("ytimg.com/vi/")) {
                     add(source.replace(Regex("/(default|mqdefault|hqdefault|sddefault|maxresdefault)\\.jpg"), "/maxresdefault.jpg"))
                     add(source.replace(Regex("/(default|mqdefault|hqdefault|sddefault|maxresdefault)\\.jpg"), "/sddefault.jpg"))
+                    add(source.replace(Regex("/(default|mqdefault|hqdefault|sddefault|maxresdefault)\\.jpg"), "/hqdefault.jpg"))
                 }
+                add(source)
             }.distinct()
             candidates.firstNotNullOfOrNull { url ->
                 runCatching {
