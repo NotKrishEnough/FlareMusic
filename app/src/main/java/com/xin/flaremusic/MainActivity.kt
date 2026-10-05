@@ -85,7 +85,7 @@ private val Panel = Color(0xFF19151E)
 private val Violet: Color get() = if (FlarePreferences.dynamicColors.value) FlarePreferences.dynamicAccent.value else FlarePreferences.accents[FlarePreferences.accentIndex.intValue.coerceIn(0, FlarePreferences.accents.lastIndex)]
 private val Mint: Color get() = Violet.copy(alpha = .82f)
 
-private object FlarePreferences {
+object FlarePreferences {
     val progressStyle = mutableIntStateOf(0)
     val darkMode = mutableStateOf(true)
     val accentIndex = mutableIntStateOf(0)
@@ -134,10 +134,7 @@ class MainActivity : ComponentActivity() {
         WindowCompat.setDecorFitsSystemWindows(window, false)
         window.statusBarColor = android.graphics.Color.TRANSPARENT
         window.navigationBarColor = android.graphics.Color.TRANSPARENT
-        WindowCompat.getInsetsController(window, window.decorView).apply {
-            isAppearanceLightStatusBars = false
-            isAppearanceLightNavigationBars = false
-        }
+        // Material theme controls system bar icon contrast; do not force dark-mode icons here.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
             window.isStatusBarContrastEnforced = false
             window.isNavigationBarContrastEnforced = false
@@ -345,6 +342,9 @@ private fun GlassAmbientLayer(
         if (dynamicColors && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             FlarePreferences.dynamicAccent.value = wallpaperScheme.primary
         }
+        val controller = WindowCompat.getInsetsController((context as ComponentActivity).window, (context as ComponentActivity).window.decorView)
+        controller.isAppearanceLightStatusBars = !darkMode
+        controller.isAppearanceLightNavigationBars = !darkMode
     }
     val expressiveScheme = wallpaperScheme
     val baseDensity = LocalDensity.current
