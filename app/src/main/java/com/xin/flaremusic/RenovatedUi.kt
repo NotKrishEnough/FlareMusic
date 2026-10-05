@@ -373,16 +373,22 @@ fun RenovatedSettingsScreen(
 ) {
     val context = LocalContext.current
     val prefs = context.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE)
+    val darkMode = FlarePreferences.darkMode.value
+    val glassEffects = FlarePreferences.glassEffects.value
+    val animations = FlarePreferences.animations.value
     LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 150.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item { RenovationHeader("Settings", "A cleaner FlareMusic, your way.") }
         item { RenovationSection("APPEARANCE") }
-        item { RenovationSetting("Dark appearance", "Cinematic dark surfaces", Icons.Rounded.DarkMode, androidx.compose.runtime.mutableStateOf(prefs.getBoolean("dark_mode", true)).value) {
+        item { RenovationSetting("Dark appearance", "Cinematic dark surfaces", Icons.Rounded.DarkMode, darkMode) {
+            FlarePreferences.darkMode.value = it
             prefs.edit().putBoolean("dark_mode", it).apply()
         } }
-        item { RenovationSetting("Glass surfaces", "Frosted navigation, cards and player", Icons.Rounded.BlurOn, androidx.compose.runtime.mutableStateOf(prefs.getBoolean("glass_effects", true)).value) {
+        item { RenovationSetting("Glass surfaces", "Frosted navigation, cards and player", Icons.Rounded.BlurOn, glassEffects) {
+            FlarePreferences.glassEffects.value = it
             prefs.edit().putBoolean("glass_effects", it).apply()
         } }
-        item { RenovationSetting("Animations", "Smooth transitions and motion", Icons.Rounded.Animation, androidx.compose.runtime.mutableStateOf(prefs.getBoolean("animations", true)).value) {
+        item { RenovationSetting("Animations", "Smooth transitions and motion", Icons.Rounded.Animation, animations) {
+            FlarePreferences.animations.value = it
             prefs.edit().putBoolean("animations", it).apply()
         } }
         item { RenovationSection("AMOLED") }
