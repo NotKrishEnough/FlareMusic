@@ -997,25 +997,12 @@ fun LyricsSheet(
 
 @Composable
 fun RenovatedFullPlayer(
-    track: Track,
-    playing: Boolean,
-    position: Long,
-    duration: Long,
-    isFavourite: Boolean,
-    queue: List<Track>,
-    onClose: () -> Unit,
-    onPlayPause: () -> Unit,
-    onSeek: (Long) -> Unit,
-    onPrevious: () -> Unit,
-    onNext: () -> Unit,
-    onToggleFavourite: () -> Unit,
-    onShowLyrics: () -> Unit,
-    onPlayQueueItem: (Int) -> Unit,
-    onRemoveQueueItem: (Int) -> Unit,
-    onClearQueue: () -> Unit,
-    onStartSleepTimer: (Int) -> Unit,
-    swipeToMinimize: Boolean,
-    swipeToChangeTracks: Boolean
+    track: Track, playing: Boolean, position: Long, duration: Long, isFavourite: Boolean,
+    queue: List<Track>, onClose: () -> Unit, onPlayPause: () -> Unit, onSeek: (Long) -> Unit,
+    onPrevious: () -> Unit, onNext: () -> Unit, onToggleFavourite: () -> Unit,
+    onShowLyrics: () -> Unit, onPlayQueueItem: (Int) -> Unit, onRemoveQueueItem: (Int) -> Unit,
+    onClearQueue: () -> Unit, onStartSleepTimer: (Int) -> Unit,
+    swipeToMinimize: Boolean, swipeToChangeTracks: Boolean
 ) {
     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
         var dragY by remember { mutableFloatStateOf(0f) }
@@ -1026,287 +1013,172 @@ fun RenovatedFullPlayer(
         val animationStyle = FlarePreferences.playerAnimation.intValue.coerceIn(0, 3)
         val animationsEnabled = FlarePreferences.animations.value
         val infinite = rememberInfiniteTransition(label = "playerAnimations")
-        val motion = if (animationsEnabled && animationStyle != 0) {
-            infinite.animateFloat(
-                0f, 1f,
-                infiniteRepeatable(
-                    tween(if (animationStyle == 3) 5000 else 2800),
-                    RepeatMode.Reverse
-                ),
-                label = "playerMotion"
-            ).value
-        } else 0f
-        val pulse = if (animationsEnabled && animationStyle == 2) {
-            infinite.animateFloat(
-                .985f, 1.015f,
-                infiniteRepeatable(tween(1400), RepeatMode.Reverse),
-                label = "playerPulse"
-            ).value
-        } else 1f
+        val motion = if (animationsEnabled && animationStyle != 0) infinite.animateFloat(
+            0f, 1f, infiniteRepeatable(tween(if (animationStyle == 3) 5000 else 2800), RepeatMode.Reverse),
+            label = "playerMotion"
+        ).value else 0f
+        val pulse = if (animationsEnabled && animationStyle == 2) infinite.animateFloat(
+            .985f, 1.015f, infiniteRepeatable(tween(1400), RepeatMode.Reverse), label = "playerPulse"
+        ).value else 1f
+        val vinylRotation = if (animationsEnabled && playing) infinite.animateFloat(
+            0f, 360f, infiniteRepeatable(tween(4200), RepeatMode.Restart), label = "vinylRotation"
+        ).value else 0f
 
         Box(
-            Modifier.fillMaxSize()
-                .pointerInput(swipeToMinimize) {
-                    detectDragGestures(
-                        onDragEnd = {
-                            if (swipeToMinimize && dragY > 120f) onClose()
-                            dragY = 0f
-                        },
-                        onDragCancel = { dragY = 0f }
-                    ) { _, amount -> if (amount.y > 0) dragY += amount.y }
-                }
+            Modifier.fillMaxSize().pointerInput(swipeToMinimize) {
+                detectDragGestures(
+                    onDragEnd = { if (swipeToMinimize && dragY > 120f) onClose(); dragY = 0f },
+                    onDragCancel = { dragY = 0f }
+                ) { _, amount -> if (amount.y > 0) dragY += amount.y }
+            }
         ) {
-            // Background is independent from player layout so changing a style
-            // never changes the backdrop geometry.
             when (background) {
                 0 -> Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
                 1 -> {
-                    RenovationArtwork(
-                        track.artwork,
-                        Modifier.fillMaxSize().graphicsLayer {
-                            scaleX = 1.18f
-                            scaleY = 1.18f
-                        }
-                    )
-                    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .58f)))
-                    Box(
-                        Modifier.fillMaxSize().background(
-                            Brush.verticalGradient(
-                                listOf(Color.Black.copy(.22f), Color.Black.copy(.72f))
-                            )
-                        )
-                    )
+                    RenovationArtwork(track.artwork, Modifier.fillMaxSize().graphicsLayer { scaleX = 1.18f; scaleY = 1.18f })
+                    Box(Modifier.fillMaxSize().background(Color.Black.copy(.58f)))
+                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color.Black.copy(.22f), Color.Black.copy(.72f)))))
                 }
                 2 -> {
-                    Box(
-                        Modifier.fillMaxSize().background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    MaterialTheme.colorScheme.primary.copy(alpha = .32f),
-                                    MaterialTheme.colorScheme.background.copy(alpha = .96f),
-                                    MaterialTheme.colorScheme.background
-                                )
-                            )
-                        )
-                    )
-                    RenovationArtwork(
-                        track.artwork,
-                        Modifier.fillMaxSize().graphicsLayer {
-                            alpha = .16f
-                            scaleX = 1.08f
-                            scaleY = 1.08f
-                        }
-                    )
+                    Box(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(
+                        MaterialTheme.colorScheme.primary.copy(.32f),
+                        MaterialTheme.colorScheme.background.copy(.96f),
+                        MaterialTheme.colorScheme.background
+                    ))))
+                    RenovationArtwork(track.artwork, Modifier.fillMaxSize().graphicsLayer { alpha = .16f; scaleX = 1.08f; scaleY = 1.08f })
                 }
                 else -> {
                     Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background))
-                    RenovationArtwork(
-                        track.artwork,
-                        Modifier.fillMaxSize().graphicsLayer {
-                            alpha = .12f
-                            scaleX = 1.06f
-                            scaleY = 1.06f
-                        }
-                    )
-                    Box(
-                        Modifier.fillMaxSize().background(
-                            Brush.radialGradient(
-                                listOf(
-                                    MaterialTheme.colorScheme.primary.copy(alpha = .16f),
-                                    Color.Transparent
-                                )
-                            )
-                        )
-                    )
+                    RenovationArtwork(track.artwork, Modifier.fillMaxSize().graphicsLayer { alpha = .12f; scaleX = 1.06f; scaleY = 1.06f })
+                    Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(MaterialTheme.colorScheme.primary.copy(.16f), Color.Transparent))))
                 }
             }
 
-            // One compact, shared chrome. The four player styles only control
-            // the artwork/content arrangement below.
-            Column(
-                Modifier.fillMaxSize()
-                    .statusBarsPadding()
-                    .navigationBarsPadding()
-                    .padding(horizontal = 20.dp, vertical = 8.dp),
-                horizontalAlignment = Alignment.CenterHorizontally
+            BoxWithConstraints(
+                Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal = 20.dp, vertical = 6.dp)
             ) {
-                Row(
-                    Modifier.fillMaxWidth().height(48.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onClose, modifier = Modifier.size(44.dp)) {
-                        Icon(Icons.Rounded.KeyboardArrowDown, "Minimize", Modifier.size(29.dp))
-                    }
-                    Spacer(Modifier.weight(1f))
-                    IconButton(onClick = onShowLyrics, modifier = Modifier.size(42.dp)) {
-                        Icon(Icons.Rounded.Subtitles, "Lyrics", Modifier.size(23.dp))
-                    }
-                    Text(
-                        "NOW PLAYING",
-                        fontSize = 10.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = 2.sp,
-                        color = MaterialTheme.colorScheme.primary
-                    )
-                    Spacer(Modifier.weight(1f))
-                    IconButton(onClick = { showQueue = true }, modifier = Modifier.size(44.dp)) {
-                        Icon(Icons.Rounded.QueueMusic, "Queue", Modifier.size(24.dp))
-                    }
-                }
+                val artworkSize = minOf(
+                    maxWidth - 8.dp,
+                    maxHeight * if (style == 2) .40f else .37f
+                ).coerceIn(180.dp, 360.dp)
 
-                when (style) {
-                    0 -> {
-                        Spacer(Modifier.height(12.dp))
-                        Box(
-                            Modifier.fillMaxWidth().widthIn(max = 350.dp).aspectRatio(1f)
-                                .graphicsLayer {
-                                    val scale = if (animationStyle == 1 && animationsEnabled) 1f + motion * .012f else pulse
-                                    scaleX = scale
-                                    scaleY = scale
-                                }
-                                .clip(RoundedCornerShape(30.dp))
-                                .border(1.dp, RenovationGlassBorder, RoundedCornerShape(30.dp))
-                                .padding(6.dp)
-                        ) {
-                            RenovationArtwork(track.artwork, Modifier.fillMaxSize().clip(RoundedCornerShape(24.dp)))
+                Column(
+                    Modifier.fillMaxSize(),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.SpaceBetween
+                ) {
+                    Row(Modifier.fillMaxWidth().height(46.dp), verticalAlignment = Alignment.CenterVertically) {
+                        IconButton(onClick = onClose, modifier = Modifier.size(44.dp)) {
+                            Icon(Icons.Rounded.KeyboardArrowDown, "Minimize", Modifier.size(29.dp))
                         }
-                        Spacer(Modifier.height(16.dp))
+                        Spacer(Modifier.weight(1f))
+                        IconButton(onClick = onShowLyrics, modifier = Modifier.size(42.dp)) {
+                            Icon(Icons.Rounded.Subtitles, "Lyrics", Modifier.size(23.dp))
+                        }
+                        Text("NOW PLAYING", fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.sp, color = MaterialTheme.colorScheme.primary)
+                        Spacer(Modifier.weight(1f))
+                        IconButton(onClick = { showQueue = true }, modifier = Modifier.size(44.dp)) {
+                            Icon(Icons.Rounded.QueueMusic, "Queue", Modifier.size(24.dp))
+                        }
                     }
-                    1 -> {
-                        Spacer(Modifier.height(4.dp))
-                        RenovationArtwork(
+
+                    when (style) {
+                        0 -> Box(
+                            Modifier.size(artworkSize).graphicsLayer {
+                                val scale = if (animationStyle == 1 && animationsEnabled) 1f + motion * .012f else pulse
+                                scaleX = scale; scaleY = scale
+                            }.clip(RoundedCornerShape(30.dp))
+                                .border(1.dp, RenovationGlassBorder, RoundedCornerShape(30.dp)).padding(6.dp)
+                        ) { RenovationArtwork(track.artwork, Modifier.fillMaxSize().clip(RoundedCornerShape(24.dp))) }
+
+                        1 -> RenovationArtwork(
                             track.artwork,
-                            Modifier.fillMaxWidth(.88f).widthIn(max = 360.dp).aspectRatio(1f)
-                                .graphicsLayer {
-                                    val scale = if (animationStyle == 1 && animationsEnabled) 1f + motion * .02f else pulse
-                                    scaleX = scale
-                                    scaleY = scale
-                                    translationY = if (animationStyle == 3 && animationsEnabled) (motion - .5f) * 8f else 0f
-                                }
-                                .clip(RoundedCornerShape(36.dp))
+                            Modifier.size(artworkSize).graphicsLayer {
+                                val scale = if (animationStyle == 1 && animationsEnabled) 1f + motion * .02f else pulse
+                                scaleX = scale; scaleY = scale
+                                translationY = if (animationStyle == 3 && animationsEnabled) (motion - .5f) * 6f else 0f
+                            }.clip(RoundedCornerShape(34.dp))
                         )
-                        Spacer(Modifier.height(14.dp))
-                    }
-                    2 -> {
-                        Spacer(Modifier.height(8.dp))
-                        Box(
-                            Modifier.fillMaxWidth(.86f).widthIn(max = 350.dp).aspectRatio(1f)
-                                .graphicsLayer { scaleX = pulse; scaleY = pulse }
-                                .clip(RoundedCornerShape(30.dp))
-                                .border(1.dp, RenovationGlassBorder, RoundedCornerShape(30.dp))
-                                .padding(5.dp)
+
+                        2 -> Box(
+                            Modifier.size(artworkSize).graphicsLayer { rotationZ = vinylRotation }
+                                .clip(androidx.compose.foundation.shape.CircleShape)
+                                .background(Color(0xFF0B0B0D))
+                                .border(1.dp, Color.White.copy(.16f), androidx.compose.foundation.shape.CircleShape),
+                            contentAlignment = Alignment.Center
                         ) {
-                            RenovationArtwork(
-                                track.artwork,
-                                Modifier.fillMaxSize().clip(RoundedCornerShape(24.dp))
-                            )
-                        }
-                        Spacer(Modifier.height(14.dp))
-                    }
-                    else -> {
-                        Spacer(Modifier.height(14.dp))
-                        Row(
-                            Modifier.fillMaxWidth()
-                                .clip(RoundedCornerShape(26.dp))
-                                .background(Color.Black.copy(alpha = .10f))
-                                .padding(8.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RenovationArtwork(
-                                track.artwork,
-                                Modifier.size(116.dp)
-                                    .graphicsLayer { scaleX = pulse; scaleY = pulse }
-                                    .clip(RoundedCornerShape(22.dp))
-                            )
-                            Column(
-                                Modifier.weight(1f).padding(horizontal = 16.dp)
+                            // Physical-looking record grooves.
+                            Box(Modifier.fillMaxSize(.92f).border(1.dp, Color.White.copy(.08f), androidx.compose.foundation.shape.CircleShape))
+                            Box(Modifier.fillMaxSize(.78f).border(1.dp, Color.White.copy(.07f), androidx.compose.foundation.shape.CircleShape))
+                            Box(Modifier.fillMaxSize(.64f).border(1.dp, Color.White.copy(.06f), androidx.compose.foundation.shape.CircleShape))
+                            Box(
+                                Modifier.fillMaxSize(.46f).clip(androidx.compose.foundation.shape.CircleShape)
+                                    .background(Color(0xFF19191C))
+                                    .border(2.dp, Color.Black.copy(.65f), androidx.compose.foundation.shape.CircleShape)
+                                    .padding(5.dp)
                             ) {
-                                Text(track.title, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, maxLines = 3, overflow = TextOverflow.Ellipsis)
-                                Text(
-                                    track.artist,
-                                    fontSize = 13.sp,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(top = 5.dp),
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis
+                                RenovationArtwork(track.artwork, Modifier.fillMaxSize().clip(androidx.compose.foundation.shape.CircleShape))
+                                Box(
+                                    Modifier.size(12.dp).clip(androidx.compose.foundation.shape.CircleShape)
+                                        .background(Color(0xFF111114))
+                                        .border(1.dp, Color.White.copy(.18f), androidx.compose.foundation.shape.CircleShape)
+                                        .align(Alignment.Center)
                                 )
                             }
                         }
-                        Spacer(Modifier.height(16.dp))
-                    }
-                }
 
-                Row(
-                    Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            track.title,
-                            fontSize = if (style == 2) 21.sp else 22.sp,
-                            fontWeight = FontWeight.ExtraBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
+                        else -> Row(
+                            Modifier.fillMaxWidth().heightIn(min = 108.dp, max = 126.dp)
+                                .clip(RoundedCornerShape(26.dp)).background(Color.Black.copy(.10f)).padding(8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RenovationArtwork(track.artwork, Modifier.size(106.dp).graphicsLayer { scaleX = pulse; scaleY = pulse }.clip(RoundedCornerShape(20.dp)))
+                            Column(Modifier.weight(1f).padding(horizontal = 15.dp)) {
+                                Text(track.title, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold, maxLines = 3, overflow = TextOverflow.Ellipsis)
+                                Text(track.artist, fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 5.dp), maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            }
+                        }
+                    }
+
+                    Column(Modifier.fillMaxWidth()) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Column(Modifier.weight(1f)) {
+                                Text(track.title, fontSize = if (style == 2) 21.sp else 22.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(track.artist, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.padding(top = 3.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                            IconButton(onClick = onToggleFavourite, modifier = Modifier.size(44.dp)) {
+                                Icon(if (isFavourite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, "Favourite", tint = MaterialTheme.colorScheme.primary)
+                            }
+                        }
+                        Slider(
+                            value = progress,
+                            onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) },
+                            modifier = Modifier.fillMaxWidth().height(if (FlarePreferences.progressStyle.intValue == 1) 24.dp else 30.dp)
                         )
-                        Text(
-                            track.artist,
-                            fontSize = 14.sp,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.padding(top = 3.dp),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Text(formatTime(position), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Text(formatTime(duration), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
                     }
-                    IconButton(onClick = onToggleFavourite, modifier = Modifier.size(44.dp)) {
-                        Icon(
-                            if (isFavourite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
-                            "Favourite",
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                    }
-                }
 
-                Spacer(Modifier.height(4.dp))
-                Slider(
-                    value = progress,
-                    onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) },
-                    modifier = Modifier.fillMaxWidth().height(if (FlarePreferences.progressStyle.intValue == 1) 24.dp else 32.dp)
-                )
-                Row(
-                    Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    Text(formatTime(position), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                    Text(formatTime(duration), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-
-                // Keep playback controls visually attached to the seek area.
-                // A weighted spacer was pushing them to the absolute bottom of
-                // tall screens, creating the large empty gap seen in the player.
-                Spacer(Modifier.height(64.dp))
-
-                Row(
-                    Modifier.fillMaxWidth().padding(top = 0.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    IconButton(onClick = onPrevious, modifier = Modifier.size(52.dp)) {
-                        Icon(Icons.Rounded.SkipPrevious, "Previous", Modifier.size(30.dp))
-                    }
-                    FilledIconButton(
-                        onClick = onPlayPause,
-                        modifier = Modifier.size(if (style == 2) 72.dp else 66.dp),
-                        shape = if (style == 2) androidx.compose.foundation.shape.CircleShape else RoundedCornerShape(22.dp)
+                    Row(
+                        Modifier.fillMaxWidth().padding(top = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play", Modifier.size(33.dp))
+                        IconButton(onClick = onPrevious, modifier = Modifier.size(54.dp)) {
+                            Icon(Icons.Rounded.SkipPrevious, "Previous", Modifier.size(31.dp))
+                        }
+                        FilledIconButton(onClick = onPlayPause, modifier = Modifier.size(if (style == 2) 72.dp else 66.dp), shape = androidx.compose.foundation.shape.CircleShape) {
+                            Icon(if (playing) Icons.Rounded.Pause else Icons.Rounded.PlayArrow, "Play", Modifier.size(34.dp))
+                        }
+                        IconButton(onClick = onNext, modifier = Modifier.size(54.dp)) {
+                            Icon(Icons.Rounded.SkipNext, "Next", Modifier.size(31.dp))
+                        }
                     }
-                    IconButton(onClick = onNext, modifier = Modifier.size(52.dp)) {
-                        Icon(Icons.Rounded.SkipNext, "Next", Modifier.size(30.dp))
-                    }
-                }
 
-                Spacer(Modifier.height(3.dp))
-                Text("Swipe down to minimize", fontSize = 10.sp, color = MaterialTheme.colorScheme.outline.copy(alpha = .65f))
+                    Text("Swipe down to minimize", fontSize = 10.sp, color = MaterialTheme.colorScheme.outline.copy(.65f), modifier = Modifier.padding(bottom = 1.dp))
+                }
             }
 
             if (showQueue) {
@@ -1319,10 +1191,7 @@ fun RenovatedFullPlayer(
                             items(queue.size) { index ->
                                 val item = queue[index]
                                 Row(
-                                    Modifier.fillMaxWidth().clickable {
-                                        onPlayQueueItem(index)
-                                        showQueue = false
-                                    }.padding(vertical = 7.dp),
+                                    Modifier.fillMaxWidth().clickable { onPlayQueueItem(index); showQueue = false }.padding(vertical = 7.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     RenovationArtwork(item.artwork, Modifier.size(43.dp).clip(RoundedCornerShape(10.dp)))
@@ -1330,9 +1199,7 @@ fun RenovatedFullPlayer(
                                         Text(item.title, maxLines = 1, overflow = TextOverflow.Ellipsis)
                                         Text(item.artist, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                     }
-                                    IconButton(onClick = { onRemoveQueueItem(index) }) {
-                                        Icon(Icons.Rounded.Close, "Remove")
-                                    }
+                                    IconButton(onClick = { onRemoveQueueItem(index) }) { Icon(Icons.Rounded.Close, "Remove") }
                                 }
                             }
                         }
