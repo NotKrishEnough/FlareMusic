@@ -104,6 +104,8 @@ object FlarePreferences {
     val cornerStyle = mutableIntStateOf(0) // 0: rounded, 1: medium, 2: sharp
     val glassEffects = mutableStateOf(true)
     val playlistStyle = mutableIntStateOf(0) // 0: list, 1: cards, 2: compact
+    val playerStyle = mutableIntStateOf(0) // 0: classic, 1: immersive, 2: vinyl, 3: minimal
+    val playerBackground = mutableIntStateOf(0) // 0: theme, 1: blur, 2: gradient, 3: dark glass
     val accents = listOf(
         Color(0xFFFF694F), Color(0xFF9B8CFF), Color(0xFF35C9A5), Color(0xFFFFB84D),
         Color(0xFF64B5F6), Color(0xFFE879B9), Color(0xFFB0C46A), Color(0xFFB39DDB)
@@ -207,6 +209,8 @@ class MainActivity : ComponentActivity() {
         FlarePreferences.cornerStyle.intValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getInt("corner_style", 0).coerceIn(0, 2)
         FlarePreferences.glassEffects.value = getSharedPreferences("flare_settings", MODE_PRIVATE).getBoolean("glass_effects", true)
         FlarePreferences.playlistStyle.intValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getInt("playlist_style", 0).coerceIn(0, 2)
+        FlarePreferences.playerStyle.intValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getInt("player_style", 0).coerceIn(0, 3)
+        FlarePreferences.playerBackground.intValue = getSharedPreferences("flare_settings", MODE_PRIVATE).getInt("player_background", 0).coerceIn(0, 3)
         val token = SessionToken(this, android.content.ComponentName(this, FlarePlaybackService::class.java))
         controllerFuture = MediaController.Builder(this, token).buildAsync()
         controllerFuture?.addListener({
