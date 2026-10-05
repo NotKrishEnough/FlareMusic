@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material.icons.Icons
@@ -275,9 +276,24 @@ fun RenovatedLibraryScreen(
     openSearch: () -> Unit,
     rescan: () -> Unit,
     sync: () -> Unit,
-    connect: () -> Unit
+    connect: () -> Unit,
+    searchPlaylistSongs: (String) -> Unit,
+    playlistSearchResults: List<OnlineTrack>,
+    playlistSearchLoading: Boolean,
+    addOnlineToPlaylist: (OnlineTrack) -> Unit,
+    removeFromPlaylist: (YouTubePlaylistTrack) -> Unit,
+    renamePlaylist: (String) -> Unit,
+    deletePlaylist: () -> Unit,
+    createPlaylist: (String) -> Unit
 ) {
     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
+    var showPlaylistActions by remember { mutableStateOf(false) }
+    var showAddSongs by remember { mutableStateOf(false) }
+    var showRename by remember { mutableStateOf(false) }
+    var showDelete by remember { mutableStateOf(false) }
+    var showCreate by remember { mutableStateOf(false) }
+    var renameText by remember { mutableStateOf(selectedPlaylist?.title.orEmpty()) }
+
     if (selectedPlaylist != null) {
         LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 20.dp, bottom = 150.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             item {
@@ -287,6 +303,8 @@ fun RenovatedLibraryScreen(
                         Text(selectedPlaylist.title, fontSize = 25.sp, fontWeight = FontWeight.ExtraBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
                         Text("YouTube Music playlist", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
+                    IconButton(onClick = { showAddSongs = true }) { Icon(Icons.Rounded.PlaylistAdd, "Add songs") }
+                    IconButton(onClick = { showPlaylistActions = true }) { Icon(Icons.Rounded.MoreVert, "Playlist options") }
                 }
             }
             item {
@@ -302,8 +320,92 @@ fun RenovatedLibraryScreen(
             if (selectedPlaylistError.isNotBlank()) item { Text(selectedPlaylistError, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
             if (selectedPlaylistLoading) item { LinearProgressIndicator(Modifier.fillMaxWidth()) }
             items(selectedPlaylistTracks, key = { it.videoId }) { item ->
-                RenovationTrackRow(item.title, item.artist, item.thumbnail, null) { playPlaylistItem(item) }
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.weight(1f).clickable { playPlaylistItem(item) }) {
+                        RenovationTrackRow(item.title, item.artist, item.thumbnail, null) { playPlaylistItem(item) }
+                    }
+                    IconButton(onClick = { removeFromPlaylist(item) }) {
+                        Icon(Icons.Rounded.RemoveCircleOutline, "Remove from playlist", tint = MaterialTheme.colorScheme.error)
+                    }
+                }
             }
+        }
+
+        if (showPlaylistActions) {
+            AlertDialog(
+                onDismissRequest = { showPlaylistActions = false },
+                title = { Text("Playlist") },
+                text = {
+                    Column {
+                        TextButton(
+                            onClick = {
+                                showPlaylistActions = false
+                                renameText = selectedPlaylist.title
+                                showRename = true
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("Rename playlist") }
+                        TextButton(
+                            onClick = {
+                                showPlaylistActions = false
+                                showDelete = true
+                            },
+                            modifier = Modifier.fillMaxWidth()
+                        ) { Text("Delete playlist", color = MaterialTheme.colorScheme.error) }
+                    }
+                },
+                confirmButton = { TextButton(onClick = { showPlaylistActions = false }) { Text("Close") } }
+            )
+        }
+
+        if (showRename) {
+            AlertDialog(
+                onDismissRequest = { showRename = false },
+                title = { Text("Rename playlist") },
+                text = {
+                    OutlinedTextField(
+                        value = renameText,
+                        onValueChange = { renameText = it },
+                        singleLine = true,
+                        label = { Text("Playlist name") },
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                },
+                confirmButton = {
+                    TextButton(onClick = {
+                        if (renameText.isNotBlank()) {
+                            renamePlaylist(renameText)
+                            showRename = false
+                        }
+                    }) { Text("Save") }
+                },
+                dismissButton = { TextButton(onClick = { showRename = false }) { Text("Cancel") } }
+            )
+        }
+
+        if (showDelete) {
+            AlertDialog(
+                onDismissRequest = { showDelete = false },
+                title = { Text("Delete playlist?") },
+                text = { Text("This permanently removes “${selectedPlaylist.title}” from YouTube Music.") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        showDelete = false
+                        deletePlaylist()
+                    }) { Text("Delete", color = MaterialTheme.colorScheme.error) }
+                },
+                dismissButton = { TextButton(onClick = { showDelete = false }) { Text("Cancel") } }
+            )
+        }
+
+        if (showAddSongs) {
+            PlaylistSongSearchDialog(
+                results = playlistSearchResults,
+                loading = playlistSearchLoading,
+                onSearch = searchPlaylistSongs,
+                onAdd = addOnlineToPlaylist,
+                onDismiss = { showAddSongs = false }
+            )
         }
         return@CompositionLocalProvider
     }
@@ -312,7 +414,16 @@ fun RenovatedLibraryScreen(
     val shown = if (favouritesMode) favourites else tracks
     LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 150.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         item {
-            RenovationHeader("Library", tracks.size.toString() + " songs · " + playlists.size.toString() + " playlists")
+            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    RenovationHeader("Library", tracks.size.toString() + " songs · " + playlists.size.toString() + " playlists")
+                }
+                if (status.startsWith("Connected")) {
+                    IconButton(onClick = { showCreate = true }) {
+                        Icon(Icons.Rounded.CreateNewFolder, "Create playlist", tint = MaterialTheme.colorScheme.primary)
+                    }
+                }
+            }
             Row(Modifier.padding(top = 17.dp).fillMaxWidth().clip(RoundedCornerShape(17.dp)).background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = .45f)).padding(4.dp)) {
                 listOf("Songs", "Favourites").forEachIndexed { index, label ->
                     Box(Modifier.weight(1f).clip(RoundedCornerShape(13.dp)).background(if ((favouritesMode && index == 1) || (!favouritesMode && index == 0)) MaterialTheme.colorScheme.surface else Color.Transparent).clickable { favouritesMode = index == 1 }.padding(vertical = 10.dp), contentAlignment = Alignment.Center) {
@@ -358,7 +469,86 @@ fun RenovatedLibraryScreen(
             }
         }
     }
+
+    if (showCreate) {
+        var createName by remember { mutableStateOf("") }
+        AlertDialog(
+            onDismissRequest = { showCreate = false },
+            title = { Text("New playlist") },
+            text = {
+                OutlinedTextField(
+                    value = createName,
+                    onValueChange = { createName = it },
+                    singleLine = true,
+                    label = { Text("Playlist name") },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (createName.isNotBlank()) {
+                        createPlaylist(createName.trim())
+                        showCreate = false
+                    }
+                }) { Text("Create") }
+            },
+            dismissButton = { TextButton(onClick = { showCreate = false }) { Text("Cancel") } }
+        )
     }
+    }
+}
+
+@Composable
+private fun PlaylistSongSearchDialog(
+    results: List<OnlineTrack>,
+    loading: Boolean,
+    onSearch: (String) -> Unit,
+    onAdd: (OnlineTrack) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var query by remember { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("Add songs") },
+        text = {
+            Column(Modifier.fillMaxWidth()) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    OutlinedTextField(
+                        value = query,
+                        onValueChange = { query = it },
+                        singleLine = true,
+                        label = { Text("Search YouTube Music") },
+                        modifier = Modifier.weight(1f)
+                    )
+                    IconButton(
+                        onClick = { onSearch(query) },
+                        enabled = query.isNotBlank() && !loading
+                    ) { Icon(Icons.Rounded.Search, "Search") }
+                }
+                if (loading) {
+                    LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 8.dp))
+                }
+                LazyColumn(Modifier.heightIn(max = 360.dp).padding(top = 8.dp)) {
+                    items(results, key = { it.videoId }) { result ->
+                        Row(
+                            Modifier.fillMaxWidth().clickable { onAdd(result) }.padding(vertical = 7.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RenovationArtwork(result.thumbnail, Modifier.size(48.dp).clip(RoundedCornerShape(11.dp)))
+                            Column(Modifier.weight(1f).padding(horizontal = 9.dp)) {
+                                Text(result.title, fontWeight = FontWeight.SemiBold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                Text(result.author, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                            IconButton(onClick = { onAdd(result) }) {
+                                Icon(Icons.Rounded.PlaylistAdd, "Add")
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = { TextButton(onClick = onDismiss) { Text("Done") } }
+    )
 }
 
 @Composable
