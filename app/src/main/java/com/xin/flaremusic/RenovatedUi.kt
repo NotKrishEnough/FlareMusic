@@ -112,8 +112,7 @@ private fun RenovatedHomeScreen(count: Int, loading: Boolean, error: String, acc
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(Modifier.weight(1f)) {
                     Text("FLAREMUSIC", color = accent, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.3.sp)
-                    Text("Made for the way
-you listen.", fontSize = 37.sp, lineHeight = 39.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1.7).sp, modifier = Modifier.padding(top = 7.dp))
+                    Text("Made for the way\\nyou listen.", fontSize = 37.sp, lineHeight = 39.sp, fontWeight = FontWeight.ExtraBold, letterSpacing = (-1.7).sp, modifier = Modifier.padding(top = 7.dp))
                     Text(
                         if (loading) "Scanning your library…" else if (error.isNotBlank()) error else count.toString() + " songs ready",
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
