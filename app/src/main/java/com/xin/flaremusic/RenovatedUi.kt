@@ -182,7 +182,7 @@ fun RenovatedSearchScreen(
 ) {
     Column(Modifier.fillMaxSize().padding(horizontal = 20.dp)) {
         RenovationHeader("Search", "YouTube + YouTube Music")
-        RenovationSearchField(query, onQuery, onSearch)
+        RenovationSearchField(query, onQuery, { onSearch() })
         if (searching) LinearProgressIndicator(Modifier.fillMaxWidth().padding(top = 12.dp))
         if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error, fontSize = 12.sp, modifier = Modifier.padding(top = 10.dp))
         LazyColumn(contentPadding = PaddingValues(top = 14.dp, bottom = 150.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -377,15 +377,12 @@ fun RenovatedSettingsScreen(
         item { RenovationHeader("Settings", "A cleaner FlareMusic, your way.") }
         item { RenovationSection("APPEARANCE") }
         item { RenovationSetting("Dark appearance", "Cinematic dark surfaces", Icons.Rounded.DarkMode, androidx.compose.runtime.mutableStateOf(prefs.getBoolean("dark_mode", true)).value) {
-            FlarePreferences.darkMode.value = it
             prefs.edit().putBoolean("dark_mode", it).apply()
         } }
         item { RenovationSetting("Glass surfaces", "Frosted navigation, cards and player", Icons.Rounded.BlurOn, androidx.compose.runtime.mutableStateOf(prefs.getBoolean("glass_effects", true)).value) {
-            FlarePreferences.glassEffects.value = it
             prefs.edit().putBoolean("glass_effects", it).apply()
         } }
         item { RenovationSetting("Animations", "Smooth transitions and motion", Icons.Rounded.Animation, androidx.compose.runtime.mutableStateOf(prefs.getBoolean("animations", true)).value) {
-            FlarePreferences.animations.value = it
             prefs.edit().putBoolean("animations", it).apply()
         } }
         item { RenovationSection("AMOLED") }
@@ -419,7 +416,6 @@ fun RenovatedSettingsScreen(
                     items(1) { index ->
                         val selected = 0 == index
                         Box(Modifier.size(if (selected) 42.dp else 35.dp).clip(RoundedCornerShape(50.dp)).background(MaterialTheme.colorScheme.primary).border(if (selected) 3.dp else 0.dp, Color.White, RoundedCornerShape(50.dp)).clickable {
-                            FlarePreferences.accentIndex.intValue = index
                             prefs.edit().putInt("accent_index", index).apply()
                         })
                     }
