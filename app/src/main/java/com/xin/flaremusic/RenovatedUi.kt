@@ -381,72 +381,227 @@ fun RenovatedSettingsScreen(
     onDisconnect: () -> Unit
 ) {
     CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.onSurface) {
-    val context = LocalContext.current
-    val prefs = context.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE)
-    val darkMode = FlarePreferences.darkMode.value
-    val glassEffects = FlarePreferences.glassEffects.value
-    val animations = FlarePreferences.animations.value
-    LazyColumn(contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 150.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        item { RenovationHeader("Settings", "A cleaner FlareMusic, your way.") }
-        item { RenovationSection("APPEARANCE") }
-        item { RenovationSetting("Dark appearance", "Cinematic dark surfaces", Icons.Rounded.DarkMode, darkMode) {
-            FlarePreferences.darkMode.value = it
-            context.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("dark_mode", it).apply()
-        } }
-        item { RenovationSetting("Glass surfaces", "Frosted navigation, cards and player", Icons.Rounded.BlurCircular, glassEffects) {
-            FlarePreferences.glassEffects.value = it
-            context.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("glass_effects", it).apply()
-        } }
-        item { RenovationSetting("Animations", "Smooth transitions and motion", Icons.Rounded.AutoAwesome, animations) {
-            FlarePreferences.animations.value = it
-            context.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE).edit().putBoolean("animations", it).apply()
-        } }
-        item { RenovationSection("AMOLED") }
-        item { RenovationSetting("Pure black", "Use true black backgrounds", Icons.Rounded.BrightnessHigh, amoled, onAmoledChange) }
-        item { RenovationSection("YOUTUBE MUSIC") }
-        item {
-            RenovationCard(Modifier.fillMaxWidth(), MaterialTheme.colorScheme.primary) {
-                Column(Modifier.padding(16.dp)) {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.primary.copy(alpha = .14f)), contentAlignment = Alignment.Center) {
-                            Icon(Icons.Rounded.AccountCircle, null, tint = MaterialTheme.colorScheme.primary)
-                        }
-                        Column(Modifier.weight(1f).padding(start = 12.dp)) {
-                            Text(if (googleStatus.startsWith("Connected")) "YouTube Music connected" else "Not connected", fontWeight = FontWeight.Bold)
-                            Text(playlists.size.toString() + " playlists synced", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        }
-                    }
-                    Row(Modifier.padding(top = 13.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(onClick = onConnect, modifier = Modifier.weight(1f)) { Text(if (googleStatus.startsWith("Connected")) "Reconnect" else "Connect") }
-                        OutlinedButton(onClick = onSync, modifier = Modifier.weight(1f), enabled = !loading) { Text("Sync") }
-                    }
-                    if (googleStatus.startsWith("Connected")) TextButton(onClick = onDisconnect, modifier = Modifier.align(Alignment.End)) { Text("Disconnect") }
-                    if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
+        val context = LocalContext.current
+        val prefs = context.getSharedPreferences("flare_settings", android.content.Context.MODE_PRIVATE)
+        val darkMode = FlarePreferences.darkMode.value
+        val glassEffects = FlarePreferences.glassEffects.value
+        val animations = FlarePreferences.animations.value
+
+        fun save(key: String, value: Any) {
+            val e = prefs.edit()
+            when (value) {
+                is Boolean -> e.putBoolean(key, value)
+                is Int -> e.putInt(key, value)
+                is Float -> e.putFloat(key, value)
+            }
+            e.apply()
+        }
+
+        LazyColumn(
+            contentPadding = PaddingValues(start = 20.dp, end = 20.dp, top = 24.dp, bottom = 150.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            item { RenovationHeader("Settings", "A cleaner FlareMusic, your way.") }
+
+            item { RenovationSection("APPEARANCE") }
+            item { RenovationSetting("Dark appearance", "Cinematic dark surfaces", Icons.Rounded.DarkMode, darkMode) {
+                FlarePreferences.darkMode.value = it
+                save("dark_mode", it)
+            } }
+            item { RenovationSetting("Glass surfaces", "Frosted navigation, cards and player", Icons.Rounded.BlurCircular, glassEffects) {
+                FlarePreferences.glassEffects.value = it
+                save("glass_effects", it)
+            } }
+            item { RenovationSetting("Animations", "Smooth transitions and motion", Icons.Rounded.AutoAwesome, animations) {
+                FlarePreferences.animations.value = it
+                save("animations", it)
+            } }
+            item { RenovationSetting("Dynamic colours", "Use your system wallpaper palette", Icons.Rounded.Palette, FlarePreferences.dynamicColors.value) {
+                FlarePreferences.dynamicColors.value = it
+                save("dynamic_colors", it)
+            } }
+
+            item { RenovationSection("AMOLED") }
+            item { RenovationSetting("Pure black", "Use true black backgrounds", Icons.Rounded.BrightnessHigh, amoled, onAmoledChange) }
+
+            item { RenovationSection("HOME SCREEN") }
+            item {
+                RenovationChoiceCard(
+                    "Home layout",
+                    listOf("Showcase", "Compact", "Stats first"),
+                    FlarePreferences.homeLayout.intValue
+                ) { v ->
+                    FlarePreferences.homeLayout.intValue = v
+                    save("home_layout", v)
                 }
             }
-        }
-        item { RenovationSection("ACCENT") }
-        item {
-            RenovationCard(Modifier.fillMaxWidth(), MaterialTheme.colorScheme.primary) {
-                LazyRow(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                    items(FlarePreferences.accents.size) { index ->
-                        val selected = FlarePreferences.accentIndex.intValue == index
-                        Box(
-                            Modifier
-                                .size(if (selected) 42.dp else 36.dp)
-                                .clip(RoundedCornerShape(50.dp))
-                                .background(FlarePreferences.accents[index])
-                                .border(if (selected) 3.dp else 0.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .9f), RoundedCornerShape(50.dp))
-                                .clickable {
-                                    FlarePreferences.accentIndex.intValue = index
-                                    prefs.edit().putInt("accent_index", index).apply()
-                                }
+
+            item { RenovationSection("NAVIGATION") }
+            item {
+                RenovationChoiceCard(
+                    "Navigation style",
+                    listOf("Pill", "Flat", "Floating"),
+                    FlarePreferences.navStyle.intValue
+                ) { v ->
+                    FlarePreferences.navStyle.intValue = v
+                    save("nav_style", v)
+                }
+            }
+            item { RenovationSetting("Navigation labels", "Show Home, Search, Library and Settings labels", Icons.Rounded.Label, FlarePreferences.showNavLabels.value) {
+                FlarePreferences.showNavLabels.value = it
+                save("show_nav_labels", it)
+            } }
+
+            item { RenovationSection("PLAYER") }
+            item { RenovationSetting("Mini player", "Keep playback controls above navigation", Icons.Rounded.MusicNote, FlarePreferences.showMiniPlayer.value) {
+                FlarePreferences.showMiniPlayer.value = it
+                save("show_mini_player", it)
+            } }
+            item {
+                RenovationChoiceCard(
+                    "Artwork style",
+                    listOf("Crop", "Fit", "Soft glass"),
+                    FlarePreferences.artworkStyle.intValue
+                ) { v ->
+                    FlarePreferences.artworkStyle.intValue = v
+                    save("artwork_style", v)
+                }
+            }
+            item {
+                RenovationChoiceCard(
+                    "Progress bar",
+                    listOf("Classic", "Thin", "Glow"),
+                    FlarePreferences.progressStyle.intValue
+                ) { v ->
+                    FlarePreferences.progressStyle.intValue = v
+                    save("progress_style", v)
+                }
+            }
+            item { RenovationSetting("Swipe to minimize", "Swipe the full player down to close it", Icons.Rounded.SwipeDown, FlarePreferences.swipeToMinimize.value) {
+                FlarePreferences.swipeToMinimize.value = it
+                save("gesture_minimize", it)
+            } }
+            item { RenovationSetting("Swipe to change tracks", "Swipe the player artwork to change songs", Icons.Rounded.Swipe, FlarePreferences.swipeToChangeTracks.value) {
+                FlarePreferences.swipeToChangeTracks.value = it
+                save("gesture_tracks", it)
+            } }
+
+            item { RenovationSection("LIBRARY") }
+            item {
+                RenovationChoiceCard(
+                    "Playlist style",
+                    listOf("List", "Cards", "Compact"),
+                    FlarePreferences.playlistStyle.intValue
+                ) { v ->
+                    FlarePreferences.playlistStyle.intValue = v
+                    save("playlist_style", v)
+                }
+            }
+            item { RenovationSetting("Compact mode", "Tighter spacing and smaller controls", Icons.Rounded.ViewCompact, FlarePreferences.compact.value) {
+                FlarePreferences.compact.value = it
+                save("compact", it)
+            } }
+
+            item { RenovationSection("TYPOGRAPHY & SHAPE") }
+            item {
+                RenovationCard(Modifier.fillMaxWidth(), MaterialTheme.colorScheme.primary) {
+                    Column(Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(Icons.Rounded.FormatSize, null, tint = MaterialTheme.colorScheme.primary)
+                            Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                                Text("Text size", fontWeight = FontWeight.SemiBold)
+                                Text(String.format("%.0f%%", FlarePreferences.fontScale.floatValue * 100f), fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        Slider(
+                            value = FlarePreferences.fontScale.floatValue,
+                            onValueChange = {
+                                FlarePreferences.fontScale.floatValue = it
+                                save("font_scale", it)
+                            },
+                            valueRange = .85f..1.2f,
+                            steps = 6
                         )
+                    }
+                }
+            }
+            item {
+                RenovationChoiceCard(
+                    "Corner radius",
+                    listOf("Rounded", "Medium", "Sharp"),
+                    FlarePreferences.cornerStyle.intValue
+                ) { v ->
+                    FlarePreferences.cornerStyle.intValue = v
+                    save("corner_style", v)
+                }
+            }
+
+            item { RenovationSection("ACCENT") }
+            item {
+                RenovationCard(Modifier.fillMaxWidth(), MaterialTheme.colorScheme.primary) {
+                    LazyRow(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                        items(FlarePreferences.accents.size) { index ->
+                            val selected = FlarePreferences.accentIndex.intValue == index
+                            Box(
+                                Modifier
+                                    .size(if (selected) 42.dp else 36.dp)
+                                    .clip(RoundedCornerShape(50.dp))
+                                    .background(FlarePreferences.accents[index])
+                                    .border(if (selected) 3.dp else 0.dp, MaterialTheme.colorScheme.onSurface.copy(alpha = .9f), RoundedCornerShape(50.dp))
+                                    .clickable {
+                                        FlarePreferences.accentIndex.intValue = index
+                                        save("accent_index", index)
+                                    }
+                            )
+                        }
+                    }
+                }
+            }
+
+            item { RenovationSection("YOUTUBE MUSIC") }
+            item {
+                RenovationCard(Modifier.fillMaxWidth(), MaterialTheme.colorScheme.primary) {
+                    Column(Modifier.padding(16.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(MaterialTheme.colorScheme.primary.copy(alpha = .14f)), contentAlignment = Alignment.Center) {
+                                Icon(Icons.Rounded.AccountCircle, null, tint = MaterialTheme.colorScheme.primary)
+                            }
+                            Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                                Text(if (googleStatus.startsWith("Connected")) "YouTube Music connected" else "Not connected", fontWeight = FontWeight.Bold)
+                                Text(playlists.size.toString() + " playlists synced", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                        }
+                        Row(Modifier.padding(top = 13.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(onClick = onConnect, modifier = Modifier.weight(1f)) { Text(if (googleStatus.startsWith("Connected")) "Reconnect" else "Connect") }
+                            OutlinedButton(onClick = onSync, modifier = Modifier.weight(1f), enabled = !loading) { Text("Sync") }
+                        }
+                        if (googleStatus.startsWith("Connected")) TextButton(onClick = onDisconnect, modifier = Modifier.align(Alignment.End)) { Text("Disconnect") }
+                        if (error.isNotBlank()) Text(error, color = MaterialTheme.colorScheme.error, fontSize = 11.sp)
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun RenovationChoiceCard(title: String, options: List<String>, selected: Int, onSelected: (Int) -> Unit) {
+    RenovationCard(Modifier.fillMaxWidth(), MaterialTheme.colorScheme.primary) {
+        Column(Modifier.padding(15.dp)) {
+            Text(title, fontWeight = FontWeight.SemiBold)
+            Row(
+                Modifier.padding(top = 11.dp).horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                options.forEachIndexed { index, label ->
+                    FilterChip(
+                        selected = selected == index,
+                        onClick = { onSelected(index) },
+                        label = { Text(label, fontSize = 12.sp) }
+                    )
+                }
+            }
+        }
     }
 }
 
