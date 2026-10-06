@@ -1169,45 +1169,183 @@ private fun FlarePlayButton(playing: Boolean, onClick: () -> Unit, size: android
     var showQueue by remember { mutableStateOf(false) }
     var showSleepTimer by remember { mutableStateOf(false) }
     var sleepTimerMinutes by remember { mutableIntStateOf(0) }
-    Box(Modifier.fillMaxSize().pointerInput(swipeToMinimize, swipeToChangeTracks) {
-        var dragX = 0f
-        var dragY = 0f
-        detectDragGestures(onDragEnd = {
-            val horizontal = dragX; val vertical = dragY
-            if (kotlin.math.abs(vertical) > kotlin.math.abs(horizontal) && vertical > 85f && swipeToMinimize) onClose()
-            else if (kotlin.math.abs(horizontal) > 85f && swipeToChangeTracks) { if (horizontal < 0f) onNext() else onPrevious() }
-            dragX = 0f; dragY = 0f
-        }, onDragCancel = { dragX = 0f; dragY = 0f }) { _, amount -> dragX += amount.x; dragY += amount.y }
-    }.background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface)))) {
-        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().displayCutoutPadding().padding(horizontal = 24.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    var dragX by remember { mutableFloatStateOf(0f) }
+    var dragY by remember { mutableFloatStateOf(0f) }
+
+    val transition by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = tween(if (FlarePreferences.animations.value) 420 else 0),
+        label = "playerEntry"
+    )
+    val dragProgress = (kotlin.math.abs(dragY) / 420f).coerceIn(0f, .18f)
+    val artworkScale by animateFloatAsState(
+        targetValue = 1f - dragProgress,
+        animationSpec = tween(90),
+        label = "artworkDragScale"
+    )
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                alpha = transition
+                scaleX = transition
+                scaleY = transition
+            }
+            .pointerInput(swipeToMinimize, swipeToChangeTracks) {
+                detectDragGestures(
+                    onDragEnd = {
+                        val horizontal = dragX
+                        val vertical = dragY
+                        if (kotlin.math.abs(vertical) > kotlin.math.abs(horizontal) && vertical > 90f && swipeToMinimize) {
+                            onClose()
+                        } else if (kotlin.math.abs(horizontal) > 90f && swipeToChangeTracks) {
+                            if (horizontal < 0f) onNext() else onPrevious()
+                        }
+                        dragX = 0f
+                        dragY = 0f
+                    },
+                    onDragCancel = {
+                        dragX = 0f
+                        dragY = 0f
+                    }
+                ) { _, amount ->
+                    dragX += amount.x
+                    dragY = (dragY + amount.y).coerceIn(-260f, 420f)
+                }
+            }
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        // Artwork-derived ambient backdrop. It scales with the interactive drag,
+        // making the full player feel connected to the mini-player instead of
+        // appearing as a separate screen.
+        AnimatedContent(
+            targetState = track.artwork,
+            transitionSpec = {
+                fadeIn(tween(260)) togetherWith fadeOut(tween(180))
+            },
+            label = "playerBackdrop"
+        ) { artwork ->
+            if (artwork != null) {
+                Artwork(
+                    artwork,
+                    Modifier
+                        .fillMaxSize()
+                        .nativeBlur(48f)
+                        .graphicsLayer { alpha = .28f }
+                )
+            }
+        }
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(
+                    listOf(
+                        MaterialTheme.colorScheme.background.copy(alpha = .64f),
+                        MaterialTheme.colorScheme.background.copy(alpha = .90f),
+                        MaterialTheme.colorScheme.background
+                    )
+                )
+            )
+        )
+
+        Column(
+            Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .displayCutoutPadding()
+                .graphicsLayer {
+                    translationY = dragY
+                    alpha = (1f - (kotlin.math.abs(dragY) / 520f)).coerceIn(.35f, 1f)
+                }
+                .padding(horizontal = 24.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onClose) { Icon(Icons.Rounded.KeyboardArrowDown, "Collapse player", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(30.dp)) }
+                IconButton(onClick = onClose) {
+                    Icon(Icons.Rounded.KeyboardArrowDown, "Collapse player", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(30.dp))
+                }
                 Spacer(Modifier.weight(1f))
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("NOW PLAYING", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.2.sp)
                     Text("FlareMusic", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
                 }
                 Spacer(Modifier.weight(1f))
-                IconButton(onClick = { showQueue = true }) { Icon(Icons.Rounded.QueueMusic, "Queue", tint = MaterialTheme.colorScheme.onSurface) }
-            }
-            Spacer(Modifier.weight(.65f))
-            Box(Modifier.fillMaxWidth().aspectRatio(1f).padding(horizontal = 8.dp).clip(RoundedCornerShape(30.dp)).background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.surface))).padding(10.dp)) {
-                Artwork(track.artwork, Modifier.fillMaxSize().clip(RoundedCornerShape(23.dp)))
-            }
-            Spacer(Modifier.weight(.65f))
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(track.title, color = MaterialTheme.colorScheme.onSurface, fontSize = 23.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(track.artist, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 15.sp, modifier = Modifier.padding(top = 5.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                IconButton(onClick = { showQueue = true }) {
+                    Icon(Icons.Rounded.QueueMusic, "Queue", tint = MaterialTheme.colorScheme.onSurface)
                 }
-                IconButton(onClick = onToggleFavourite) { Icon(if (isFavourite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, "Favourite", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(25.dp)) }
             }
-            Spacer(Modifier.height(22.dp))
+
+            Spacer(Modifier.weight(.52f))
+
+            // Horizontal track gestures move the artwork with the finger. The
+            // metadata below follows the same small offset for a physical feel.
+            AnimatedContent(
+                targetState = track,
+                transitionSpec = {
+                    fadeIn(tween(220)) togetherWith fadeOut(tween(140))
+                },
+                label = "playerArtwork"
+            ) { displayedTrack ->
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                        .padding(horizontal = 8.dp)
+                        .graphicsLayer {
+                            scaleX = artworkScale
+                            scaleY = artworkScale
+                            translationX = (dragX * .10f).coerceIn(-42f, 42f)
+                            shadowElevation = 18.dp.toPx()
+                        }
+                        .clip(RoundedCornerShape(30.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Artwork(
+                        displayedTrack.artwork,
+                        Modifier.fillMaxSize().clip(RoundedCornerShape(30.dp))
+                    )
+                    Box(
+                        Modifier.fillMaxSize().background(
+                            Brush.verticalGradient(
+                                listOf(Color.Transparent, Color.Black.copy(alpha = .08f))
+                            )
+                        )
+                    )
+                }
+            }
+
+            Spacer(Modifier.weight(.52f))
+
+            AnimatedContent(
+                targetState = track,
+                transitionSpec = {
+                    fadeIn(tween(220)) togetherWith fadeOut(tween(140))
+                },
+                label = "playerMetadata"
+            ) { displayedTrack ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(displayedTrack.title, color = MaterialTheme.colorScheme.onSurface, fontSize = 23.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(displayedTrack.artist, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 15.sp, modifier = Modifier.padding(top = 5.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    IconButton(onClick = onToggleFavourite) {
+                        Icon(
+                            if (isFavourite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                            "Favourite",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(25.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(18.dp))
             val progressStyle = FlarePreferences.progressStyle.intValue
+            val progress = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
             if (progressStyle == 1) {
-                // Minimal: thin line, no visible thumb.
                 Slider(
-                    value = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f,
+                    value = progress,
                     onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) },
                     thumb = {},
                     track = { sliderState ->
@@ -1224,74 +1362,102 @@ private fun FlarePlayButton(playing: Boolean, onClick: () -> Unit, size: android
                     },
                     modifier = Modifier.fillMaxWidth().height(20.dp)
                 )
-            } else if (progressStyle == 2) {
-                // Bold: thicker track with a prominent thumb.
-                Slider(
-                    value = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f,
-                    onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) },
-                    colors = SliderDefaults.colors(
-                        thumbColor = MaterialTheme.colorScheme.primary,
-                        activeTrackColor = MaterialTheme.colorScheme.primary,
-                        inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    modifier = Modifier.fillMaxWidth().height(34.dp)
-                )
             } else {
-                // Classic: normal Material slider.
                 Slider(
-                    value = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f,
+                    value = progress,
                     onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) },
                     colors = SliderDefaults.colors(
                         thumbColor = MaterialTheme.colorScheme.primary,
                         activeTrackColor = MaterialTheme.colorScheme.primary,
                         inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
                     ),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().height(if (progressStyle == 2) 34.dp else 28.dp)
                 )
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(formatTime(position), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                 Text(formatTime(duration), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
             }
-            Spacer(Modifier.height(14.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onPrevious, modifier = Modifier.size(52.dp)) { Icon(Icons.Rounded.SkipPrevious, "Previous", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(31.dp)) }
-                FlarePlayButton(playing = playing, onClick = onPlayPause, size = 82.dp)
-                IconButton(onClick = onNext, modifier = Modifier.size(52.dp)) { Icon(Icons.Rounded.SkipNext, "Next", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(31.dp)) }
-            }
+
             Spacer(Modifier.height(8.dp))
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onPrevious, modifier = Modifier.size(52.dp)) {
+                    Icon(Icons.Rounded.SkipPrevious, "Previous", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(31.dp))
+                }
+                FlarePlayButton(playing = playing, onClick = onPlayPause, size = 82.dp)
+                IconButton(onClick = onNext, modifier = Modifier.size(52.dp)) {
+                    Icon(Icons.Rounded.SkipNext, "Next", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(31.dp))
+                }
+            }
+            Spacer(Modifier.height(5.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                 TextButton(onClick = { showSleepTimer = true }) {
                     Icon(Icons.Rounded.Bedtime, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(7.dp))
-                    Text(if (sleepTimerMinutes > 0) "Sleep timer: " + sleepTimerMinutes + " min" else "Sleep timer", color = MaterialTheme.colorScheme.primary)
+                    Text(if (sleepTimerMinutes > 0) "Sleep timer: $sleepTimerMinutes min" else "Sleep timer", color = MaterialTheme.colorScheme.primary)
                 }
             }
-            Spacer(Modifier.weight(.35f))
+            Spacer(Modifier.weight(.28f))
         }
-        if (showQueue) AlertDialog(onDismissRequest = { showQueue = false }, title = { Text("Playing queue") }, text = {
-            if (queue.isEmpty()) Text("The queue is empty.") else LazyColumn(Modifier.heightIn(max = 420.dp)) {
-                items(queue.size) { index -> val item = queue[index]
-                    Row(Modifier.fillMaxWidth().clickable { onPlayQueueItem(index); showQueue = false }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Artwork(item.artwork, Modifier.size(42.dp).clip(RoundedCornerShape(10.dp)))
-                        Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
-                            Text(item.title, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(item.artist, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+
+        if (showQueue) AlertDialog(
+            onDismissRequest = { showQueue = false },
+            title = { Text("Playing queue") },
+            text = {
+                if (queue.isEmpty()) Text("The queue is empty.") else LazyColumn(Modifier.heightIn(max = 420.dp)) {
+                    items(queue.size) { index ->
+                        val item = queue[index]
+                        Row(
+                            Modifier.fillMaxWidth().clickable { onPlayQueueItem(index); showQueue = false }.padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Artwork(item.artwork, Modifier.size(42.dp).clip(RoundedCornerShape(10.dp)))
+                            Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
+                                Text(item.title, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(item.artist, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                            IconButton(onClick = { onRemoveQueueItem(index) }) {
+                                Icon(Icons.Rounded.Close, "Remove", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
-                        IconButton(onClick = { onRemoveQueueItem(index) }) { Icon(Icons.Rounded.Close, "Remove", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
                 }
-            }
-        }, confirmButton = { TextButton(onClick = { showQueue = false }) { Text("Done") } }, dismissButton = { TextButton(onClick = onClearQueue) { Text("Clear queue") } })
-        if (showSleepTimer) AlertDialog(onDismissRequest = { showSleepTimer = false }, title = { Text("Sleep timer") }, text = { Column {
-            Text("Pause playback after", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            listOf(5, 10, 15, 30, 45, 60).forEach { minutes ->
-                Row(Modifier.fillMaxWidth().clickable { sleepTimerMinutes = minutes }.padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(selected = sleepTimerMinutes == minutes, onClick = { sleepTimerMinutes = minutes })
-                    Text("$minutes minutes", color = MaterialTheme.colorScheme.onSurface)
+            },
+            confirmButton = { TextButton(onClick = { showQueue = false }) { Text("Done") } },
+            dismissButton = { TextButton(onClick = onClearQueue) { Text("Clear queue") } }
+        )
+
+        if (showSleepTimer) AlertDialog(
+            onDismissRequest = { showSleepTimer = false },
+            title = { Text("Sleep timer") },
+            text = {
+                Column {
+                    Text("Pause playback after", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    listOf(5, 10, 15, 30, 45, 60).forEach { minutes ->
+                        Row(
+                            Modifier.fillMaxWidth().clickable { sleepTimerMinutes = minutes }.padding(vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(selected = sleepTimerMinutes == minutes, onClick = { sleepTimerMinutes = minutes })
+                            Text("$minutes minutes", color = MaterialTheme.colorScheme.onSurface)
+                        }
+                    }
                 }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (sleepTimerMinutes > 0) onStartSleepTimer(sleepTimerMinutes)
+                    showSleepTimer = false
+                }) { Text("Start") }
+            },
+            dismissButton = {
+                TextButton(onClick = { sleepTimerMinutes = 0; showSleepTimer = false }) { Text("Cancel") }
             }
-        } }, confirmButton = { TextButton(onClick = { if (sleepTimerMinutes > 0) onStartSleepTimer(sleepTimerMinutes); showSleepTimer = false }) { Text("Start") } }, dismissButton = { TextButton(onClick = { sleepTimerMinutes = 0; showSleepTimer = false }) { Text("Cancel") } })
+        )
     }
 }
 
