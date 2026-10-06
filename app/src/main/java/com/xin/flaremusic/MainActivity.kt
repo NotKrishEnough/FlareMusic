@@ -748,13 +748,27 @@ private fun GlassAmbientLayer(
                                         .clickable { selectTab(item) },
                                     contentAlignment = Alignment.Center
                                 ) {
-                                    Icon(
-                                        icon,
-                                        contentDescription = item,
-                                        tint = if (selected) Violet
-                                        else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
-                                        modifier = Modifier.size(if (selected) 23.dp else 22.dp)
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.Center
+                                    ) {
+                                        Icon(
+                                            icon,
+                                            contentDescription = item,
+                                            tint = if (selected) Violet else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.72f),
+                                            modifier = Modifier.size(if (selected) 22.dp else 21.dp)
+                                        )
+                                        if (FlarePreferences.showNavLabels.value && selected) {
+                                            Spacer(Modifier.width(5.dp))
+                                            Text(
+                                                item,
+                                                color = Violet,
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                maxLines = 1
+                                            )
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -1155,45 +1169,183 @@ private fun FlarePlayButton(playing: Boolean, onClick: () -> Unit, size: android
     var showQueue by remember { mutableStateOf(false) }
     var showSleepTimer by remember { mutableStateOf(false) }
     var sleepTimerMinutes by remember { mutableIntStateOf(0) }
-    Box(Modifier.fillMaxSize().pointerInput(swipeToMinimize, swipeToChangeTracks) {
-        var dragX = 0f
-        var dragY = 0f
-        detectDragGestures(onDragEnd = {
-            val horizontal = dragX; val vertical = dragY
-            if (kotlin.math.abs(vertical) > kotlin.math.abs(horizontal) && vertical > 85f && swipeToMinimize) onClose()
-            else if (kotlin.math.abs(horizontal) > 85f && swipeToChangeTracks) { if (horizontal < 0f) onNext() else onPrevious() }
-            dragX = 0f; dragY = 0f
-        }, onDragCancel = { dragX = 0f; dragY = 0f }) { _, amount -> dragX += amount.x; dragY += amount.y }
-    }.background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface, MaterialTheme.colorScheme.surface)))) {
-        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().displayCutoutPadding().padding(horizontal = 24.dp, vertical = 10.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+    var dragX by remember { mutableFloatStateOf(0f) }
+    var dragY by remember { mutableFloatStateOf(0f) }
+
+    val transition by animateFloatAsState(
+        targetValue = 1f,
+        animationSpec = tween(if (FlarePreferences.animations.value) 420 else 0),
+        label = "playerEntry"
+    )
+    val dragProgress = (kotlin.math.abs(dragY) / 420f).coerceIn(0f, .18f)
+    val artworkScale by animateFloatAsState(
+        targetValue = 1f - dragProgress,
+        animationSpec = tween(90),
+        label = "artworkDragScale"
+    )
+
+    Box(
+        Modifier
+            .fillMaxSize()
+            .graphicsLayer {
+                alpha = transition
+                scaleX = transition
+                scaleY = transition
+            }
+            .pointerInput(swipeToMinimize, swipeToChangeTracks) {
+                detectDragGestures(
+                    onDragEnd = {
+                        val horizontal = dragX
+                        val vertical = dragY
+                        if (kotlin.math.abs(vertical) > kotlin.math.abs(horizontal) && vertical > 90f && swipeToMinimize) {
+                            onClose()
+                        } else if (kotlin.math.abs(horizontal) > 90f && swipeToChangeTracks) {
+                            if (horizontal < 0f) onNext() else onPrevious()
+                        }
+                        dragX = 0f
+                        dragY = 0f
+                    },
+                    onDragCancel = {
+                        dragX = 0f
+                        dragY = 0f
+                    }
+                ) { _, amount ->
+                    dragX += amount.x
+                    dragY = (dragY + amount.y).coerceIn(-260f, 420f)
+                }
+            }
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        // Artwork-derived ambient backdrop. It scales with the interactive drag,
+        // making the full player feel connected to the mini-player instead of
+        // appearing as a separate screen.
+        AnimatedContent(
+            targetState = track.artwork,
+            transitionSpec = {
+                fadeIn(tween(260)) togetherWith fadeOut(tween(180))
+            },
+            label = "playerBackdrop"
+        ) { artwork ->
+            if (artwork != null) {
+                Artwork(
+                    artwork,
+                    Modifier
+                        .fillMaxSize()
+                        .nativeBlur(48f)
+                        .graphicsLayer { alpha = .28f }
+                )
+            }
+        }
+        Box(
+            Modifier.fillMaxSize().background(
+                Brush.verticalGradient(
+                    listOf(
+                        MaterialTheme.colorScheme.background.copy(alpha = .64f),
+                        MaterialTheme.colorScheme.background.copy(alpha = .90f),
+                        MaterialTheme.colorScheme.background
+                    )
+                )
+            )
+        )
+
+        Column(
+            Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .navigationBarsPadding()
+                .displayCutoutPadding()
+                .graphicsLayer {
+                    translationY = dragY
+                    alpha = (1f - (kotlin.math.abs(dragY) / 520f)).coerceIn(.35f, 1f)
+                }
+                .padding(horizontal = 24.dp, vertical = 10.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onClose) { Icon(Icons.Rounded.KeyboardArrowDown, "Collapse player", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(30.dp)) }
+                IconButton(onClick = onClose) {
+                    Icon(Icons.Rounded.KeyboardArrowDown, "Collapse player", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(30.dp))
+                }
                 Spacer(Modifier.weight(1f))
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
                     Text("NOW PLAYING", color = MaterialTheme.colorScheme.primary, fontSize = 10.sp, fontWeight = FontWeight.Bold, letterSpacing = 2.2.sp)
                     Text("FlareMusic", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
                 }
                 Spacer(Modifier.weight(1f))
-                IconButton(onClick = { showQueue = true }) { Icon(Icons.Rounded.QueueMusic, "Queue", tint = MaterialTheme.colorScheme.onSurface) }
-            }
-            Spacer(Modifier.weight(.65f))
-            Box(Modifier.fillMaxWidth().aspectRatio(1f).padding(horizontal = 8.dp).clip(RoundedCornerShape(30.dp)).background(Brush.linearGradient(listOf(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.colorScheme.surface))).padding(10.dp)) {
-                Artwork(track.artwork, Modifier.fillMaxSize().clip(RoundedCornerShape(23.dp)))
-            }
-            Spacer(Modifier.weight(.65f))
-            Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) {
-                    Text(track.title, color = MaterialTheme.colorScheme.onSurface, fontSize = 23.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(track.artist, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 15.sp, modifier = Modifier.padding(top = 5.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                IconButton(onClick = { showQueue = true }) {
+                    Icon(Icons.Rounded.QueueMusic, "Queue", tint = MaterialTheme.colorScheme.onSurface)
                 }
-                IconButton(onClick = onToggleFavourite) { Icon(if (isFavourite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder, "Favourite", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(25.dp)) }
             }
-            Spacer(Modifier.height(22.dp))
+
+            Spacer(Modifier.weight(.52f))
+
+            // Horizontal track gestures move the artwork with the finger. The
+            // metadata below follows the same small offset for a physical feel.
+            AnimatedContent(
+                targetState = track,
+                transitionSpec = {
+                    fadeIn(tween(220)) togetherWith fadeOut(tween(140))
+                },
+                label = "playerArtwork"
+            ) { displayedTrack ->
+                Box(
+                    Modifier
+                        .fillMaxWidth()
+                        .aspectRatio(1f)
+                        .padding(horizontal = 8.dp)
+                        .graphicsLayer {
+                            scaleX = artworkScale
+                            scaleY = artworkScale
+                            translationX = (dragX * .10f).coerceIn(-42f, 42f)
+                            shadowElevation = 18.dp.toPx()
+                        }
+                        .clip(RoundedCornerShape(30.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                ) {
+                    Artwork(
+                        displayedTrack.artwork,
+                        Modifier.fillMaxSize().clip(RoundedCornerShape(30.dp))
+                    )
+                    Box(
+                        Modifier.fillMaxSize().background(
+                            Brush.verticalGradient(
+                                listOf(Color.Transparent, Color.Black.copy(alpha = .08f))
+                            )
+                        )
+                    )
+                }
+            }
+
+            Spacer(Modifier.weight(.52f))
+
+            AnimatedContent(
+                targetState = track,
+                transitionSpec = {
+                    fadeIn(tween(220)) togetherWith fadeOut(tween(140))
+                },
+                label = "playerMetadata"
+            ) { displayedTrack ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text(displayedTrack.title, color = MaterialTheme.colorScheme.onSurface, fontSize = 23.sp, fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                        Text(displayedTrack.artist, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 15.sp, modifier = Modifier.padding(top = 5.dp), maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                    IconButton(onClick = onToggleFavourite) {
+                        Icon(
+                            if (isFavourite) Icons.Rounded.Favorite else Icons.Rounded.FavoriteBorder,
+                            "Favourite",
+                            tint = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.size(25.dp)
+                        )
+                    }
+                }
+            }
+
+            Spacer(Modifier.height(18.dp))
             val progressStyle = FlarePreferences.progressStyle.intValue
+            val progress = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f
             if (progressStyle == 1) {
-                // Minimal: thin line, no visible thumb.
                 Slider(
-                    value = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f,
+                    value = progress,
                     onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) },
                     thumb = {},
                     track = { sliderState ->
@@ -1210,126 +1362,302 @@ private fun FlarePlayButton(playing: Boolean, onClick: () -> Unit, size: android
                     },
                     modifier = Modifier.fillMaxWidth().height(20.dp)
                 )
-            } else if (progressStyle == 2) {
-                // Bold: thicker track with a prominent thumb.
-                Slider(
-                    value = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f,
-                    onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) },
-                    colors = SliderDefaults.colors(
-                        thumbColor = MaterialTheme.colorScheme.primary,
-                        activeTrackColor = MaterialTheme.colorScheme.primary,
-                        inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
-                    ),
-                    modifier = Modifier.fillMaxWidth().height(34.dp)
-                )
             } else {
-                // Classic: normal Material slider.
                 Slider(
-                    value = if (duration > 0) (position.toFloat() / duration).coerceIn(0f, 1f) else 0f,
+                    value = progress,
                     onValueChange = { if (duration > 0) onSeek((it * duration).toLong()) },
                     colors = SliderDefaults.colors(
                         thumbColor = MaterialTheme.colorScheme.primary,
                         activeTrackColor = MaterialTheme.colorScheme.primary,
                         inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
                     ),
-                    modifier = Modifier.fillMaxWidth()
+                    modifier = Modifier.fillMaxWidth().height(if (progressStyle == 2) 34.dp else 28.dp)
                 )
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 Text(formatTime(position), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                 Text(formatTime(duration), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
             }
-            Spacer(Modifier.height(14.dp))
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                IconButton(onClick = onPrevious, modifier = Modifier.size(52.dp)) { Icon(Icons.Rounded.SkipPrevious, "Previous", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(31.dp)) }
-                FlarePlayButton(playing = playing, onClick = onPlayPause, size = 82.dp)
-                IconButton(onClick = onNext, modifier = Modifier.size(52.dp)) { Icon(Icons.Rounded.SkipNext, "Next", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(31.dp)) }
-            }
+
             Spacer(Modifier.height(8.dp))
+            Row(
+                Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceEvenly,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                IconButton(onClick = onPrevious, modifier = Modifier.size(52.dp)) {
+                    Icon(Icons.Rounded.SkipPrevious, "Previous", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(31.dp))
+                }
+                FlarePlayButton(playing = playing, onClick = onPlayPause, size = 82.dp)
+                IconButton(onClick = onNext, modifier = Modifier.size(52.dp)) {
+                    Icon(Icons.Rounded.SkipNext, "Next", tint = MaterialTheme.colorScheme.onSurface, modifier = Modifier.size(31.dp))
+                }
+            }
+            Spacer(Modifier.height(5.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center) {
                 TextButton(onClick = { showSleepTimer = true }) {
                     Icon(Icons.Rounded.Bedtime, null, tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(7.dp))
-                    Text(if (sleepTimerMinutes > 0) "Sleep timer: " + sleepTimerMinutes + " min" else "Sleep timer", color = MaterialTheme.colorScheme.primary)
+                    Text(if (sleepTimerMinutes > 0) "Sleep timer: $sleepTimerMinutes min" else "Sleep timer", color = MaterialTheme.colorScheme.primary)
                 }
             }
-            Spacer(Modifier.weight(.35f))
+            Spacer(Modifier.weight(.28f))
         }
-        if (showQueue) AlertDialog(onDismissRequest = { showQueue = false }, title = { Text("Playing queue") }, text = {
-            if (queue.isEmpty()) Text("The queue is empty.") else LazyColumn(Modifier.heightIn(max = 420.dp)) {
-                items(queue.size) { index -> val item = queue[index]
-                    Row(Modifier.fillMaxWidth().clickable { onPlayQueueItem(index); showQueue = false }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Artwork(item.artwork, Modifier.size(42.dp).clip(RoundedCornerShape(10.dp)))
-                        Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
-                            Text(item.title, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                            Text(item.artist, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+
+        if (showQueue) AlertDialog(
+            onDismissRequest = { showQueue = false },
+            title = { Text("Playing queue") },
+            text = {
+                if (queue.isEmpty()) Text("The queue is empty.") else LazyColumn(Modifier.heightIn(max = 420.dp)) {
+                    items(queue.size) { index ->
+                        val item = queue[index]
+                        Row(
+                            Modifier.fillMaxWidth().clickable { onPlayQueueItem(index); showQueue = false }.padding(vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Artwork(item.artwork, Modifier.size(42.dp).clip(RoundedCornerShape(10.dp)))
+                            Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
+                                Text(item.title, color = MaterialTheme.colorScheme.onSurface, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                                Text(item.artist, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            }
+                            IconButton(onClick = { onRemoveQueueItem(index) }) {
+                                Icon(Icons.Rounded.Close, "Remove", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
                         }
-                        IconButton(onClick = { onRemoveQueueItem(index) }) { Icon(Icons.Rounded.Close, "Remove", tint = MaterialTheme.colorScheme.onSurfaceVariant) }
                     }
                 }
-            }
-        }, confirmButton = { TextButton(onClick = { showQueue = false }) { Text("Done") } }, dismissButton = { TextButton(onClick = onClearQueue) { Text("Clear queue") } })
-        if (showSleepTimer) AlertDialog(onDismissRequest = { showSleepTimer = false }, title = { Text("Sleep timer") }, text = { Column {
-            Text("Pause playback after", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            listOf(5, 10, 15, 30, 45, 60).forEach { minutes ->
-                Row(Modifier.fillMaxWidth().clickable { sleepTimerMinutes = minutes }.padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(selected = sleepTimerMinutes == minutes, onClick = { sleepTimerMinutes = minutes })
-                    Text("$minutes minutes", color = MaterialTheme.colorScheme.onSurface)
+            },
+            confirmButton = { TextButton(onClick = { showQueue = false }) { Text("Done") } },
+            dismissButton = { TextButton(onClick = onClearQueue) { Text("Clear queue") } }
+        )
+
+        if (showSleepTimer) AlertDialog(
+            onDismissRequest = { showSleepTimer = false },
+            title = { Text("Sleep timer") },
+            text = {
+                Column {
+                    Text("Pause playback after", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    listOf(5, 10, 15, 30, 45, 60).forEach { minutes ->
+                        Row(
+                            Modifier.fillMaxWidth().clickable { sleepTimerMinutes = minutes }.padding(vertical = 5.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            RadioButton(selected = sleepTimerMinutes == minutes, onClick = { sleepTimerMinutes = minutes })
+                            Text("$minutes minutes", color = MaterialTheme.colorScheme.onSurface)
+                        }
+                    }
                 }
+            },
+            confirmButton = {
+                TextButton(onClick = {
+                    if (sleepTimerMinutes > 0) onStartSleepTimer(sleepTimerMinutes)
+                    showSleepTimer = false
+                }) { Text("Start") }
+            },
+            dismissButton = {
+                TextButton(onClick = { sleepTimerMinutes = 0; showSleepTimer = false }) { Text("Cancel") }
             }
-        } }, confirmButton = { TextButton(onClick = { if (sleepTimerMinutes > 0) onStartSleepTimer(sleepTimerMinutes); showSleepTimer = false }) { Text("Start") } }, dismissButton = { TextButton(onClick = { sleepTimerMinutes = 0; showSleepTimer = false }) { Text("Cancel") } })
+        )
     }
 }
 
-@Composable private fun HomeScreen(count: Int, loading: Boolean, error: String, accent: Color, openLibrary: () -> Unit) {
- val homeMode = FlarePreferences.homeLayout.intValue
- val radius = when (FlarePreferences.cornerStyle.intValue) { 1 -> 18.dp; 2 -> 8.dp; else -> 30.dp }
- val cardRadius = when (FlarePreferences.cornerStyle.intValue) { 1 -> 16.dp; 2 -> 8.dp; else -> 22.dp }
- val colors=MaterialTheme.colorScheme
- Column(Modifier.fillMaxSize().background(colors.background).verticalScroll(rememberScrollState()).padding(horizontal=22.dp)) {
-  Row(Modifier.fillMaxWidth().padding(top=25.dp),verticalAlignment=Alignment.CenterVertically) {
-   Column(Modifier.weight(1f)) {
-    Text("GOOD EVENING",color=colors.onSurfaceVariant,fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=2.sp)
-    Text("Feel the\nfrequency.",color=colors.onBackground,fontSize=39.sp,lineHeight=42.sp,fontWeight=FontWeight.ExtraBold,letterSpacing=(-1.8).sp,modifier=Modifier.padding(top=8.dp))
-   }
-   Box(Modifier.size(54.dp).clip(RoundedCornerShape(19.dp)).background(accent.copy(alpha=.13f)),contentAlignment=Alignment.Center) { Image(painterResource(R.drawable.ic_flare_logo),contentDescription="FlareMusic",modifier=Modifier.size(38.dp)) }
-  }
-  Spacer(Modifier.height(if (homeMode == 1) 14.dp else 25.dp))
-  if (homeMode != 2) Box(Modifier.fillMaxWidth().height(if (homeMode == 1) 190.dp else 238.dp).clip(RoundedCornerShape(30.dp)).background(Brush.linearGradient(listOf(Color(0xFFFF7658),Color(0xFFB65C91),Color(0xFF6157B9)))).clickable{openLibrary()}) {
-   Box(Modifier.align(Alignment.TopEnd).padding(18.dp).size(150.dp).clip(RoundedCornerShape(75.dp)).background(Color.White.copy(alpha=.09f)),contentAlignment=Alignment.Center) { Icon(Icons.Rounded.GraphicEq,null,tint=Color.White.copy(alpha=.9f),modifier=Modifier.size(78.dp)) }
-   Column(Modifier.align(Alignment.BottomStart).padding(22.dp)) {
-    Text("YOUR MUSIC. YOUR MOMENT.",color=Color.White.copy(alpha=.82f),fontSize=10.sp,fontWeight=FontWeight.Bold,letterSpacing=1.7.sp)
-    Text("Press play.\nDisappear.",color=Color.White,fontSize=31.sp,lineHeight=34.sp,fontWeight=FontWeight.ExtraBold,modifier=Modifier.padding(top=8.dp))
-    Row(Modifier.padding(top=13.dp).clip(RoundedCornerShape(30.dp)).background(Color.White.copy(alpha=.18f)).padding(horizontal=14.dp,vertical=9.dp),verticalAlignment=Alignment.CenterVertically) { Text("Open your music",color=Color.White,fontSize=12.sp,fontWeight=FontWeight.Bold); Spacer(Modifier.width(8.dp)); Icon(Icons.Rounded.ArrowOutward,null,tint=Color.White,modifier=Modifier.size(15.dp)) }
-   }
-  }
-  Spacer(Modifier.height(27.dp))
-  Row(verticalAlignment=Alignment.CenterVertically) {
-   Column(Modifier.weight(1f)) { Text("Your space",color=colors.onBackground,fontSize=23.sp,fontWeight=FontWeight.Bold); Text(if(loading)"Scanning your device…" else "A library made for you",color=colors.onSurfaceVariant,fontSize=13.sp,modifier=Modifier.padding(top=3.dp)) }
-   TextButton(onClick=openLibrary){Text("View all ↗",color=accent,fontWeight=FontWeight.Bold)}
-  }
-  Spacer(Modifier.height(12.dp))
-  Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
-   Column(Modifier.weight(1f).clip(RoundedCornerShape(cardRadius)).background(colors.surfaceVariant).clickable{openLibrary()}.padding(17.dp)) {
-    Box(Modifier.size(40.dp).clip(RoundedCornerShape(14.dp)).background(accent.copy(alpha=.15f)),contentAlignment=Alignment.Center){Icon(Icons.Rounded.MusicNote,null,tint=accent)}
-    Text(count.toString(),color=colors.onSurface,fontSize=27.sp,fontWeight=FontWeight.ExtraBold,modifier=Modifier.padding(top=16.dp))
-    Text("Songs on device",color=colors.onSurfaceVariant,fontSize=12.sp)
-   }
-   Column(Modifier.weight(1f).clip(RoundedCornerShape(22.dp)).background(colors.surfaceVariant.copy(alpha = .42f)).border(1.dp, Color.White.copy(alpha = .13f), RoundedCornerShape(22.dp)).clickable{openLibrary()}.padding(17.dp)) {
-    Box(Modifier.size(40.dp).clip(RoundedCornerShape(14.dp)).background(Color(0xFF9D8AF3).copy(alpha=.16f)),contentAlignment=Alignment.Center){Icon(Icons.Rounded.Headphones,null,tint=Color(0xFF9D8AF3))}
-    Text(if(loading)"…" else "Ready",color=colors.onSurface,fontSize=27.sp,fontWeight=FontWeight.ExtraBold,modifier=Modifier.padding(top=16.dp))
-    Text("For your next replay",color=colors.onSurfaceVariant,fontSize=12.sp)
-   }
-  }
-  if(error.isNotBlank()) Text(error,color=colors.error,fontSize=12.sp,modifier=Modifier.padding(top=14.dp))
-  Spacer(Modifier.height(22.dp))
-  Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(cardRadius)).background(colors.surface).clickable{openLibrary()}.padding(16.dp),verticalAlignment=Alignment.CenterVertically) {
-   Box(Modifier.size(48.dp).clip(RoundedCornerShape(16.dp)).background(accent.copy(alpha=.13f)),contentAlignment=Alignment.Center){Icon(Icons.Rounded.Explore,null,tint=accent,modifier=Modifier.size(25.dp))}
-   Column(Modifier.weight(1f).padding(start=13.dp)){Text("Explore your collection",color=colors.onSurface,fontWeight=FontWeight.Bold,fontSize=14.sp);Text("Find a track for right now",color=colors.onSurfaceVariant,fontSize=12.sp,modifier=Modifier.padding(top=3.dp))}
-   Icon(Icons.Rounded.ChevronRight,null,tint=colors.onSurfaceVariant)
-  }
-  Spacer(Modifier.height(18.dp))
- }
+@Composable
+private fun HomeScreen(count: Int, loading: Boolean, error: String, accent: Color, openLibrary: () -> Unit) {
+    val colors = MaterialTheme.colorScheme
+    val compact = FlarePreferences.compact.value
+    val radius = when (FlarePreferences.cornerStyle.intValue) {
+        1 -> 20.dp
+        2 -> 10.dp
+        else -> 28.dp
+    }
+
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(colors.background)
+            .verticalScroll(rememberScrollState())
+            .padding(horizontal = 20.dp)
+    ) {
+        Row(
+            Modifier.fillMaxWidth().padding(top = 24.dp, bottom = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(
+                    "LISTEN NOW",
+                    color = accent,
+                    fontSize = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 2.1.sp
+                )
+                Text(
+                    "Your music.",
+                    color = colors.onBackground,
+                    fontSize = 36.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = (-1.5).sp,
+                    modifier = Modifier.padding(top = 5.dp)
+                )
+            }
+            Box(
+                Modifier.size(48.dp)
+                    .clip(RoundedCornerShape(17.dp))
+                    .background(accent.copy(alpha = .13f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painterResource(R.drawable.ic_flare_logo),
+                    contentDescription = "FlareMusic",
+                    modifier = Modifier.size(32.dp)
+                )
+            }
+        }
+
+        Spacer(Modifier.height(16.dp))
+
+        // A BitChord-style editorial hero: bold type, soft artwork-like glow,
+        // and one clear action instead of a collection of competing cards.
+        Box(
+            Modifier.fillMaxWidth()
+                .height(if (compact) 188.dp else 222.dp)
+                .clip(RoundedCornerShape(radius))
+                .background(
+                    Brush.linearGradient(
+                        listOf(
+                            accent.copy(alpha = .96f),
+                            accent.copy(alpha = .58f),
+                            colors.surfaceVariant.copy(alpha = .96f)
+                        )
+                    )
+                )
+                .clickable { openLibrary() }
+        ) {
+            Box(
+                Modifier.align(Alignment.TopEnd)
+                    .padding(18.dp)
+                    .size(154.dp)
+                    .clip(RoundedCornerShape(77.dp))
+                    .background(Color.White.copy(alpha = .08f))
+                    .nativeBlur(10f)
+            )
+            Column(
+                Modifier.align(Alignment.BottomStart).padding(22.dp)
+            ) {
+                Text(
+                    if (loading) "BUILDING YOUR LIBRARY" else "READY WHEN YOU ARE",
+                    color = Color.White.copy(alpha = .78f),
+                    fontSize = 9.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.8.sp
+                )
+                Text(
+                    "Listen\nwithout limits.",
+                    color = Color.White,
+                    fontSize = 30.sp,
+                    lineHeight = 32.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    letterSpacing = (-.7).sp,
+                    modifier = Modifier.padding(top = 7.dp)
+                )
+                Row(
+                    Modifier.padding(top = 12.dp)
+                        .clip(RoundedCornerShape(22.dp))
+                        .background(Color.White.copy(alpha = .17f))
+                        .padding(horizontal = 13.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text("Open Library", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Spacer(Modifier.width(7.dp))
+                    Icon(Icons.Rounded.ArrowForward, null, tint = Color.White, modifier = Modifier.size(15.dp))
+                }
+            }
+        }
+
+        Spacer(Modifier.height(26.dp))
+
+        Text(
+            "QUICK ACCESS",
+            color = colors.onSurfaceVariant,
+            fontSize = 10.sp,
+            fontWeight = FontWeight.Bold,
+            letterSpacing = 1.8.sp
+        )
+        Spacer(Modifier.height(10.dp))
+
+        Row(
+            Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Column(
+                Modifier.weight(1f)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(colors.surfaceVariant.copy(alpha = .58f))
+                    .clickable { openLibrary() }
+                    .padding(16.dp)
+            ) {
+                Icon(Icons.Rounded.LibraryMusic, null, tint = accent, modifier = Modifier.size(22.dp))
+                Text(
+                    count.toString(),
+                    color = colors.onSurface,
+                    fontSize = 26.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    modifier = Modifier.padding(top = 18.dp)
+                )
+                Text("Songs", color = colors.onSurfaceVariant, fontSize = 12.sp)
+            }
+            Column(
+                Modifier.weight(1f)
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(colors.surfaceVariant.copy(alpha = .34f))
+                    .clickable { openLibrary() }
+                    .padding(16.dp)
+            ) {
+                Icon(Icons.Rounded.Favorite, null, tint = accent, modifier = Modifier.size(22.dp))
+                Text(
+                    "Library",
+                    color = colors.onSurface,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.padding(top = 22.dp)
+                )
+                Text("Browse your collection", color = colors.onSurfaceVariant, fontSize = 12.sp)
+            }
+        }
+
+        if (error.isNotBlank()) {
+            Text(
+                error,
+                color = colors.error,
+                fontSize = 12.sp,
+                modifier = Modifier.padding(top = 14.dp)
+            )
+        }
+
+        Spacer(Modifier.height(18.dp))
+        Row(
+            Modifier.fillMaxWidth()
+                .clip(RoundedCornerShape(18.dp))
+                .background(colors.surface.copy(alpha = .72f))
+                .clickable { openLibrary() }
+                .padding(horizontal = 15.dp, vertical = 14.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                Modifier.size(42.dp)
+                    .clip(RoundedCornerShape(14.dp))
+                    .background(accent.copy(alpha = .13f)),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(Icons.Rounded.Explore, null, tint = accent)
+            }
+            Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                Text("Explore music", color = colors.onSurface, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                Text("Find something worth replaying", color = colors.onSurfaceVariant, fontSize = 12.sp, modifier = Modifier.padding(top = 2.dp))
+            }
+            Icon(Icons.Rounded.ChevronRight, null, tint = colors.onSurfaceVariant)
+        }
+        Spacer(Modifier.height(24.dp))
+    }
 }
 @Composable private fun SearchScreen(query: String, onQuery: (String) -> Unit, results: List<Track>, play: (Track) -> Unit, online: List<OnlineTrack>, searching: Boolean, searchOnline: (String) -> Unit, playOnline: (OnlineTrack) -> Unit, addOnline: (OnlineTrack) -> Unit, error: String) {
     Column(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background).padding(horizontal = 18.dp)) {
